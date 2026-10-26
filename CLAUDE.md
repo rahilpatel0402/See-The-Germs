@@ -35,6 +35,7 @@ Rahil: physician turned clinical informatics builder. Ships React/TypeScript/Exp
 - When something is a heuristic (dwell, dilation, score weights), put the constant in `engine/config.ts` with a one-line comment saying it is a heuristic and why.
 - Log clearly: one line per SAM call with class, frames, duration, cost estimate if available.
 - Request shapes come from the official docs and the `meta-models/meta-model-cookbook` notebooks (structured output, vision input, prompt caching, error handling, SAM). Read them for the shape; never copy their code into this repo, it is Python and the rules require our own new work.
+- Two reference repos are cloned read-only outside this project at `C:\dev\reference\meta-model-cookbook` and `C:\dev\reference\meta-oss-cookbook`. When you need a request or response shape for Meta Model API, SAM 3.1, Muse Spark, or Muse Spark Open, read the relevant notebook there by full path. The notebooks are Python; use them only to learn the shape, then write our own TypeScript. Never copy, import, or vendor any file from those folders into this repo, and never reference them from code or config.
 - When blocked for more than 20 minutes on a sponsor API, write the exact request, response, and error into `docs/API_NOTES.md` and propose the fallback.
 
 ## Definitions you must use consistently
