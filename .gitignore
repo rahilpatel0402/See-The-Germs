@@ -1,0 +1,28 @@
+# node
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+.vite/
+
+# secrets
+.env
+.env.*
+!.env.example
+
+# clip data, frames, mask tracks, cached model calls (never committed)
+data/*
+!data/clips/
+data/clips/*
+!data/clips/.gitkeep
+
+# private planning docs (clinical rules and counterfactual stay out of the public repo until submission)
+PLAN.md
+SCHEDULE.md
+
+# editor and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
