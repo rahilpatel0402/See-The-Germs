@@ -7,7 +7,7 @@ Sources: dev.meta.ai/docs/sam/overview, /docs/sam/segmenting, /docs/sam/reading-
 ## 1. Common
 
 - Base URL: `https://api.meta.ai/v1`
-- Auth: `Authorization: Bearer <key>` on every call. Docs and CLAUDE.md call the variable `MODEL_API_KEY`; `.env` and `.env.example` use `META_MODEL_API_KEY` as instructed in step 1. The server reads `META_MODEL_API_KEY`. Rename both if Rahil prefers the docs name.
+- Auth: `Authorization: Bearer <key>` on every call. The key is `MODEL_API_KEY` in `.env`, matching the docs, the cookbook, and CLAUDE.md (renamed from `META_MODEL_API_KEY` on Oct 26).
 - Verified Oct 26 with `GET /v1/models`, HTTP 200. Enabled on this account: `sam-3.1`, `muse-spark-1.3`, `muse-spark-1.3-contributor`, `muse-spark-1.2`, `muse-spark-1.2-contributor`, `muse-spark-1.1`, `muse-wonder-1.0`, `muse-image-1.0`, `muse-voice-transcribe-1.0`.
 - OpenAI compatible. Per CLAUDE.md the server calls through the `openai` npm package with `baseURL` set, using the Responses API for both SAM and Spark. Raw `fetch` with server-sent events also works and is the fallback if the SDK fights the SAM event stream.
 - Rate limits are per team: `sam-3.1` 3,000 requests per minute, no token limit; `muse-spark-1.1` and `1.3` 3,000 requests per minute, 4,000,000 tokens per minute. Nothing in this project gets near either.
@@ -197,6 +197,8 @@ Per clip at the planned sampling (10 fps, 720p, 11 classes):
 | Total, 45 s clip | | | about $1.10 |
 
 Uploading raw 30 fps source instead of resampling would triple the SAM line ($1.98 for 30 s). Resample first.
+
+Credits status Oct 26: $150 free credits active on the account ($149.96 after tonight's probes), card added. The billing page states that while free credits are in use, content may be used for product improvement. Every clip this project sends is staged and synthetic with no real patients, staff, or facilities, so this is acceptable, and it goes in the README privacy stance in plain words. Switching to paid balance ("Stop using free credits") removes that clause and is Rahil's call. The spend notification at $150 still needs to be set on the Billing page.
 
 Against the $150 credit: feasibility clip plus dev clip plus three demo clips plus retakes is under $10 total. Every live judge upload costs at most about $1.10 with the 45 s cap. A daily upload cap of 20 bounds worst-case spend at about $22 per day. Set the spend notification at $150 on the Billing page tonight (SCHEDULE.md).
 
