@@ -69,7 +69,7 @@ Output is not JSON. It arrives as special-token text in the `output_text` lane, 
 Frame indexing:
 - `<Nf>` is the zero-based frame index of the video as the API processed it. Frames with no visible object emit no line, so indices skip. Never assume line number equals frame number; read `N`.
 - With `propagation_direction: both`, forward frames arrive first, then backward frames, so lines can be out of order. Sort by frame index after parsing.
-- The docs do not state whether `N` counts source frames or resampled frames, and give no fps. We resolve this by construction: ffmpeg resamples every clip to a constant 10 fps before upload, so frame `N` is at `t = N / 10` seconds. `usage.video_frames_processed` on the response should equal the resampled frame count; verify tonight.
+- The docs do not state whether `N` counts source frames or resampled frames, and give no fps. We resolve this by construction: ffmpeg resamples every clip to a constant 10 fps before upload, so frame `N` is at `t = N / 10` seconds. Verified Oct 26 on a 5.9 s sample: ffprobe counted 59 frames after resampling and `usage.video_frames_processed` was 59 on both class calls, with frame indices 0 to 58.
 
 Object identity:
 - The leading integer is a stable per-object id within one response. Ids are sparse, not dense, not 0-based (a line can carry `0, 2`). Key everything by id.
@@ -153,7 +153,11 @@ Responses API, `POST /v1/responses`. Images go in a `user` message as `input_ima
 }
 ```
 
-Output text is at `output[0].content[0].text` (type `output_text`) and is a JSON string. `store: false` keeps large inline images from failing persistence (error-handling docs cite a 16 MB payload failing to persist with `store: true`).
+Verified live Oct 26 (two 96 px PNG swatches, schema with two enums and a reasoning string): this exact shape returned `status: completed` with valid JSON matching the schema in 2.0 s. Facts from that call:
+- `output` has two items: a `reasoning` item first, then the `message` whose `content[0]` is `output_text` holding the JSON string. Find the message by type, do not index `output[0]`.
+- Reasoning tokens count against `max_output_tokens`. With `effort: low` the call used 203 reasoning tokens plus 43 answer tokens; a cap of 200 ended the response `incomplete` with no text at all. Use at least 1,500 for adjudication and 2,500 for the narrative, and treat `status: incomplete` as a failed call to retry once with a higher cap.
+- Prompt caching worked on the first call: 113 of 166 input tokens were served cached. Keep `instructions` and the schema fixed per role.
+- `store: false` keeps large inline images from failing persistence (error-handling docs cite a 16 MB payload failing to persist with `store: true`).
 
 Chat Completions equivalent, `POST /v1/chat/completions`: `messages` with a `system` entry and a `user` entry whose `content` array holds `{ type: "text" }` and `{ type: "image_url", image_url: { url } }` parts; structured output via `response_format: { type: "json_schema", json_schema: { name, strict, schema } }`; `max_completion_tokens`; `reasoning_effort` as a top-level string. This is the shape Baseten speaks, so the Baseten adapter builds it from the same prompt, images, and schema (section 7).
 
@@ -215,15 +219,18 @@ Per dev.meta.ai/docs/muse-spark-open/deploy: Baseten base URL `https://inference
 ## 9. To verify tonight on the feasibility clip (20 s, phone, bare hand, gloved hand, towel rail, remote, phone, one pass in front of the rail)
 
 - [x] Key works and `sam-3.1` plus `muse-spark-1.3` are enabled: `GET /v1/models` returned 200 with both ids (Oct 26, 2:30 PM).
-- [ ] A text prompt call on the clip returns a completed response with records.
-- [ ] `usage.video_frames_processed` equals the resampled frame count from ffprobe, confirming `N` indexes our 10 fps frames.
+- [x] Full path proven on the cookbook `pingpong.mp4` sample (Oct 26, 3:15 PM): ffmpeg resample 23.976 fps 141 frames to 10 fps 59 frames at 1280x720, Files API upload, two streamed `sam-3.1` calls with `one_bit` and confidence, parsed with `@meta-sam/parser` 0.1.0, outcome completed, zero diagnostics. "ping pong ball": one id visible 56 of 59 frames, mean confidence 0.84, mean area 601 px. "person": two ids visible all 59 frames, confidence 0.98 and 0.96. Each call about 5 to 6 s, 59 frames billed, $0.012 per class.
+- [x] `usage.video_frames_processed` equals the resampled frame count from ffprobe (59 = 59), confirming `N` indexes our 10 fps frames.
+- [x] Mask raster width and height equal the record's box width and height on every record, confirming the raster covers `bounds`.
+- [x] Parser 0.1.0 finalizes the text lane on the API's `response.content_part.done`; do not synthesize `response.output_text.done` as the older cookbook helper does, it throws `response_lane`.
+- [ ] A text prompt call on Rahil's clip returns a completed response with records.
 - [ ] "bare hand" and "gloved hand" return separate tracks that do not swap; note what the gloved class does on the bare hand and vice versa (this decides automatic glove detection vs the fallback).
 - [ ] Rail, remote, and phone each get one stable id through the clip; note any id change when a hand occludes them.
 - [ ] Pass in front of the rail: hand and rail masks overlap in 2D in those frames (expected; this is the case adjudication exists for).
 - [ ] Mask raster decodes in Node with `decodeMaskToRaster`, dimensions match `bounds`, and a quick PNG dump looks right frame by frame.
 - [ ] Latency per class call on a 200 frame clip; cost reported on the Billing page after the run.
 - [ ] Whether `input_video.fps` changes `video_frames_processed` (curiosity only; we resample regardless).
-- [ ] One Spark Responses API call with two PNG images and the adjudication schema under `text.format` returns valid JSON at temperature 0. Confirms the `text.format` nesting in section 5.
+- [x] One Spark Responses API call with two PNG images and a schema under `text.format` returns valid JSON at temperature 0 (Oct 26, 3:05 PM, 2.0 s, 166 in / 246 out of which 203 reasoning). Nesting in section 5 confirmed. Cap lesson recorded there.
 - [ ] If masks are mush: run the same clip through fal.ai SAM 3.1 video via its JS SDK before bed and record the comparison here.
 
 ## 10. Open questions for #office-hours (post Tuesday night, one question)
