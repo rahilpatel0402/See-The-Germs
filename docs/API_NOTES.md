@@ -1,14 +1,15 @@
 # API notes: Meta Model API, SAM 3.1 video and Muse Spark
 
-Written Mon Oct 26, 2026 (Gate 1) from the official docs at dev.meta.ai, the `@meta-sam/parser` 0.1.0 package, and the `meta-models/meta-sam` protocol spec. Nothing here has been confirmed against a live call yet. Section 9 lists what the feasibility clip must verify tonight.
+Written Mon Oct 26, 2026 (Gate 1) from the official docs at dev.meta.ai, the `@meta-sam/parser` 0.1.0 package, and the `meta-models/meta-sam` protocol spec. The only live call so far is `GET /v1/models` (section 1). Section 9 lists what the feasibility clip must verify tonight.
 
-Sources: dev.meta.ai/docs/sam/overview, /docs/sam/segmenting, /docs/sam/reading-segmentation, /docs/sam/client-libraries, /docs/protocols/responses, /docs/protocols/chat-completions, /docs/image-understanding, /docs/structured-output, /docs/file-handling, /docs/pricing-rate-limits, /docs/error-handling, /docs/api-reference/responses/schemas, /docs/models, /docs/muse-spark-open/deploy, github.com/meta-models/meta-sam (protocol/sam3.md), npm @meta-sam/parser 0.1.0.
+Sources: dev.meta.ai/docs/sam/overview, /docs/sam/segmenting, /docs/sam/reading-segmentation, /docs/sam/client-libraries, /docs/protocols/responses, /docs/protocols/chat-completions, /docs/image-understanding, /docs/structured-output, /docs/file-handling, /docs/pricing-rate-limits, /docs/error-handling, /docs/api-reference/responses/schemas, /docs/models, /docs/muse-spark-open/deploy, github.com/meta-models/meta-sam (protocol/sam3.md), github.com/meta-models/meta-model-cookbook (07_sam/01_api_basics, read for shape only, Python and TypeScript examples never copied), npm @meta-sam/parser 0.1.0.
 
 ## 1. Common
 
 - Base URL: `https://api.meta.ai/v1`
-- Auth: `Authorization: Bearer <META_MODEL_API_KEY>` on every call. Docs call the variable `MODEL_API_KEY`; ours is `META_MODEL_API_KEY` in `.env`.
-- OpenAI compatible. The `openai` npm package works with `baseURL` set to the base URL. Raw `fetch` with server-sent events also works.
+- Auth: `Authorization: Bearer <key>` on every call. Docs and CLAUDE.md call the variable `MODEL_API_KEY`; `.env` and `.env.example` use `META_MODEL_API_KEY` as instructed in step 1. The server reads `META_MODEL_API_KEY`. Rename both if Rahil prefers the docs name.
+- Verified Oct 26 with `GET /v1/models`, HTTP 200. Enabled on this account: `sam-3.1`, `muse-spark-1.3`, `muse-spark-1.3-contributor`, `muse-spark-1.2`, `muse-spark-1.2-contributor`, `muse-spark-1.1`, `muse-wonder-1.0`, `muse-image-1.0`, `muse-voice-transcribe-1.0`.
+- OpenAI compatible. Per CLAUDE.md the server calls through the `openai` npm package with `baseURL` set, using the Responses API for both SAM and Spark. Raw `fetch` with server-sent events also works and is the fallback if the SDK fights the SAM event stream.
 - Rate limits are per team: `sam-3.1` 3,000 requests per minute, no token limit; `muse-spark-1.1` and `1.3` 3,000 requests per minute, 4,000,000 tokens per minute. Nothing in this project gets near either.
 - Errors: 400 is a bad request, fix and resend, never retry unchanged. 429 carries `Retry-After`; back off 0.5 to 1 s doubling with jitter, 3 to 5 tries. 504 means the request took too long; use streaming or shorten input, do not just retry.
 - Files API: `POST /v1/files`, multipart, `purpose=user_data`, `file` last. Up to 1 GiB per file. Video accepted as `video/mp4` only. Files do not expire by default; optional `expires_after[anchor]=created_at` and `expires_after[seconds]` (3600 to 2592000). 100 GiB per team. `DELETE /v1/files/{file_id}` to clean up. Inline media (base64 data URL or public URL) is capped at 50 MB.
@@ -108,21 +109,23 @@ Image-exemplar prompts (an example crop as the concept) are not offered on the M
 
 ## 5. Muse Spark: image input and request shape
 
-Model ids available: `muse-spark-1.1` (original, standard mode only), `muse-spark-1.2`, `muse-spark-1.3` (docs recommend for new work). All three accept text, image, video, audio, PDF; 1,048,576 token context; identical pricing. CLAUDE.md fixes 1.1. Flag for Rahil: 1.3 costs the same and is the documented default; switching is a one-string change in config, not a decision to make tonight.
+Model: `muse-spark-1.3`, Standard mode (CLAUDE.md, updated Oct 26). Never `muse-spark-1.3-contributor`: Contributor mode is cheaper but lets Meta train on the content. 1.3 accepts text, image, video, audio, PDF; 1,048,576 token context; same price as 1.1 and 1.2. `muse-spark-1.1` and `1.2` remain enabled on the account as fallbacks with the same request shape.
 
-Yes, Muse Spark accepts image input, on both protocols:
+Yes, Muse Spark accepts image input, on both protocols. CLAUDE.md fixes the Responses API, so that is the primary shape:
 
-Chat Completions, `POST /v1/chat/completions`. Image goes in the `content` array of a `user` message as an `image_url` part whose value is an object with a `url` field holding a public URL or a base64 data URL. This is the shape the Baseten backend will share later, so it is our choice for both Spark roles.
+Responses API, `POST /v1/responses`. Images go in a `user` message as `input_image` parts, each with `image_url` as a plain string holding a public URL or a base64 data URL (or `file_id` for a Files API upload), plus optional `detail` (`low`, `high`, `auto`, `original`; default `auto`). Structured output is `text.format`, not `response_format`; the wrong one returns 400. The docs name `text.format` but do not print a full Responses example, so the nesting below follows the OpenAI Responses convention and is item one to verify on the first Spark call.
 
 ```json
 {
-  "model": "muse-spark-1.1",
+  "model": "muse-spark-1.3",
   "temperature": 0,
-  "reasoning_effort": "low",
-  "max_completion_tokens": 300,
-  "response_format": {
-    "type": "json_schema",
-    "json_schema": {
+  "reasoning": { "effort": "low" },
+  "max_output_tokens": 300,
+  "store": false,
+  "instructions": "<adjudication instructions, fixed text so the prefix caches>",
+  "text": {
+    "format": {
+      "type": "json_schema",
       "name": "adjudication",
       "strict": true,
       "schema": {
@@ -136,21 +139,25 @@ Chat Completions, `POST /v1/chat/completions`. Image goes in the `content` array
       }
     }
   },
-  "messages": [
-    { "role": "system", "content": "<adjudication instructions>" },
+  "input": [
     {
+      "type": "message",
       "role": "user",
       "content": [
-        { "type": "text", "text": "Object: IV pole. Frame 1 is the first frame of the candidate window, frame 2 the middle frame. Hand outline is cyan, object outline is magenta." },
-        { "type": "image_url", "image_url": { "url": "data:image/png;base64,...." } },
-        { "type": "image_url", "image_url": { "url": "data:image/png;base64,...." } }
+        { "type": "input_text", "text": "Object: IV pole. Image 1 is the first frame of the candidate window, image 2 the middle frame. Hand outline is cyan, object outline is magenta." },
+        { "type": "input_image", "image_url": "data:image/png;base64,....", "detail": "high" },
+        { "type": "input_image", "image_url": "data:image/png;base64,....", "detail": "high" }
       ]
     }
   ]
 }
 ```
 
-Responses API alternative: `input_image` part with `image_url` as a plain string (URL or data URL) or `file_id`, plus optional `detail` (`low`, `high`, `auto`, `original`). Structured output there uses `text.format`, not `response_format`; the two are not interchangeable and the wrong one returns 400.
+Output text is at `output[0].content[0].text` (type `output_text`) and is a JSON string. `store: false` keeps large inline images from failing persistence (error-handling docs cite a 16 MB payload failing to persist with `store: true`).
+
+Chat Completions equivalent, `POST /v1/chat/completions`: `messages` with a `system` entry and a `user` entry whose `content` array holds `{ type: "text" }` and `{ type: "image_url", image_url: { url } }` parts; structured output via `response_format: { type: "json_schema", json_schema: { name, strict, schema } }`; `max_completion_tokens`; `reasoning_effort` as a top-level string. This is the shape Baseten speaks, so the Baseten adapter builds it from the same prompt, images, and schema (section 7).
+
+Muse Wonder, `muse-wonder-1.0`, is enabled and takes the identical request shape. Cost is $4.00 input and $20.00 output per million tokens, about three to five times Spark. PLAN.md reserves it as a one-evening experiment if Spark 1.3 adjudication agreement is poor on Wednesday. One adjudication on Wonder is roughly $0.03, so twelve per clip is about $0.35: affordable for a test, not for the default.
 
 Image rules:
 - Formats: `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/x-icon`.
@@ -160,9 +167,9 @@ Image rules:
 
 Generation parameters:
 - `temperature` 0 to 2, default 1. The docs recommend leaving it unset; we set 0 for determinism as PLAN.md requires. Use `temperature` or `top_p`, not both.
-- `reasoning_effort`: `minimal`, `low`, `medium`, `high`, `xhigh`. `none` returns 400, so Muse Spark always reasons and reasoning tokens bill as output. Use `low` for adjudication and narrative.
-- `max_completion_tokens` (not `max_tokens`). `n` must be 1. `logprobs`, `stop`, `logit_bias` rejected.
-- Structured output: `response_format: { type: "json_schema", json_schema: { name, schema, strict } }`. Output is always constrained to the schema; `strict: true` additionally validates the schema (root is a plain object, `additionalProperties: false` everywhere, `required` lists every property, no `allOf`/`oneOf`, no recursion). Response text is a JSON string in `choices[0].message.content`; parse and validate it anyway (CLAUDE.md: retry once, then structured panels only).
+- Reasoning effort: `minimal`, `low`, `medium`, `high`, `xhigh`. `none` returns 400, so Muse Spark always reasons and reasoning tokens bill as output. Responses API: `reasoning: { effort }`. Chat Completions: top-level `reasoning_effort`. Use `low` for adjudication and narrative.
+- Output cap: `max_output_tokens` on Responses (minimum 16), `max_completion_tokens` on Chat Completions. `n` must be 1. `logprobs`, `stop`, `logit_bias` rejected.
+- Structured output: output is always constrained to the schema; `strict: true` additionally validates the schema (root is a plain object, `additionalProperties: false` everywhere, `required` lists every property, no `allOf`/`oneOf`, no recursion, depth 10 max). Parse and validate the returned JSON anyway (CLAUDE.md: retry once, then structured panels only).
 - Structured output combines with image input per the docs.
 - Streaming optional; long non-streaming requests can 504, but a 300 token adjudication will not.
 
@@ -193,7 +200,7 @@ Well under the $8 per clip threshold in PLAN.md 12a, so no need to drop to 8 fps
 
 ## 7. Muse Spark Open on Baseten (after Gate 7 only)
 
-Per dev.meta.ai/docs/muse-spark-open/deploy: Baseten base URL `https://inference.baseten.co/v1`, model id `meta-models/muse-spark-open`, OpenAI-compatible chat completions, accepts text, image, video, and audio input. PLAN.md names the id as `meta-models/muse-spark-open-1026`; the docs page shows `meta-models/muse-spark-open`. Verify the exact id in the Baseten console when credits are approved. Because we use Chat Completions with `image_url` parts for the Meta backend, the Baseten backend is the same request with a different base URL, key, and model id. Structured output support on Baseten is unverified; the schema validation and retry path already covers it.
+Per dev.meta.ai/docs/muse-spark-open/deploy: Baseten base URL `https://inference.baseten.co/v1`, model id `meta-models/muse-spark-open`, OpenAI-compatible chat completions, accepts text, image, video, and audio input. PLAN.md and CLAUDE.md name the id as `meta-models/muse-spark-open-1026`; the docs page shows `meta-models/muse-spark-open`. Verify the exact id in the Baseten console when credits are approved. The Meta backend speaks the Responses API and Baseten speaks Chat Completions, so the `SparkBackend` interface has to sit above the wire shape: each backend receives the same instructions, user text, PNG images, and JSON schema, and builds its own request (section 5 shows both shapes). Same prompts, same schemas, same cache, per CLAUDE.md. Structured output support on Baseten is unverified; the schema validation and retry path already covers it.
 
 ## 8. Decisions made tonight from the docs
 
@@ -201,12 +208,14 @@ Per dev.meta.ai/docs/muse-spark-open/deploy: Baseten base URL `https://inference
 2. Upload once per clip to the Files API, reuse `file_id` for all eleven class calls, delete the file after tracks are cached.
 3. Request `mask_encoding: one_bit` and `include_confidence: "true"` on every SAM call. One bit is enough for contact geometry and is smaller to cache.
 4. Depend on `@meta-sam/parser` for parsing and mask decoding. Store raw mask payloads plus bounds in the per-class track JSON. Decode to rasters in `engine/masks.ts` at the frame size for dilation and intersection.
-5. Use Chat Completions for both Spark roles so the Baseten backend is a config swap.
+5. Spark on the Responses API with `muse-spark-1.3` (CLAUDE.md). The `SparkBackend` interface takes instructions, user text, images, and a schema, and each backend builds its own wire request, so the Baseten chat-completions backend is an adapter, not a prompt rewrite.
 6. Exemplar tool, if reached, is the SAM box prompt tracked forward from the drawn frame.
+7. Spark model calls set `store: false`. Nothing in this project needs server-side conversation state, and inline images are safer without persistence.
 
 ## 9. To verify tonight on the feasibility clip (20 s, phone, bare hand, gloved hand, towel rail, remote, phone, one pass in front of the rail)
 
-- [ ] Key works: a text prompt call on the clip returns a completed response with records.
+- [x] Key works and `sam-3.1` plus `muse-spark-1.3` are enabled: `GET /v1/models` returned 200 with both ids (Oct 26, 2:30 PM).
+- [ ] A text prompt call on the clip returns a completed response with records.
 - [ ] `usage.video_frames_processed` equals the resampled frame count from ffprobe, confirming `N` indexes our 10 fps frames.
 - [ ] "bare hand" and "gloved hand" return separate tracks that do not swap; note what the gloved class does on the bare hand and vice versa (this decides automatic glove detection vs the fallback).
 - [ ] Rail, remote, and phone each get one stable id through the clip; note any id change when a hand occludes them.
@@ -214,7 +223,7 @@ Per dev.meta.ai/docs/muse-spark-open/deploy: Baseten base URL `https://inference
 - [ ] Mask raster decodes in Node with `decodeMaskToRaster`, dimensions match `bounds`, and a quick PNG dump looks right frame by frame.
 - [ ] Latency per class call on a 200 frame clip; cost reported on the Billing page after the run.
 - [ ] Whether `input_video.fps` changes `video_frames_processed` (curiosity only; we resample regardless).
-- [ ] One Spark Chat Completions call with two PNG images and the adjudication schema returns valid JSON at temperature 0.
+- [ ] One Spark Responses API call with two PNG images and the adjudication schema under `text.format` returns valid JSON at temperature 0. Confirms the `text.format` nesting in section 5.
 - [ ] If masks are mush: run the same clip through fal.ai SAM 3.1 video via its JS SDK before bed and record the comparison here.
 
 ## 10. Open questions for #office-hours (post Tuesday night, one question)

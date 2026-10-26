@@ -9,7 +9,7 @@ Rahil: physician turned clinical informatics builder. Ships React/TypeScript/Exp
 - Client: React + Vite + TypeScript. Plain CSS or a single small CSS file. No component library unless already installed.
 - Server: Express + TypeScript (tsx for dev). ffmpeg and ffprobe via child_process.
 - Engine: pure TypeScript under `engine/`, no I/O, no framework, tests with `node:test` only.
-- Models: Meta Model API only. SAM 3.1 for segmentation and tracking (including separate "bare hand" and "gloved hand" classes). Muse Spark 1.1 in two roles: text (narrative from structured JSON) and vision (adjudicating ambiguous contact candidates from two annotated frames). Keys live in server `.env`, never in the client, never committed.
+- Models: Meta Model API only, base URL `https://api.meta.ai/v1`, bearer `MODEL_API_KEY`, called through the `openai` npm package (Responses API). SAM 3.1 (`sam-3.1`, clips uploaded once via `/v1/files`) for segmentation and tracking (including separate "bare hand" and "gloved hand" classes). Muse Spark 1.3 (`muse-spark-1.3`, Standard mode, never the contributor variant) in two roles: text (narrative from structured JSON) and vision (adjudicating ambiguous contact candidates from two annotated frames). Keys live in server `.env`, never in the client, never committed.
 - Fallback segmentation backend: fal.ai SAM 3.1 video via its JS SDK, behind the same `SegmentationBackend` interface. Do not add it unless the Meta endpoint fails the feasibility gate.
 - Second LLM backend, after Gate 7 only: Muse Spark Open on Baseten (`meta-models/muse-spark-open-1026`, OpenAI-style chat completions with vision) behind the same `SparkBackend` interface as Meta Model API, selected by `SPARK_BACKEND=meta|baseten`. Same prompts, same schemas, same caching. Meta Model API stays the default.
 
@@ -34,6 +34,7 @@ Rahil: physician turned clinical informatics builder. Ships React/TypeScript/Exp
 - The standard is first place. When two implementations both meet the gate, pick the one the winning project would have shipped, and say which it is.
 - When something is a heuristic (dwell, dilation, score weights), put the constant in `engine/config.ts` with a one-line comment saying it is a heuristic and why.
 - Log clearly: one line per SAM call with class, frames, duration, cost estimate if available.
+- Request shapes come from the official docs and the `meta-models/meta-model-cookbook` notebooks (structured output, vision input, prompt caching, error handling, SAM). Read them for the shape; never copy their code into this repo, it is Python and the rules require our own new work.
 - When blocked for more than 20 minutes on a sponsor API, write the exact request, response, and error into `docs/API_NOTES.md` and propose the fallback.
 
 ## Definitions you must use consistently
