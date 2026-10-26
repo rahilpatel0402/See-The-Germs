@@ -53,6 +53,7 @@ Rahil: physician turned clinical informatics builder. Ships React/TypeScript/Exp
 - Respectful toward caregivers. The product teaches; it does not accuse. Coaching notes are second person and name one change.
 - Plain language for CNAs, precise language for the infection preventionist view.
 - Always visible somewhere on screen: "Staged synthetic footage. Staff training and audit aid. Not surveillance. Not medical advice."
+- The kickoff slide bans "dashboards as the main feature." The main feature of this product is the video with the contamination overlay and the counterfactual slider. Layout rule: the video is the page, full width, with the timeline directly beneath it. Chain graph, Five Moments, exposure score, and narrative panels live in a collapsible sidebar or drawer, never in a grid of cards above or around the video. If a screenshot of the page would read as a dashboard, the layout is wrong.
 
 ## Commit style
 One line, present tense, gate status at the end when relevant: `add propagation engine with pathogen rules (gate 3 met)`.
