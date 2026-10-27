@@ -16,7 +16,8 @@
     "build:client": "vite build client",
     "analyze": "tsx server/scripts/analyze.ts",
     "accuracy": "tsx server/scripts/accuracy.ts",
-    "adjudicate": "tsx server/scripts/adjudicate.ts"
+    "adjudicate": "tsx server/scripts/adjudicate.ts",
+    "narrate": "tsx server/scripts/narrate.ts"
   },
   "dependencies": {
     "@meta-sam/parser": "0.1.0",

@@ -4,9 +4,9 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import express, { type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
-import { isPathogenId } from "../engine/pathogens.ts";
-import type { Scenario } from "../engine/types.ts";
-import { readScenario, runAnalysis, validateScenario, writeScenario } from "./analysis.ts";
+import { readScenario, runAnalysis, runCounterfactualFor, validateScenario, writeScenario } from "./analysis.ts";
+import { explainCounterfactual, narrateClip, readNarrative } from "./narrate.ts";
+import { parseScenarioOverride } from "./pipeline.ts";
 import { createClipFromUpload, ensureClip, listClipIds, readMeta } from "./clips.ts";
 import { optionalEnv } from "./env.ts";
 import { readEntities, validateEntities, writeEntities } from "./entities.ts";
@@ -116,11 +116,53 @@ app.post("/api/analyze", wrap(async (req, res) => {
   const body = (req.body ?? {}) as { clipId?: unknown; pathogen?: unknown; sourceEntityId?: unknown };
   const clipId = String(body.clipId ?? "");
   await readMeta(clipId);
-  const override: { pathogen?: Scenario["pathogen"]; sourceEntityId?: string } = {};
-  if (typeof body.pathogen === "string" && isPathogenId(body.pathogen)) override.pathogen = body.pathogen;
-  else if (body.pathogen !== undefined) throw new HttpError(400, "pathogen must be one of mrsa, c_auris, c_difficile, norovirus");
-  if (typeof body.sourceEntityId === "string") override.sourceEntityId = body.sourceEntityId;
-  res.json(await runAnalysis(clipId, override));
+  res.json(await runAnalysis(clipId, parseScenarioOverride(body)));
+}));
+
+// Body: { clipId, t, handId?, agent?, pathogen?, sourceEntityId? }. Pure rerun, no model call.
+app.post("/api/counterfactual", wrap(async (req, res) => {
+  const body = (req.body ?? {}) as { clipId?: unknown; t?: unknown; handId?: unknown; agent?: unknown; pathogen?: unknown; sourceEntityId?: unknown };
+  const clipId = String(body.clipId ?? "");
+  await readMeta(clipId);
+  const insert = {
+    t: Number(body.t),
+    ...(typeof body.handId === "string" ? { handId: body.handId } : {}),
+    ...(typeof body.agent === "string" ? { agent: body.agent } : {}),
+  };
+  res.json(await runCounterfactualFor(clipId, insert, parseScenarioOverride(body)));
+}));
+
+// Cached narrative only; 404 until generated.
+app.get("/api/clips/:id/narrative", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  const file = await readNarrative(meta.id);
+  if (!file) throw new HttpError(404, `clip ${meta.id} has no narrative yet`);
+  res.json(file);
+}));
+
+// Generates the narrative for the clip's current analysis (cached by input hash).
+app.post("/api/narrate", wrap(async (req, res) => {
+  const body = (req.body ?? {}) as { clipId?: unknown; pathogen?: unknown; sourceEntityId?: unknown };
+  const clipId = String(body.clipId ?? "");
+  await readMeta(clipId);
+  const analysis = await runAnalysis(clipId, parseScenarioOverride(body));
+  res.json(await narrateClip(clipId, analysis, spark));
+}));
+
+// Two sentences on one counterfactual, on demand.
+app.post("/api/counterfactual/explain", wrap(async (req, res) => {
+  const body = (req.body ?? {}) as { clipId?: unknown; t?: unknown; handId?: unknown; agent?: unknown; pathogen?: unknown; sourceEntityId?: unknown };
+  const clipId = String(body.clipId ?? "");
+  await readMeta(clipId);
+  const override = parseScenarioOverride(body);
+  const analysis = await runAnalysis(clipId, override);
+  const insert = {
+    t: Number(body.t),
+    ...(typeof body.handId === "string" ? { handId: body.handId } : {}),
+    ...(typeof body.agent === "string" ? { agent: body.agent } : {}),
+  };
+  const cf = await runCounterfactualFor(clipId, insert, override);
+  res.json({ explanation: await explainCounterfactual(analysis, cf, spark) });
 }));
 
 // Sends ambiguous candidates to Spark vision (cached, capped) and returns the fresh analysis.

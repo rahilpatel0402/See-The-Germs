@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
-import type { Analysis } from "../../engine/types.ts";
+import type { Analysis, PropagationResult } from "../../engine/types.ts";
 import { contaminationAt, drawFrame, pulsingAt, type OverlayIndex } from "./overlay.ts";
 
 const PULSE_WINDOW_S = 0.4;
@@ -8,6 +8,8 @@ interface Props {
   readonly videoRef: RefObject<HTMLVideoElement | null>;
   readonly src: string;
   readonly analysis: Analysis | null;
+  // When set, the overlay draws this propagation instead of the analysis's own (counterfactual).
+  readonly propagation: PropagationResult | null;
   readonly index: OverlayIndex | null;
   readonly glow: boolean;
   readonly highlight: string | null;
@@ -15,9 +17,10 @@ interface Props {
   readonly onDuration: (d: number) => void;
 }
 
-export function VideoStage({ videoRef, src, analysis, index, glow, highlight, onTime, onDuration }: Props) {
+export function VideoStage({ videoRef, src, analysis, propagation, index, glow, highlight, onTime, onDuration }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const entities = useMemo(() => new Map((index?.entities ?? []).map((e) => [e.id, e])), [index]);
+  const active = propagation ?? analysis?.propagation ?? null;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -38,10 +41,11 @@ export function VideoStage({ videoRef, src, analysis, index, glow, highlight, on
       if (key !== lastKey) {
         lastKey = key;
         const shapes = index.shapesAt(frameIndex);
+        const list = analysis?.entities ?? [];
         drawFrame(ctx, shapes, {
           glow,
-          contaminated: analysis ? contaminationAt(analysis, t) : new Set(),
-          pulsing: analysis ? pulsingAt(analysis, t, PULSE_WINDOW_S) : new Set(),
+          contaminated: active ? contaminationAt(list, active, t) : new Set(),
+          pulsing: active ? pulsingAt(list, active, t, PULSE_WINDOW_S) : new Set(),
           highlight,
           entities,
         });
@@ -51,18 +55,11 @@ export function VideoStage({ videoRef, src, analysis, index, glow, highlight, on
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [videoRef, index, analysis, glow, highlight, entities, onTime]);
+  }, [videoRef, index, analysis, active, glow, highlight, entities, onTime]);
 
   return (
     <div className="stage">
-      <video
-        ref={videoRef}
-        src={src}
-        controls
-        playsInline
-        preload="auto"
-        onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)}
-      />
+      <video ref={videoRef} src={src} controls playsInline preload="auto" onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)} />
       <canvas ref={canvasRef} className="overlay" aria-hidden="true" />
     </div>
   );

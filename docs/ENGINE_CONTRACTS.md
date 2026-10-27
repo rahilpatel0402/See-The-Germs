@@ -48,7 +48,16 @@ Everything below is implemented as stated, with these decisions made while writi
 - Moment 5 fires on any zone change away from patient surroundings, including patient zone A to patient zone B. Implemented.
 - Gate 3 wording: his call was "best suitable". Rules stay as written (clip A flags 5 and 1); the clip A script is unchanged.
 
-## Proposed Tue Oct 27, round three: counterfactual, narrative, chain graph, awaiting a yes
+## Round three, approved and written Tue Oct 27
+
+Written as stated. Decisions made while writing:
+- `server/pipeline.ts` is the single path from cached tracks to engine outputs; analysis, counterfactual, and narrative all call it, so they can never disagree.
+- Narrative cache key is a hash of the trimmed input, so changing the pathogen or source produces a new narrative and an unchanged analysis reuses the old one.
+- Spark text calls need an output cap of about 8,000 tokens because reasoning tokens count against it (3,150 on the first live narrative). Recorded in docs/API_NOTES.md section 13.
+- Deep link gains `cf=<seconds>&agent=` to open with the counterfactual active, for screenshots and the demo video.
+- `keptClean` compares end states, so on a clip where the hand gets re-contaminated later it can be empty even when the score drops. The before and after cards carry the score difference; the overlay shows the mid-clip difference.
+
+### Original proposal
 
 ### engine/counterfactual.ts (pure)
 Input: the same `PropagationInput` the analysis used, the base `PropagationResult` and base `ExposureScore`, plus an inserted event `{ handId, t, agent: "alcohol_rub" | "soap_water" }` (effectiveness computed from the pathogen profile, so inserting an alcohol rub under C. diff correctly does nothing). Output: `Counterfactual { inserted: HygieneEvent; before: ExposureScore; after: ExposureScore; keptClean: string[] (entity ids contaminated before, clean after); propagation: PropagationResult (the rerun, for the overlay); momentMisses: MomentMiss[] (recomputed) }`. Pure rerun, instant, deterministic. Tests: clip A with a rub at 3 s under MRSA gives after score 0 and keptClean of five entities; the same under C. diff gives identical before and after.

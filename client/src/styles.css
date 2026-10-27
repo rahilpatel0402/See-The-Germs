@@ -356,3 +356,141 @@ button {
     margin-left: 95px;
   }
 }
+
+.counterfactual {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px 12px;
+}
+
+.counterfactual.active {
+  border-color: var(--ok);
+}
+
+.cf-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cf-toggle {
+  white-space: nowrap;
+}
+
+.cf-row input[type="range"] {
+  flex: 1;
+  min-width: 160px;
+  accent-color: var(--ok);
+}
+
+.cf-time {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cf-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.cf-card {
+  background: var(--panel-2);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cf-card.after {
+  border: 1px solid var(--ok);
+}
+
+.cf-card.wide {
+  justify-content: center;
+  gap: 6px;
+}
+
+.cf-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.cf-score {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.cf-card.after .cf-score {
+  color: var(--ok);
+}
+
+.cf-detail {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cf-banner {
+  color: var(--ok);
+}
+
+.prose {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.chain-graph {
+  display: block;
+  overflow: visible;
+}
+
+.chain-graph .node rect {
+  fill: var(--panel-2);
+  stroke: var(--line);
+  stroke-width: 1;
+  cursor: pointer;
+}
+
+.chain-graph .node text {
+  fill: var(--text);
+  pointer-events: none;
+}
+
+.chain-graph .node.bare_hand rect,
+.chain-graph .node.gloved_hand rect {
+  stroke: var(--accent);
+}
+
+.chain-graph .node.resident_zone rect {
+  stroke: var(--bad);
+}
+
+.chain-graph .node.hot rect {
+  fill: rgba(255, 138, 31, 0.22);
+  stroke: var(--hot);
+}
+
+.chain-graph .node:hover rect {
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.chain-graph .edge {
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .cf-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cf-card.wide {
+    grid-column: 1 / -1;
+  }
+}

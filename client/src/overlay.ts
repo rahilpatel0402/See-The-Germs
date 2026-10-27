@@ -2,7 +2,7 @@
 // use and cached as Path2D; contamination at time t is replayed from the analysis changes, so
 // the same analysis and the same t always draw the same pixels.
 import { decodeMaskToSVGPath } from "@meta-sam/parser";
-import type { Analysis, Entity, MaskRecord } from "../../engine/types.ts";
+import type { Analysis, Entity, MaskRecord, PropagationResult } from "../../engine/types.ts";
 import type { TracksPayload } from "./api.ts";
 
 export interface Shape {
@@ -67,10 +67,11 @@ function handGroups(entities: readonly Entity[]): Map<string, string[]> {
   return groups;
 }
 
-export function contaminationAt(analysis: Analysis, t: number): Set<string> {
-  const groups = handGroups(analysis.entities);
+// Which propagation to draw: the analysis itself, or a counterfactual rerun.
+export function contaminationAt(entities: readonly Entity[], propagation: PropagationResult, t: number): Set<string> {
+  const groups = handGroups(entities);
   const set = new Set<string>();
-  for (const change of analysis.propagation.changes) {
+  for (const change of propagation.changes) {
     if (change.t > t) break;
     for (const id of groups.get(change.entityId) ?? [change.entityId]) {
       if (change.contaminated) set.add(id);
@@ -81,14 +82,16 @@ export function contaminationAt(analysis: Analysis, t: number): Set<string> {
 }
 
 // Entities that received contamination within the last windowS seconds, for the pulse.
-export function pulsingAt(analysis: Analysis, t: number, windowS: number): Set<string> {
-  const groups = handGroups(analysis.entities);
+export function pulsingAt(entities: readonly Entity[], propagation: PropagationResult, t: number, windowS: number): Set<string> {
+  const groups = handGroups(entities);
   const set = new Set<string>();
-  for (const edge of analysis.propagation.transfers) {
+  for (const edge of propagation.transfers) {
     if (edge.t <= t && edge.t > t - windowS) for (const id of groups.get(edge.toId) ?? [edge.toId]) set.add(id);
   }
   return set;
 }
+
+export type { Analysis };
 
 export interface DrawOptions {
   readonly glow: boolean;

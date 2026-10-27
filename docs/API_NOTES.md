@@ -208,6 +208,8 @@ Well under the $8 per clip threshold in PLAN.md 12a, so no need to drop to 8 fps
 
 Per dev.meta.ai/docs/muse-spark-open/deploy: Baseten base URL `https://inference.baseten.co/v1`, model id `meta-models/muse-spark-open`, OpenAI-compatible chat completions, accepts text, image, video, and audio input. PLAN.md and CLAUDE.md name the id as `meta-models/muse-spark-open-1026`; the docs page shows `meta-models/muse-spark-open`. Verify the exact id in the Baseten console when credits are approved. The Meta backend speaks the Responses API and Baseten speaks Chat Completions, so the `SparkBackend` interface has to sit above the wire shape: each backend receives the same instructions, user text, PNG images, and JSON schema, and builds its own request (section 5 shows both shapes). Same prompts, same schemas, same cache, per CLAUDE.md. Structured output support on Baseten is unverified; the schema validation and retry path already covers it.
 
+Verified Oct 27: key issued by the hackathon, stored as `BASETEN_API_KEY` in the root `.env`. A hello-world chat completion through the `openai` package (`baseURL` `https://inference.baseten.co/v1`, model `meta-models/muse-spark-open-1026`) returned 200 in about 1.4 s. The key is locked to that exact model id, so the `-1026` form from CLAUDE.md is the right one, not the bare id on the docs page. Response usage carries `completion_tokens_details.reasoning_tokens` and `prompt_tokens_details.cached_tokens`, so the adapter can fill the same usage fields as the Meta backend. Structured output and image input still unverified; test both when the adapter is built after Gate 7.
+
 ## 8. Decisions made tonight from the docs
 
 1. Resample every clip with ffmpeg to 10 fps, 720p, H.264 MP4, faststart, before upload. Frame index `N` then means `t = N / 10 s` by construction, and the same frames are used for the canvas overlay, the adjudication images, and the engine.
@@ -292,3 +294,11 @@ Office hours question for Tuesday night, pick one: (a) on video, are object ids 
 Two of two correct, both with reasoning grounded in visible cues. Per call: about 2,690 input tokens (two images at detail high, roughly 1,300 each, plus prompt), 500 to 660 output tokens of which 440 to 600 reasoning at effort low, 4.6 to 5.3 s, about $0.006. Twelve per clip is about $0.07. No prompt caching on these two calls (cached 0); the instructions are identical, so later calls should cache the prefix.
 
 Note on the budget: forced verdicts are cached and count against the 12 per clip cap like any other. Forcing is a development tool; the engine ignores verdicts on confident candidates.
+
+## 13. Narrative verified (Oct 27)
+
+`npm run narrate -- feasibility`: `muse-spark-1.3`, Responses API, `text.format` schema with three string fields, temperature 0, reasoning effort low, instructions from `server/prompts/narrate.md`, the trimmed analysis record as user text (labels instead of ids, no masks, no candidates).
+
+- First attempt with `max_output_tokens: 2500` ended `incomplete` after 2,205 reasoning tokens and no answer. Raised to 8,000. The successful run used 3,150 reasoning tokens plus about 520 answer tokens: 1,657 in (1,649 cached), 3,672 out, 10.0 s, $0.016. Reasoning dominates the cost of every Spark text call; budget 6 to 8 thousand output tokens for narrative, 4 thousand for the two-sentence counterfactual explanation.
+- Prompt caching worked: the instructions prefix was served cached on the first narrate call because the adjudication calls had warmed it.
+- Validation passed first time: word counts in range, no disallowed clinical language. The coaching note is faithful to the record but reads as a replay of the timeline rather than coaching; the prompt needs a "lead with the one change, then the two facts that justify it" structure in the Monday polish pass. Also, with a clear glove both hand classes fire on the same hand, so the note says "bare hand and gloved hand" touched the rail; nitrile on the dev clip should remove that.

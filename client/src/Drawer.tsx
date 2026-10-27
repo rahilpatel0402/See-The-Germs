@@ -1,8 +1,13 @@
-import type { Analysis } from "../../engine/types.ts";
+import type { Analysis, Narrative } from "../../engine/types.ts";
 import { SCORE_WEIGHTS } from "../../engine/config.ts";
+import { ChainGraph } from "./ChainGraph.tsx";
 
 interface Props {
   readonly analysis: Analysis | null;
+  readonly narrative: Narrative | null;
+  readonly narrativeState: "idle" | "loading" | "error" | "ready";
+  readonly narrativeError: string | null;
+  readonly onNarrate: () => void;
   readonly open: boolean;
   readonly onToggle: () => void;
   readonly onSeek: (t: number) => void;
@@ -11,7 +16,7 @@ interface Props {
 
 const fmt = (t: number): string => `${t.toFixed(1)} s`;
 
-export function Drawer({ analysis, open, onToggle, onSeek, onHover }: Props) {
+export function Drawer({ analysis, narrative, narrativeState, narrativeError, onNarrate, open, onToggle, onSeek, onHover }: Props) {
   const labels = new Map((analysis?.entities ?? []).map((e) => [e.id, e.label]));
   const name = (id: string): string => labels.get(id) ?? id;
   return (
@@ -22,15 +27,28 @@ export function Drawer({ analysis, open, onToggle, onSeek, onHover }: Props) {
       {open && analysis ? (
         <div className="drawer-body">
           <section>
+            <h2>Coaching note</h2>
+            {narrative ? (
+              <p className="prose">{narrative.coaching_note}</p>
+            ) : narrativeState === "loading" ? (
+              <p className="muted">Writing...</p>
+            ) : (
+              <p className="muted">
+                {narrativeState === "error" ? `Narrative unavailable: ${narrativeError ?? "unknown error"}. The structured panels below are the analysis.` : "Not written yet."}{" "}
+                <button type="button" className="link" onClick={onNarrate}>
+                  {narrativeState === "error" ? "Try again" : "Write it"}
+                </button>
+              </p>
+            )}
+          </section>
+
+          <section>
             <h2>Exposure score</h2>
             <p className="score">{analysis.score.score}</p>
             <ul className="plain">
               <li>Contaminated surfaces: {analysis.score.contaminatedSurfaces}</li>
               <li>Chain length: {analysis.score.chainLength} transfers</li>
-              <li>
-                Resident exposures:{" "}
-                {Object.entries(analysis.score.residentExposures).map(([id, n]) => `${name(id)} ${n}`).join(", ") || "none"}
-              </li>
+              <li>Resident exposures: {Object.entries(analysis.score.residentExposures).map(([id, n]) => `${name(id)} ${n}`).join(", ") || "none"}</li>
               <li>
                 Moments missed: {analysis.momentMisses.length}
                 {analysis.momentMisses.length > 0
@@ -39,8 +57,7 @@ export function Drawer({ analysis, open, onToggle, onSeek, onHover }: Props) {
               </li>
             </ul>
             <p className="muted">
-              Heuristic: {SCORE_WEIGHTS.residentExposure} per resident exposure, {SCORE_WEIGHTS.contaminatedSurface} per surface,{" "}
-              {SCORE_WEIGHTS.momentMiss} per missed moment. Not a validated instrument.
+              Heuristic: {SCORE_WEIGHTS.residentExposure} per resident exposure, {SCORE_WEIGHTS.contaminatedSurface} per surface, {SCORE_WEIGHTS.momentMiss} per missed moment. Not a validated instrument.
             </p>
           </section>
 
@@ -49,16 +66,7 @@ export function Drawer({ analysis, open, onToggle, onSeek, onHover }: Props) {
             {analysis.propagation.transfers.length === 0 ? (
               <p className="muted">Nothing spread beyond the source.</p>
             ) : (
-              <ol className="chain">
-                {analysis.propagation.transfers.map((e, i) => (
-                  <li key={i}>
-                    <button type="button" className="link" onClick={() => onSeek(e.t)} onMouseEnter={() => onHover(e.toId)} onMouseLeave={() => onHover(null)}>
-                      {fmt(e.t)}
-                    </button>{" "}
-                    {name(e.fromId)} to {name(e.toId)}
-                  </li>
-                ))}
-              </ol>
+              <ChainGraph analysis={analysis} onSeek={onSeek} onHover={onHover} />
             )}
             {analysis.propagation.residentExposures.length > 0 ? (
               <p>
@@ -91,6 +99,11 @@ export function Drawer({ analysis, open, onToggle, onSeek, onHover }: Props) {
               </ul>
             )}
             <p className="muted">Moment 3 (after body fluid exposure) is out of scope for this version.</p>
+          </section>
+
+          <section>
+            <h2>Audit summary</h2>
+            {narrative ? <p className="prose">{narrative.audit_summary}</p> : <p className="muted">Written together with the coaching note.</p>}
           </section>
 
           <section>

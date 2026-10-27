@@ -199,6 +199,24 @@ export interface ExposureScore {
   readonly score: number;
 }
 
+// One inserted hand hygiene event and what changes because of it. A pure rerun of the engine.
+export interface Counterfactual {
+  readonly inserted: HygieneEvent;
+  readonly before: ExposureScore;
+  readonly after: ExposureScore;
+  // Entities contaminated before the insertion and clean after it.
+  readonly keptClean: readonly string[];
+  readonly propagation: PropagationResult;
+  readonly momentMisses: readonly MomentMiss[];
+}
+
+// Muse Spark text output. It explains the analysis and never changes it.
+export interface Narrative {
+  readonly coaching_note: string;
+  readonly audit_summary: string;
+  readonly top_fix: string;
+}
+
 // The full output object. Once the Muse Spark prompt and the client consume it, this shape
 // does not change without updating both in the same commit.
 export interface Analysis {

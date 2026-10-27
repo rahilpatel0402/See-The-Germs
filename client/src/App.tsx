@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PATHOGEN_IDS, PATHOGENS } from "../../engine/pathogens.ts";
-import type { Analysis, PathogenId } from "../../engine/types.ts";
-import { api, ApiError, type TracksPayload } from "./api.ts";
+import type { Analysis, Counterfactual, Narrative, PathogenId } from "../../engine/types.ts";
+import { api, ApiError, type ScenarioOverride, type TracksPayload } from "./api.ts";
+import { CounterfactualBar } from "./CounterfactualBar.tsx";
 import { Drawer } from "./Drawer.tsx";
 import { buildOverlayIndex, type OverlayIndex } from "./overlay.ts";
 import { Timeline } from "./Timeline.tsx";
@@ -15,6 +16,8 @@ const initialClip = params.get("clip");
 const initialT = Number(params.get("t"));
 const initialGlow = params.get("glow") !== "0";
 
+type NarrativeState = "idle" | "loading" | "error" | "ready";
+
 export function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const seekedOnLoad = useRef(false);
@@ -22,6 +25,11 @@ export function App() {
   const [clipId, setClipId] = useState<string | null>(initialClip);
   const [tracks, setTracks] = useState<TracksPayload | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [override, setOverride] = useState<ScenarioOverride>({});
+  const [counterfactual, setCounterfactual] = useState<Counterfactual | null>(null);
+  const [narrative, setNarrative] = useState<Narrative | null>(null);
+  const [narrativeState, setNarrativeState] = useState<NarrativeState>("idle");
+  const [narrativeError, setNarrativeError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [glow, setGlow] = useState(initialGlow);
@@ -47,6 +55,9 @@ export function App() {
     setError(null);
     setTracks(null);
     setAnalysis(null);
+    setOverride({});
+    setNarrative(null);
+    setNarrativeState("idle");
     (async () => {
       try {
         const t = await api.tracks(clipId);
@@ -59,7 +70,19 @@ export function App() {
           if (e instanceof ApiError && e.status === 404) a = await api.analyze(clipId);
           else throw e;
         }
-        if (!cancelled) setAnalysis(a);
+        if (cancelled) return;
+        setAnalysis(a);
+        // A cached narrative loads silently; a missing one waits for a click so uploads do not
+        // call the model until someone asks.
+        try {
+          const n = await api.narrative(clipId);
+          if (!cancelled) {
+            setNarrative(n.narrative);
+            setNarrativeState("ready");
+          }
+        } catch {
+          // none cached yet
+        }
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
       } finally {
@@ -73,17 +96,37 @@ export function App() {
 
   const index: OverlayIndex | null = useMemo(() => (tracks ? buildOverlayIndex(tracks) : null), [tracks]);
 
-  const rerun = async (override: { pathogen?: PathogenId; sourceEntityId?: string }) => {
+  const rerun = async (next: ScenarioOverride) => {
     if (!clipId) return;
+    const merged = { ...override, ...next };
+    setOverride(merged);
     setBusy(true);
     setError(null);
+    setNarrative(null);
+    setNarrativeState("idle");
     try {
-      setAnalysis(await api.analyze(clipId, override));
+      setAnalysis(await api.analyze(clipId, merged));
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
+  };
+
+  const narrate = () => {
+    if (!clipId) return;
+    setNarrativeState("loading");
+    setNarrativeError(null);
+    api
+      .narrate(clipId, override)
+      .then((n) => {
+        setNarrative(n.narrative);
+        setNarrativeState("ready");
+      })
+      .catch((e: Error) => {
+        setNarrativeError(e.message);
+        setNarrativeState("error");
+      });
   };
 
   const seek = useCallback((t: number) => {
@@ -98,8 +141,10 @@ export function App() {
       videoRef.current.currentTime = Math.min(initialT, d);
     }
   }, []);
+  const onCounterfactual = useCallback((cf: Counterfactual | null) => setCounterfactual(cf), []);
 
   const sources = (analysis?.entities ?? []).filter((e) => e.class === "object" || e.class === "resident_zone");
+  const firstMiss = analysis?.momentMisses[0];
 
   return (
     <div className="app">
@@ -145,21 +190,46 @@ export function App() {
       <main className={`main${drawerOpen ? " with-drawer" : ""}`}>
         <div className="stage-column">
           {clipId ? (
-            <VideoStage videoRef={videoRef} src={api.videoUrl(clipId)} analysis={analysis} index={index} glow={glow} highlight={highlight} onTime={onTime} onDuration={onDuration} />
+            <VideoStage
+              videoRef={videoRef}
+              src={api.videoUrl(clipId)}
+              analysis={analysis}
+              propagation={counterfactual?.propagation ?? null}
+              index={index}
+              glow={glow}
+              highlight={highlight}
+              onTime={onTime}
+              onDuration={onDuration}
+            />
           ) : (
             <div className="stage placeholder">No clips yet. Upload one through the API or drop a folder under data/clips.</div>
           )}
-          {analysis?.momentMisses[0] ? (
+          {counterfactual ? (
+            <p className="topfix cf-banner">Showing the clip as if hands had been cleaned at {counterfactual.inserted.t.toFixed(1)} s.</p>
+          ) : narrative ? (
+            <p className="topfix">{narrative.top_fix}</p>
+          ) : firstMiss ? (
             <p className="topfix">
-              First missed moment at {analysis.momentMisses[0].t.toFixed(1)} s: Moment {analysis.momentMisses[0].moment}.
-              {analysis.momentMisses[0].downstream.length > 0 ? ` Hand hygiene there would have kept ${analysis.momentMisses[0].downstream.length} item${analysis.momentMisses[0].downstream.length === 1 ? "" : "s"} clean.` : ""}
+              First missed moment at {firstMiss.t.toFixed(1)} s: Moment {firstMiss.moment}.
+              {firstMiss.downstream.length > 0 ? ` Hand hygiene there would have kept ${firstMiss.downstream.length} item${firstMiss.downstream.length === 1 ? "" : "s"} clean.` : ""}
             </p>
           ) : null}
           <Timeline analysis={analysis} duration={duration} currentTime={currentTime} onSeek={seek} onHover={setHighlight} />
+          {clipId ? <CounterfactualBar clipId={clipId} analysis={analysis} duration={duration} override={override} onResult={onCounterfactual} /> : null}
           {busy ? <p className="status">Working...</p> : null}
           {error ? <p className="status error">{error}</p> : null}
         </div>
-        <Drawer analysis={analysis} open={drawerOpen} onToggle={() => setDrawerOpen((o) => !o)} onSeek={seek} onHover={setHighlight} />
+        <Drawer
+          analysis={analysis}
+          narrative={narrative}
+          narrativeState={narrativeState}
+          narrativeError={narrativeError}
+          onNarrate={narrate}
+          open={drawerOpen}
+          onToggle={() => setDrawerOpen((o) => !o)}
+          onSeek={seek}
+          onHover={setHighlight}
+        />
       </main>
 
       <footer className="badge">{BADGE}</footer>

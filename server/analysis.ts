@@ -1,20 +1,14 @@
-// Runs the engine over cached tracks and writes analysis.json. Pure engine in, JSON out; the
-// only I/O is reading caches and writing the result. Adjudications are read as input when present.
+// Scenario storage, adjudication cache reads, and the analysis writer. The engine work itself
+// lives in pipeline.ts so analysis and counterfactual share one code path.
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { CONTACT_CONFIG, GLOVE_CONFIG, HYGIENE_CONFIG, SCORE_WEIGHTS } from "../engine/config.ts";
-import { detectContacts } from "../engine/contacts.ts";
-import { detectGloveEvents } from "../engine/gloves.ts";
-import { splitHygiene } from "../engine/hygiene.ts";
-import { detectMomentMisses } from "../engine/moments.ts";
-import { isPathogenId, PATHOGENS } from "../engine/pathogens.ts";
-import { propagate, type PropagationInput } from "../engine/propagation.ts";
-import { scoreExposure } from "../engine/score.ts";
-import type { Adjudication, Analysis, ContactEvent, Scenario } from "../engine/types.ts";
+import { SCORE_WEIGHTS } from "../engine/config.ts";
+import { runCounterfactual, type CounterfactualInsert } from "../engine/counterfactual.ts";
+import { isPathogenId } from "../engine/pathogens.ts";
+import type { Adjudication, Analysis, Counterfactual, Scenario } from "../engine/types.ts";
 import { readEntities } from "./entities.ts";
 import { HttpError } from "./errors.ts";
 import { adjudicationsPath, analysisPath, scenarioPath } from "./paths.ts";
-import { loadTracks } from "./tracks.ts";
 
 export async function readAdjudications(clipId: string): Promise<Adjudication[]> {
   const file = adjudicationsPath(clipId);
@@ -46,66 +40,26 @@ export function validateScenario(value: unknown, entityIds: ReadonlySet<string>)
   return { sourceEntityId: v.sourceEntityId, pathogen: v.pathogen };
 }
 
-export async function runAnalysis(clipId: string, override?: Partial<Scenario>): Promise<Analysis> {
-  const { tracks, missingPhrases } = await loadTracks(clipId);
-  if (missingPhrases.length > 0) {
-    throw new HttpError(409, `clip ${clipId} is not segmented for: ${missingPhrases.join(", ")}. Run segmentation first.`);
-  }
-  const stored = await readScenario(clipId);
-  const scenario = validateScenario({ ...stored, ...override }, new Set(tracks.entities.map((e) => e.id)));
-  const profile = PATHOGENS[scenario.pathogen];
-
-  const candidates = detectContacts(tracks, CONTACT_CONFIG);
-  const adjudications = await readAdjudications(clipId);
-  const verdictFor = new Map(adjudications.map((a) => [a.candidateId, a.verdict]));
-
-  // Confident candidates are contacts. Ambiguous ones are contacts only with a verdict of
-  // touching or unclear (fail toward caution). Unadjudicated ambiguous candidates are not contacts yet.
-  const contacts: ContactEvent[] = [];
-  for (const c of candidates) {
-    if (c.confidence === "confident") {
-      contacts.push({ handId: c.handId, entityId: c.entityId, startT: c.startT, endT: c.endT, adjudicated: false });
-      continue;
-    }
-    const verdict = verdictFor.get(c.id);
-    if (verdict === "touching" || verdict === "unclear") {
-      contacts.push({ handId: c.handId, entityId: c.entityId, startT: c.startT, endT: c.endT, adjudicated: true });
-    }
-  }
-
-  const split = splitHygiene(contacts, tracks.entities, profile, HYGIENE_CONFIG);
-  const gloveEvents = detectGloveEvents(tracks, GLOVE_CONFIG);
-  const propInput: PropagationInput = {
-    contacts: split.contacts,
-    hygieneEvents: split.hygieneEvents,
-    gloveEvents,
-    entities: tracks.entities,
-    scenario,
-    profile,
-  };
-  const propagation = propagate(propInput);
-  const momentMisses = detectMomentMisses(
-    { contacts: split.contacts, hygieneEvents: split.hygieneEvents, entities: tracks.entities },
-    propagation,
-    (inserted) => propagate({ ...propInput, hygieneEvents: [...split.hygieneEvents, inserted] }),
-  );
-  const score = scoreExposure(propagation, momentMisses, tracks.entities, scenario.sourceEntityId, SCORE_WEIGHTS);
-
-  const analysis: Analysis = {
-    clipId,
-    scenario,
-    pathogen: profile,
-    entities: tracks.entities,
-    candidates,
-    adjudications,
-    contacts,
-    hygieneEvents: split.hygieneEvents,
-    gloveBoxTouches: split.gloveBoxTouches,
-    gloveEvents,
-    propagation,
-    momentMisses,
-    score,
-  };
+export async function runAnalysis(clipId: string, override?: { pathogen?: Scenario["pathogen"]; sourceEntityId?: string }): Promise<Analysis> {
+  const { buildPipeline } = await import("./pipeline.ts");
+  const { analysis } = await buildPipeline(clipId, override ?? {});
   await writeFile(analysisPath(clipId), JSON.stringify(analysis, null, 2));
   return analysis;
+}
+
+export async function runCounterfactualFor(
+  clipId: string,
+  insert: { t: number; handId?: string; agent?: string },
+  override?: { pathogen?: Scenario["pathogen"]; sourceEntityId?: string },
+): Promise<Counterfactual> {
+  const { buildPipeline } = await import("./pipeline.ts");
+  const { analysis, propInput } = await buildPipeline(clipId, override ?? {});
+  const hands = analysis.entities.filter((e) => e.class === "bare_hand" || e.class === "gloved_hand");
+  const handId = insert.handId ?? hands[0]?.id;
+  if (!handId || !hands.some((h) => h.id === handId)) throw new HttpError(400, "handId must name a hand entity in this clip");
+  const agent = insert.agent ?? "soap_water";
+  if (agent !== "soap_water" && agent !== "alcohol_rub") throw new HttpError(400, "agent must be soap_water or alcohol_rub");
+  if (!Number.isFinite(insert.t) || insert.t < 0) throw new HttpError(400, "t must be a non-negative number of seconds");
+  const request: CounterfactualInsert = { handId, t: insert.t, agent };
+  return runCounterfactual(propInput, { propagation: analysis.propagation, score: analysis.score }, request, SCORE_WEIGHTS);
 }
