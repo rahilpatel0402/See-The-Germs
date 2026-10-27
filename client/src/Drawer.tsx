@@ -116,6 +116,16 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, on
             ) : null}
           </section>
 
+          <section>
+            <h2>What this does not do</h2>
+            <ul className="plain muted">
+              <li>Contact is a 2D overlap heuristic from a fixed camera. Hovers that look like touches go to vision review; the review is capped and fallible, and every reviewed contact is marked.</li>
+              <li>Glove removal technique is not visible, so the bare hand is assumed exposed on doff.</li>
+              <li>Moment 3 (after body fluid exposure) is out of scope. The score weights are a heuristic.</li>
+              <li>Staged synthetic footage only. No diagnosis, no treatment, no advice about any person.</li>
+            </ul>
+          </section>
+
           {analysis.adjudications.length > 0 ? (
             <section>
               <h2>Vision reviewed</h2>

@@ -48,6 +48,14 @@ Everything below is implemented as stated, with these decisions made while writi
 - Moment 5 fires on any zone change away from patient surroundings, including patient zone A to patient zone B. Implemented.
 - Gate 3 wording: his call was "best suitable". Rules stay as written (clip A flags 5 and 1); the clip A script is unchanged.
 
+## Proposed Tue Oct 27, round four: upload your own, awaiting a yes
+
+### client/src/Upload.tsx
+A panel reachable from the clip picker ("Upload your own"). Steps shown as a vertical checklist with the current one spinning: upload (multipart to `POST /api/clips`, 45 s cap and daily cap errors shown in plain words), name the props (a small table of the default entities with editable label and SAM phrase and a zone select, saved with `PUT /api/clips/:id/entities`; rows can be removed; hands and the source stay), segment (`POST /api/segment`, one line per class as it completes, with a note that this takes about a minute), review ambiguous moments (`POST /api/adjudicate`, shows how many were sent and how many came back), analyze (`POST /api/analyze`), then the clip opens in the normal page. Every step is idempotent and resumable because every server call is cached, so a refresh mid-way returns to the same step. No new server routes except one: `POST /api/segment` streams progress as newline-delimited JSON (one object per class) instead of waiting for all classes, so the UI can show lines as they land.
+
+### server
+`POST /api/segment` gains `?stream=1`: same work, responds `application/x-ndjson`, one `{ phrase, frames, objects, billedFrames, ms }` per class, then `{ done: true }`. The non-streaming form stays. Clip ids from uploads (`c_...`) are listed after the demo clips and are not narrated automatically.
+
 ## Review fixes, Tue Oct 27 afternoon
 
 A code review over engine, server, and client found ten issues; all fixed. Two touch the rules and need Rahil's eye:
