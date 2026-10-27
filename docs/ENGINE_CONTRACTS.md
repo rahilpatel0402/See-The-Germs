@@ -48,6 +48,28 @@ Everything below is implemented as stated, with these decisions made while writi
 - Moment 5 fires on any zone change away from patient surroundings, including patient zone A to patient zone B. Implemented.
 - Gate 3 wording: his call was "best suitable". Rules stay as written (clip A flags 5 and 1); the clip A script is unchanged.
 
+## Proposed Tue Oct 27: the client (Thursday's glow), awaiting a yes
+
+Layout rule from CLAUDE.md: the video is the page. Full width video with the timeline directly beneath it; chain graph, Five Moments, exposure score, and narrative live in a collapsible drawer. Synthetic footage badge always visible. No component library, one small CSS file.
+
+### Server routes the client needs
+- `GET /api/clips/:id/video`: streams `sampled.mp4` with range support (the frames the masks were computed on, so overlay and video agree).
+- `GET /api/clips/:id/analysis`: `analysis.json`, 404 until analyzed.
+- `GET /api/clips/:id/tracks`: `{ frameSize, fps, entities: [{ id, label, class, zone }], tracks: Record<entityId, MaskRecord[]> }` with the entity's `minConfidence` already applied. Raw base85 payloads; the client decodes. Feasibility clip: under 1 MB.
+- `GET /api/demo`: the list of precomputed demo clip ids (Sunday).
+
+### client/ (Vite + React + TypeScript)
+- `client/src/api.ts`: typed fetchers for the routes above. Input: clip id. Output: the engine types imported from `engine/types.ts` by relative path (types only, no engine code in the bundle except what the overlay imports from `engine/masks.ts`, which is pure).
+- `client/src/overlay.ts` (pure, no React): `buildOverlayIndex(tracks): OverlayIndex` maps frame index to `{ entityId, path: Path2D, bounds }[]`, decoding each record once with `@meta-sam/parser`'s SVG path and caching. `contaminationAt(analysis, t): Set<entityId>` replays `propagation.changes` up to time t. `drawFrame(ctx, index, frameIndex, contaminated, options)`: clean entities get a faint outline, contaminated ones a glowing fill; a transfer within the last 400 ms pulses. Same inputs, same pixels.
+- `client/src/VideoStage.tsx`: `<video>` plus a `<canvas>` sized to the video's rendered box, `requestAnimationFrame` loop reading `video.currentTime`, frame index = `Math.floor(t * fps)`. The "See the Germs" toggle switches the overlay between outlines only and the glow. Props: clip id, analysis, overlay index, toggle state, hover highlight.
+- `client/src/Timeline.tsx`: a strip under the video with one lane per kind: contacts (confident solid, adjudicated with a small "vision reviewed" marker whose hover shows verdict and reasoning), transfers, hygiene (effective or ineffective), glove don and doff, moment misses. Click or drag seeks the video. Props: analysis, duration, currentTime, onSeek.
+- `client/src/Drawer.tsx`: collapsible side panel with three sections for now: chain (a simple list of transfer edges in order, graph on Friday), Five Moments (misses with time and downstream), exposure score (the four numbers and the heuristic weights). Narrative panel arrives Sunday.
+- `client/src/App.tsx`: clip picker (list from `GET /api/clips`), scenario controls (pathogen select, source select, posting to `/api/analyze` with overrides), the stage, the timeline, the drawer, and the badge text "Staged synthetic footage. Staff training and audit aid. Not surveillance. Not medical advice."
+- `client/src/styles.css`: one file. Dark stage, glow in a warm color that reads as a hazard without reading as blood.
+- Scripts: `npm run dev:client` (vite in `client/`), `npm run build:client`. Vite proxies `/api` to the server in dev.
+
+Gate 4 check: on the dev clip, hitting the toggle makes the room light up in sync with the video, and scrubbing the timeline moves the video.
+
 ## Vision adjudication, approved Tue Oct 27 and written
 
 ### engine/adjudication.ts (pure)

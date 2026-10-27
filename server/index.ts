@@ -1,6 +1,7 @@
 // Express API. Keys stay here; the client never talks to Meta directly.
 import "./env.ts";
-import { mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readFile } from "node:fs/promises";
 import express, { type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
 import { isPathogenId } from "../engine/pathogens.ts";
@@ -10,7 +11,8 @@ import { createClipFromUpload, ensureClip, listClipIds, readMeta } from "./clips
 import { optionalEnv } from "./env.ts";
 import { readEntities, validateEntities, writeEntities } from "./entities.ts";
 import { HttpError } from "./errors.ts";
-import { TMP_DIR } from "./paths.ts";
+import { analysisPath, sampledPath, TMP_DIR } from "./paths.ts";
+import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
 import { MetaSamBackend, segmentPhrase } from "./sam.ts";
 import { MetaSparkBackend } from "./spark.ts";
@@ -56,6 +58,25 @@ app.post("/api/clips", upload.single("video"), wrap(async (req, res) => {
 app.get("/api/clips/:id", wrap(async (req, res) => {
   const meta = await ensureClip(String(req.params["id"]));
   res.json({ clip: meta, entities: await readEntities(meta.id) });
+}));
+
+// The resampled video the masks were computed on, with range requests for seeking.
+app.get("/api/clips/:id/video", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  await new Promise<void>((resolve, reject) => {
+    res.sendFile(sampledPath(meta.id), { acceptRanges: true, cacheControl: false }, (err) => (err ? reject(err) : resolve()));
+  });
+}));
+
+app.get("/api/clips/:id/analysis", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  if (!existsSync(analysisPath(meta.id))) throw new HttpError(404, `clip ${meta.id} has not been analyzed yet`);
+  res.type("json").send(await readFile(analysisPath(meta.id), "utf8"));
+}));
+
+app.get("/api/clips/:id/tracks", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  res.json(await tracksPayload(meta.id));
 }));
 
 app.put("/api/clips/:id/entities", wrap(async (req, res) => {
