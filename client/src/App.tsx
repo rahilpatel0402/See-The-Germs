@@ -170,6 +170,29 @@ export function App() {
   }, []);
   const onCounterfactual = useCallback((cf: Counterfactual | null) => setCounterfactual(cf), []);
 
+  // Arrow keys step one frame, space toggles play, when the focus is not in a form control.
+  useEffect(() => {
+    const fps = tracks?.fps ?? 10;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && ["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(target.tagName)) return;
+      const v = videoRef.current;
+      if (!v) return;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        v.pause();
+        const step = (e.key === "ArrowRight" ? 1 : -1) * (e.shiftKey ? 10 : 1);
+        v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + step / fps));
+      } else if (e.key === " ") {
+        e.preventDefault();
+        if (v.paused) void v.play();
+        else v.pause();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tracks]);
+
   const sources = (analysis?.entities ?? []).filter((e) => e.class === "object" || e.class === "resident_zone");
   const firstMiss = analysis?.momentMisses[0];
 
@@ -258,7 +281,7 @@ export function App() {
               {firstMiss.downstream.length > 0 ? ` Hand hygiene there would have kept ${firstMiss.downstream.length} item${firstMiss.downstream.length === 1 ? "" : "s"} clean.` : ""}
             </p>
           ) : null}
-          <Timeline analysis={analysis} duration={duration} currentTime={currentTime} onSeek={seek} onHover={setHighlight} />
+          <Timeline clipId={clipId} analysis={analysis} duration={duration} currentTime={currentTime} onSeek={seek} onHover={setHighlight} />
           {clipId ? <CounterfactualBar clipId={clipId} analysis={analysis} duration={duration} override={scenario} onResult={onCounterfactual} /> : null}
           {busy ? <p className="status">Working...</p> : null}
           {error ? <p className="status error">{error}</p> : null}

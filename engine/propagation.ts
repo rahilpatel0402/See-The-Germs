@@ -42,6 +42,44 @@ function isHand(entity: Entity): boolean {
   return entity.class === "bare_hand" || entity.class === "gloved_hand";
 }
 
+// Hands of one person share state, so a change on one hand entity applies to all of them.
+function handGroups(entities: readonly Entity[]): Map<string, readonly string[]> {
+  const byPerson = new Map<string, string[]>();
+  for (const e of entities) {
+    if (!isHand(e)) continue;
+    const p = personOf(e);
+    (byPerson.get(p) ?? byPerson.set(p, []).get(p)!).push(e.id);
+  }
+  const groups = new Map<string, readonly string[]>();
+  for (const ids of byPerson.values()) for (const id of ids) groups.set(id, ids);
+  return groups;
+}
+
+// The set of contaminated entity ids at time t, replayed from the change list. Used by the
+// overlay for every frame, so it must agree with propagate's final state at the end of the clip.
+export function contaminatedAt(entities: readonly Entity[], propagation: PropagationResult, t: number): Set<string> {
+  const groups = handGroups(entities);
+  const set = new Set<string>();
+  for (const change of propagation.changes) {
+    if (change.t > t) break;
+    for (const id of groups.get(change.entityId) ?? [change.entityId]) {
+      if (change.contaminated) set.add(id);
+      else set.delete(id);
+    }
+  }
+  return set;
+}
+
+// Entities that received contamination within the last windowS seconds before t, for the pulse.
+export function recentlyContaminated(entities: readonly Entity[], propagation: PropagationResult, t: number, windowS: number): Set<string> {
+  const groups = handGroups(entities);
+  const set = new Set<string>();
+  for (const edge of propagation.transfers) {
+    if (edge.t <= t && edge.t > t - windowS) for (const id of groups.get(edge.toId) ?? [edge.toId]) set.add(id);
+  }
+  return set;
+}
+
 export function propagate(input: PropagationInput): PropagationResult {
   const byId = new Map(input.entities.map((e) => [e.id, e]));
   const entityOf = (id: string): Entity => {

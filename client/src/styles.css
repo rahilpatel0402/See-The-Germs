@@ -579,3 +579,84 @@ button {
   align-items: center;
   margin-top: 10px;
 }
+
+.timeline-wrap {
+  position: relative;
+}
+
+.review-card {
+  position: absolute;
+  top: calc(100% + 6px);
+  width: 340px;
+  z-index: 5;
+  background: var(--panel-2);
+  border: 1px solid var(--hot);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+}
+
+.review-card p {
+  margin: 8px 0 0;
+}
+
+.review-frames {
+  display: flex;
+  gap: 6px;
+}
+
+.review-frames img {
+  width: 50%;
+  height: auto;
+  border-radius: 4px;
+  background: #000;
+}
+
+.item .eye {
+  pointer-events: auto;
+  cursor: help;
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    padding: 8px 12px;
+  }
+  .topbar h1 {
+    font-size: 16px;
+  }
+  .controls {
+    gap: 8px;
+  }
+  .controls label {
+    font-size: 12px;
+  }
+  .stage-column {
+    padding: 8px 10px;
+  }
+  .stage video {
+    max-height: 60vh;
+  }
+  .lane {
+    margin-left: 72px;
+    height: 24px;
+  }
+  .lane-label {
+    left: -70px;
+    width: 66px;
+    font-size: 10px;
+  }
+  .cursor {
+    margin-left: 71px;
+  }
+  .review-card {
+    width: calc(100vw - 40px);
+    left: 0 !important;
+  }
+  .drawer {
+    max-height: none;
+  }
+  .badge {
+    font-size: 12px;
+  }
+}

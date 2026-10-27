@@ -12,7 +12,7 @@ import { createClipFromUpload, ensureClip, listClipIds, readMeta } from "./clips
 import { optionalEnv } from "./env.ts";
 import { readEntities, validateEntities, writeEntities } from "./entities.ts";
 import { HttpError } from "./errors.ts";
-import { analysisPath, sampledPath, TMP_DIR } from "./paths.ts";
+import { analysisPath, clipDir, sampledPath, TMP_DIR } from "./paths.ts";
 import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
 import { deleteRemoteFile, MetaSamBackend, readTrack, segmentPhrase } from "./sam.ts";
@@ -96,6 +96,19 @@ app.get("/api/clips/:id/video", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
   await new Promise<void>((resolve, reject) => {
     res.sendFile(sampledPath(meta.id), { acceptRanges: true, cacheControl: false }, (err) => (err && !res.headersSent ? reject(err) : resolve()));
+  });
+}));
+
+// The two annotated frames Spark saw for a reviewed candidate, n = 1 or 2.
+app.get("/api/clips/:id/adjudication/:candidateId/:n.png", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  const candidateId = String(req.params["candidateId"]).replace(/[^A-Za-z0-9_-]/g, "_");
+  const n = String(req.params["n"]);
+  if (n !== "1" && n !== "2") throw new HttpError(400, "n must be 1 or 2");
+  const file = path.join(clipDir(meta.id), "adjudication", `${candidateId}-${n}.png`);
+  if (!existsSync(file)) throw new HttpError(404, "no annotated frame for this candidate");
+  await new Promise<void>((resolve, reject) => {
+    res.sendFile(file, { cacheControl: true, maxAge: "1d" }, (err) => (err && !res.headersSent ? reject(err) : resolve()));
   });
 }));
 

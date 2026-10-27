@@ -54,44 +54,10 @@ function isHand(e: Entity): boolean {
   return e.class === "bare_hand" || e.class === "gloved_hand";
 }
 
-// Hands of one person share state, so a change on one hand entity applies to all of them.
-function handGroups(entities: readonly Entity[]): Map<string, string[]> {
-  const byPerson = new Map<string, string[]>();
-  for (const e of entities) {
-    if (!isHand(e)) continue;
-    const p = e.person ?? "P1";
-    (byPerson.get(p) ?? byPerson.set(p, []).get(p)!).push(e.id);
-  }
-  const groups = new Map<string, string[]>();
-  for (const ids of byPerson.values()) for (const id of ids) groups.set(id, ids);
-  return groups;
-}
+// State replay lives in the engine (tested there); the overlay only draws it.
+export { contaminatedAt as contaminationAt, recentlyContaminated as pulsingAt } from "../../engine/propagation.ts";
 
-// Which propagation to draw: the analysis itself, or a counterfactual rerun.
-export function contaminationAt(entities: readonly Entity[], propagation: PropagationResult, t: number): Set<string> {
-  const groups = handGroups(entities);
-  const set = new Set<string>();
-  for (const change of propagation.changes) {
-    if (change.t > t) break;
-    for (const id of groups.get(change.entityId) ?? [change.entityId]) {
-      if (change.contaminated) set.add(id);
-      else set.delete(id);
-    }
-  }
-  return set;
-}
-
-// Entities that received contamination within the last windowS seconds, for the pulse.
-export function pulsingAt(entities: readonly Entity[], propagation: PropagationResult, t: number, windowS: number): Set<string> {
-  const groups = handGroups(entities);
-  const set = new Set<string>();
-  for (const edge of propagation.transfers) {
-    if (edge.t <= t && edge.t > t - windowS) for (const id of groups.get(edge.toId) ?? [edge.toId]) set.add(id);
-  }
-  return set;
-}
-
-export type { Analysis };
+export type { Analysis, PropagationResult };
 
 export interface DrawOptions {
   readonly glow: boolean;

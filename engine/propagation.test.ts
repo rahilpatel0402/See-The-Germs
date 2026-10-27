@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CLIP_A_CONTACTS, CLIP_A_ENTITIES, contact } from "./fixtures.ts";
 import { PATHOGENS } from "./pathogens.ts";
-import { propagate, type PropagationInput } from "./propagation.ts";
+import { contaminatedAt, propagate, recentlyContaminated, type PropagationInput } from "./propagation.ts";
 import type { GloveEvent, HygieneEvent } from "./types.ts";
 
 const base: PropagationInput = {
@@ -93,6 +93,19 @@ test("dispenser contacts and unknown entities are errors", () => {
   assert.throws(() => propagate({ ...base, contacts: [contact("bare_hand", "sanitizer", 1, 2)] }));
   assert.throws(() => propagate({ ...base, contacts: [contact("bare_hand", "nope", 1, 2)] }));
   assert.throws(() => propagate({ ...base, contacts: [contact("phone", "rail_A", 1, 2)] }));
+});
+
+test("contaminatedAt replays the change list and agrees with the final state", () => {
+  const r = propagate({ ...base, hygieneEvents: [rub(10, true)], gloveEvents: [] });
+  assert.deepEqual([...contaminatedAt(CLIP_A_ENTITIES, r, 0)].sort(), ["rail_A"]);
+  // After the rail touch both hand entities of P1 are contaminated.
+  assert.deepEqual([...contaminatedAt(CLIP_A_ENTITIES, r, 2)].sort(), ["bare_hand", "gloved_hand", "rail_A"]);
+  assert.deepEqual([...contaminatedAt(CLIP_A_ENTITIES, r, 8)].sort(), ["bare_hand", "gloved_hand", "iv_pole", "phone", "rail_A"]);
+  // The rub at 10 cleans the hands; the surfaces stay.
+  assert.deepEqual([...contaminatedAt(CLIP_A_ENTITIES, r, 10)].sort(), ["iv_pole", "phone", "rail_A"]);
+  assert.deepEqual([...contaminatedAt(CLIP_A_ENTITIES, r, 1000)].sort(), [...r.contaminated].sort());
+  assert.deepEqual([...recentlyContaminated(CLIP_A_ENTITIES, r, 4.2, 0.4)], ["iv_pole"]);
+  assert.deepEqual([...recentlyContaminated(CLIP_A_ENTITIES, r, 4.6, 0.4)], []);
 });
 
 test("same input, same output", () => {
