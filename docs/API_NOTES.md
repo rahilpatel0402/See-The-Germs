@@ -268,6 +268,7 @@ Glove finding (clear vinyl glove, a harder case than nitrile):
 Prompt findings:
 - "towel rail", "curtain rod", "remote control", "black remote control", "remote control wrapped in plastic": zero matches. "white rod" and "white pipe": full-clip track. "plastic wrapped remote": 205 of 247 frames.
 - Phrases describe appearance, not function. Keep the SAM phrase per entity in the clip config, separate from the entity label, so the UI can say "bed rail" while SAM was asked for "white rod".
+- Run-to-run variance is real: a second run of "plastic wrapped remote" on the same clip at 720x1280 tracked 83 frames instead of 205 and missed the bare-hand touch entirely. Hand, rod, and phone tracks were stable across runs. Weak phrases are flaky; pick strong ones.
 - Zero matches cost the same 247 frames. Pick phrases on one frame with the image endpoint ($0.0025 per image) before running the whole clip.
 
 Staging lessons for tomorrow's dev clip and the Saturday shoot:

@@ -12,7 +12,8 @@
     "test": "node --test \"engine/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev:server": "tsx watch server/index.ts",
-    "analyze": "tsx server/scripts/analyze.ts"
+    "analyze": "tsx server/scripts/analyze.ts",
+    "accuracy": "tsx server/scripts/accuracy.ts"
   },
   "dependencies": {
     "@meta-sam/parser": "0.1.0",
