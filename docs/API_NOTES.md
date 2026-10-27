@@ -302,3 +302,17 @@ Note on the budget: forced verdicts are cached and count against the 12 per clip
 - First attempt with `max_output_tokens: 2500` ended `incomplete` after 2,205 reasoning tokens and no answer. Raised to 8,000. The successful run used 3,150 reasoning tokens plus about 520 answer tokens: 1,657 in (1,649 cached), 3,672 out, 10.0 s, $0.016. Reasoning dominates the cost of every Spark text call; budget 6 to 8 thousand output tokens for narrative, 4 thousand for the two-sentence counterfactual explanation.
 - Prompt caching worked: the instructions prefix was served cached on the first narrate call because the adjudication calls had warmed it.
 - Validation passed first time: word counts in range, no disallowed clinical language. The coaching note is faithful to the record but reads as a replay of the timeline rather than coaching; the prompt needs a "lead with the one change, then the two facts that justify it" structure in the Monday polish pass. Also, with a clear glove both hand classes fire on the same hand, so the note says "bare hand and gloved hand" touched the rail; nitrile on the dev clip should remove that.
+
+## 14. Live path timing (Oct 27)
+
+A fresh upload of the 24.7 s feasibility source through `POST /api/clips`, then `PUT entities`, `POST /api/segment?stream=1`, `POST /api/adjudicate`, `POST /api/analyze`, all through the API as the upload panel does it:
+
+| Step | Time |
+| --- | --- |
+| Upload, probe, resample to 720x1280 at 10 fps | about 3 s |
+| SAM class 1 (includes the one-time Files API upload) | 15.3 s |
+| SAM classes 2 to 5 | 9.8, 11.4, 12.2, 13.4 s |
+| Adjudication (no ambiguous candidates on this clip) | under 1 s |
+| Engine (contacts and gloves over 247 frames, first request) | about 7 s |
+
+About 75 s end to end for a 25 s clip with five classes, $0.25 in SAM calls. A 45 s clip with nine classes should land near 3 minutes and about $0.80. The streamed progress lines are what keeps that wait honest in the UI. Results matched the cached feasibility analysis exactly (11 candidates, score 10), and "plastic wrapped remote" tracked 83 frames both times at this resolution, so the earlier 205 was the 406x720 run, not run-to-run noise.
