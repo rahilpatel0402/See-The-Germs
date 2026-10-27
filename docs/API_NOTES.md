@@ -225,16 +225,56 @@ Per dev.meta.ai/docs/muse-spark-open/deploy: Baseten base URL `https://inference
 - [x] `usage.video_frames_processed` equals the resampled frame count from ffprobe (59 = 59), confirming `N` indexes our 10 fps frames.
 - [x] Mask raster width and height equal the record's box width and height on every record, confirming the raster covers `bounds`.
 - [x] Parser 0.1.0 finalizes the text lane on the API's `response.content_part.done`; do not synthesize `response.output_text.done` as the older cookbook helper does, it throws `response_lane`.
-- [ ] A text prompt call on Rahil's clip returns a completed response with records.
-- [ ] "bare hand" and "gloved hand" return separate tracks that do not swap; note what the gloved class does on the bare hand and vice versa (this decides automatic glove detection vs the fallback).
-- [ ] Rail, remote, and phone each get one stable id through the clip; note any id change when a hand occludes them.
-- [ ] Pass in front of the rail: hand and rail masks overlap in 2D in those frames (expected; this is the case adjudication exists for).
-- [ ] Mask raster decodes in Node with `decodeMaskToRaster`, dimensions match `bounds`, and a quick PNG dump looks right frame by frame.
-- [ ] Latency per class call on a 200 frame clip; cost reported on the Billing page after the run.
+- [x] Text prompt calls on Rahil's clip return completed responses with records (section 11).
+- [x] Glove classes: see section 11. Gloved class is specific to the glove, bare class also fires on a clear glove. Nitrile retest tomorrow.
+- [x] Rail ("white rod"), remote ("plastic wrapped remote"), and phone each hold one id for the whole clip, including while held. Phrase choice matters: "towel rail" and "remote control" returned zero matches on this scene.
+- [x] Pass in front of the rail: 17 frames of overlap, peak 989 px, indistinguishable from a touch by the 2D heuristic. Exactly the adjudication case, with a staging lesson in section 11.
+- [x] Mask rasters decode in Node, dimensions match `bounds` on every record, PNG dumps of hands, rail, remote, and phone look right.
+- [x] Latency 7.4 to 11.6 s per class call on 247 frames. $0.049 per class call, 12 calls on this clip, $0.59.
 - [ ] Whether `input_video.fps` changes `video_frames_processed` (curiosity only; we resample regardless).
 - [x] One Spark Responses API call with two PNG images and a schema under `text.format` returns valid JSON at temperature 0 (Oct 26, 3:05 PM, 2.0 s, 166 in / 246 out of which 203 reasoning). Nesting in section 5 confirmed. Cap lesson recorded there.
-- [ ] If masks are mush: run the same clip through fal.ai SAM 3.1 video via its JS SDK before bed and record the comparison here.
+- [x] Masks are clean. fal.ai not needed. Backend decision: Meta Model API.
 
 ## 10. Open questions for #office-hours (post Tuesday night, one question)
 
 Candidate: on video, does SAM 3.1 reuse an object id after that object leaves the frame and a new instance of the concept appears, or are ids never reused within one response? This decides how hand tracks are stitched when a hand leaves frame.
+
+## 11. Feasibility clip results (Oct 26, 8:30 PM): GATE 1 MET
+
+Clip: 24.7 s, phone shot straight down at a floor with a white curtain rod as the rail, a remote wrapped in clear plastic, and a phone. Source stored 1024x576 with rotation metadata, so ffmpeg autorotated to portrait and the 720p resample came out 406x720. Twelve class calls, 247 frames each, $0.59 total.
+
+Contact timeline from a 6 px dilation of the hand mask (1.5% of width) and a 48 px floor (150 px at 720p scaled to this frame), runs of 3 or more frames, against what Rahil did:
+
+| Engine candidate | Hand | Object | Reality |
+| --- | --- | --- | --- |
+| 0.6 to 2.2 s | bare | rail | touch, correct |
+| 4.2 to 4.6 s | bare | rail | reach across the rail toward the remote, 5 frames, peak 220 px: lands in the ambiguous band, correct behavior |
+| 4.2 to 5.7 s | bare | remote | touch, correct |
+| 6.6 to 9.8 s | bare | phone | pick up, correct |
+| 11.1 to 14.2 s | gloved | rail | touch, correct |
+| 15.4 to 18.6 s | gloved | remote | touch, correct |
+| 19.3 to 22.4 s | gloved | phone | pick up, correct |
+| 23.0 to 24.6 s | bare | rail | pass over the rail without touching: flagged as a 17 frame, 989 px contact. The 2D heuristic cannot tell. This is the adjudication case. |
+
+Every real contact was found with the right hand class and within a second. One false positive, the pass in front, which the design already routes to Spark adjudication. Timing offsets are consistent with 10 fps sampling.
+
+Glove finding (clear vinyl glove, a harder case than nitrile):
+- "gloved hand" fired only from frame 108 (10.8 s), the moment the glove went on, and never on bare skin before that. Mean confidence 0.93 on the real glove.
+- "bare hand" kept tracking the gloved hand too, IoU 0.98 with the gloved track, as expected for a transparent glove.
+- At 23.1 s the gloved class also fired on the bare hand doing the pass, with a new id and confidence 0.71. With a clear glove, separation needs a confidence threshold (0.93 vs 0.71 here). With blue nitrile this should separate cleanly; retest on the dev clip tomorrow.
+- Glove detection design holds: a don is the gloved track appearing at the hand position with confidence above a threshold in config, a doff is that track ending. The bare class firing through the glove does not hurt, because the gloved class decides.
+- Raw mask intersection without dilation was nearly zero even during real grips (1 to 43 px), because the object mask excludes the hand pixels covering it. Dilation is required, not optional.
+
+Prompt findings:
+- "towel rail", "curtain rod", "remote control", "black remote control", "remote control wrapped in plastic": zero matches. "white rod" and "white pipe": full-clip track. "plastic wrapped remote": 205 of 247 frames.
+- Phrases describe appearance, not function. Keep the SAM phrase per entity in the clip config, separate from the entity label, so the UI can say "bed rail" while SAM was asked for "white rod".
+- Zero matches cost the same 247 frames. Pick phrases on one frame with the image endpoint ($0.0025 per image) before running the whole clip.
+
+Staging lessons for tomorrow's dev clip and the Saturday shoot:
+- Camera at an oblique angle, about 45 degrees from the side, not straight overhead. From above, a hand hovering over the rail is identical to a hand on it, even for a human; from the side, the gap and the shadow show, and the pass-in-front becomes a real pass between camera and object as PLAN.md section 8 describes.
+- Landscape. A portrait source resamples to 406x720 and loses two thirds of the pixels. Change the ffmpeg scale so the longer side is capped at 1280 regardless of orientation.
+- Unwrap the remote. Blue or purple nitrile gloves. Plain props with plain names.
+
+Gate 1: SAM 3.1 returns usable hand and object tracks on Rahil's own footage and the masks decode in TypeScript. Met. Backend: Meta Model API. fal.ai stays unused.
+
+Office hours question for Tuesday night, pick one: (a) on video, are object ids ever reused after an object leaves the frame and a new instance of the concept appears; or (b) is there a recommended phrase form for "gloved hand" versus "bare hand" so the gloved class does not fire on skin at low confidence.
