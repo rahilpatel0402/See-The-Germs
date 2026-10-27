@@ -660,3 +660,37 @@ button {
     font-size: 12px;
   }
 }
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+.app {
+  max-width: 100vw;
+}
+
+@media (max-width: 600px) {
+  .controls {
+    width: 100%;
+  }
+  .controls label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 48%;
+  }
+  .controls select {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .germs-toggle {
+    margin-left: auto;
+  }
+  .stage video {
+    max-height: 52vh;
+  }
+  .cf-row input[type="range"] {
+    min-width: 100px;
+  }
+}
