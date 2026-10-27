@@ -3,7 +3,9 @@ import "./env.ts";
 import { mkdir } from "node:fs/promises";
 import express, { type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
-import { runAnalysis } from "./analysis.ts";
+import { isPathogenId } from "../engine/pathogens.ts";
+import type { Scenario } from "../engine/types.ts";
+import { readScenario, runAnalysis, validateScenario, writeScenario } from "./analysis.ts";
 import { createClipFromUpload, ensureClip, listClipIds, readMeta } from "./clips.ts";
 import { optionalEnv } from "./env.ts";
 import { readEntities, validateEntities, writeEntities } from "./entities.ts";
@@ -84,10 +86,30 @@ app.post("/api/segment", wrap(async (req, res) => {
   res.json({ clipId: meta.id, tracks: summary });
 }));
 
+// Body: { clipId, pathogen?, sourceEntityId? }. Overrides apply to this run only; use PUT
+// /api/clips/:id/scenario to change the stored scenario.
 app.post("/api/analyze", wrap(async (req, res) => {
-  const clipId = String((req.body as { clipId?: unknown })?.clipId ?? "");
+  const body = (req.body ?? {}) as { clipId?: unknown; pathogen?: unknown; sourceEntityId?: unknown };
+  const clipId = String(body.clipId ?? "");
   await readMeta(clipId);
-  res.json(await runAnalysis(clipId));
+  const override: { pathogen?: Scenario["pathogen"]; sourceEntityId?: string } = {};
+  if (typeof body.pathogen === "string" && isPathogenId(body.pathogen)) override.pathogen = body.pathogen;
+  else if (body.pathogen !== undefined) throw new HttpError(400, "pathogen must be one of mrsa, c_auris, c_difficile, norovirus");
+  if (typeof body.sourceEntityId === "string") override.sourceEntityId = body.sourceEntityId;
+  res.json(await runAnalysis(clipId, override));
+}));
+
+app.get("/api/clips/:id/scenario", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  res.json({ scenario: await readScenario(meta.id) });
+}));
+
+app.put("/api/clips/:id/scenario", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  const entities = await readEntities(meta.id);
+  const scenario = validateScenario(req.body, new Set(entities.map((e) => e.id)));
+  await writeScenario(meta.id, scenario);
+  res.json({ scenario });
 }));
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

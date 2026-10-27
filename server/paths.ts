@@ -29,6 +29,10 @@ export function adjudicationsPath(clipId: string): string {
   return path.join(clipDir(clipId), "adjudications.json");
 }
 
+export function scenarioPath(clipId: string): string {
+  return path.join(clipDir(clipId), "scenario.json");
+}
+
 export function sampledPath(clipId: string): string {
   return path.join(clipDir(clipId), "sampled.mp4");
 }

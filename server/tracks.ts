@@ -43,6 +43,15 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   // Every sampled frame exists in the map even when nothing was seen, so maxFrame is the clip length.
   for (let f = 0; f < meta.sampled.frames; f++) if (!frames.has(f)) frames.set(f, new Map());
 
-  const plain: Entity[] = entities.map(({ id, label, class: cls, zone, samPhrase }) => ({ id, label, class: cls, zone, samPhrase }));
+  const plain: Entity[] = entities.map(({ id, label, class: cls, zone, samPhrase, person, agent, aseptic }) => ({
+    id,
+    label,
+    class: cls,
+    zone,
+    samPhrase,
+    ...(person === undefined ? {} : { person }),
+    ...(agent === undefined ? {} : { agent }),
+    ...(aseptic === undefined ? {} : { aseptic }),
+  }));
   return { tracks: { frameSize, fps: meta.fps, entities: plain, frames }, entities, missingPhrases: missing };
 }

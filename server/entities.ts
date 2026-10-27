@@ -13,15 +13,15 @@ export interface EntityConfig extends Entity {
 // Defaults for the clip A scenario with household props (docs/DEV_CLIP_SHOOT.md). Phrases
 // describe appearance, not function; edit them per clip.
 export const DEFAULT_ENTITIES: readonly EntityConfig[] = [
-  { id: "bare_hand", label: "bare hand", class: "bare_hand", zone: "healthcare_area", samPhrase: "bare hand" },
-  { id: "gloved_hand", label: "gloved hand", class: "gloved_hand", zone: "healthcare_area", samPhrase: "gloved hand", minConfidence: 0.85 },
+  { id: "bare_hand", label: "bare hand", class: "bare_hand", zone: "healthcare_area", samPhrase: "bare hand", person: "P1" },
+  { id: "gloved_hand", label: "gloved hand", class: "gloved_hand", zone: "healthcare_area", samPhrase: "gloved hand", person: "P1", minConfidence: 0.85 },
   { id: "rail_A", label: "bed rail A", class: "object", zone: "patient_zone_A", samPhrase: "white rod" },
   { id: "iv_pole", label: "IV pole", class: "object", zone: "healthcare_area", samPhrase: "floor lamp" },
   { id: "phone", label: "phone", class: "object", zone: "healthcare_area", samPhrase: "phone" },
   { id: "blanket_B", label: "blanket B", class: "object", zone: "patient_zone_B", samPhrase: "blanket" },
   { id: "resident_B", label: "resident B", class: "resident_zone", zone: "patient_zone_B", samPhrase: "pillow" },
-  { id: "sanitizer", label: "sanitizer dispenser", class: "dispenser", zone: "hygiene_station", samPhrase: "pump bottle" },
-  { id: "glove_box", label: "glove box", class: "dispenser", zone: "hygiene_station", samPhrase: "tissue box" },
+  { id: "sanitizer", label: "sanitizer dispenser", class: "dispenser", zone: "hygiene_station", samPhrase: "pump bottle", agent: "alcohol_rub" },
+  { id: "glove_box", label: "glove box", class: "dispenser", zone: "hygiene_station", samPhrase: "tissue box", agent: "gloves" },
 ];
 
 export async function readEntities(clipId: string): Promise<EntityConfig[]> {
@@ -51,5 +51,10 @@ export function validateEntities(entities: unknown): asserts entities is EntityC
     if (e["minConfidence"] !== undefined && (typeof e["minConfidence"] !== "number" || e["minConfidence"] < 0 || e["minConfidence"] > 1)) {
       throw new Error(`entity ${e["id"]} minConfidence must be 0 to 1`);
     }
+    if (e["person"] !== undefined && (typeof e["person"] !== "string" || !e["person"])) throw new Error(`entity ${e["id"]} person must be a non-empty string`);
+    if (e["class"] === "dispenser" && !AGENTS.has(String(e["agent"]))) throw new Error(`dispenser ${e["id"]} needs agent alcohol_rub, soap_water, or gloves`);
+    if (e["aseptic"] !== undefined && typeof e["aseptic"] !== "boolean") throw new Error(`entity ${e["id"]} aseptic must be a boolean`);
   }
 }
+
+const AGENTS = new Set(["alcohol_rub", "soap_water", "gloves"]);

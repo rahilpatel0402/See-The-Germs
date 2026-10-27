@@ -5,6 +5,11 @@ export type ZoneTag = "patient_zone_A" | "patient_zone_B" | "healthcare_area" | 
 
 export type EntityClass = "bare_hand" | "gloved_hand" | "object" | "resident_zone" | "dispenser";
 
+export type HygieneAgent = "alcohol_rub" | "soap_water";
+
+// What a dwell at a dispenser produces.
+export type DispenserAgent = HygieneAgent | "gloves";
+
 export interface Entity {
   readonly id: string;
   // Shown in the UI, for example "bed rail A".
@@ -14,6 +19,13 @@ export interface Entity {
   // The noun phrase SAM was asked for, for example "white rod". Kept separate from the label
   // because SAM matches appearance, not function (see docs/API_NOTES.md section 11).
   readonly samPhrase: string;
+  // Hands only. The bare hand and gloved hand classes of one person are the same physical
+  // hands; hand state is keyed by person. Defaults to "P1".
+  readonly person?: string;
+  // Dispensers only. Required for a dispenser to produce hygiene or glove events.
+  readonly agent?: DispenserAgent;
+  // Objects only. Contact with this entity is a clean or aseptic task (Moment 2).
+  readonly aseptic?: boolean;
 }
 
 export interface FrameSize {
@@ -99,8 +111,6 @@ export interface TransferEdge {
   readonly t: number;
 }
 
-export type HygieneAgent = "alcohol_rub" | "soap_water";
-
 export interface HygieneEvent {
   readonly handId: string;
   readonly t: number;
@@ -122,13 +132,87 @@ export interface MomentMiss {
   readonly downstream: readonly string[];
 }
 
-// The full output object. Fields are added as the engine modules land (propagation, moments,
-// score on Wed Oct 28). Once the Muse Spark prompt and the client consume it, this shape does
-// not change without updating both in the same commit.
+export type PathogenId = "mrsa" | "c_auris" | "c_difficile" | "norovirus";
+
+export interface PathogenProfile {
+  readonly id: PathogenId;
+  readonly label: string;
+  readonly alcoholRubClearsHands: boolean;
+  readonly soapWaterClearsHands: boolean;
+  // Seconds. All four persist far longer than any clip, so this is effectively infinite and
+  // exists so the model is honest about having the field.
+  readonly surfacePersistenceS: number;
+  readonly uiNote: string;
+  // CDC and WHO sources, supplied by Rahil, cited in the README.
+  readonly citations: readonly string[];
+}
+
+export interface Scenario {
+  // The entity contaminated at t = 0.
+  readonly sourceEntityId: string;
+  readonly pathogen: PathogenId;
+}
+
+export interface GloveBoxTouch {
+  readonly handId: string;
+  readonly t: number;
+}
+
+export interface ResidentExposure {
+  readonly residentId: string;
+  readonly handId: string;
+  readonly t: number;
+}
+
+export type ContaminationCause = "source" | "transfer" | "hygiene" | "glove_don" | "glove_doff";
+
+export interface ContaminationChange {
+  readonly t: number;
+  readonly entityId: string;
+  readonly contaminated: boolean;
+  readonly cause: ContaminationCause;
+}
+
+export interface HandState {
+  readonly contaminated: boolean;
+  readonly gloved: boolean;
+}
+
+export interface PropagationResult {
+  // Entity ids contaminated at the end of the clip, hands included (every hand entity of a
+  // contaminated person is listed).
+  readonly contaminated: readonly string[];
+  readonly hands: Readonly<Record<string, HandState>>;
+  readonly transfers: readonly TransferEdge[];
+  readonly residentExposures: readonly ResidentExposure[];
+  readonly changes: readonly ContaminationChange[];
+  // Hops from the source along transfer edges, keyed by entity id for objects and residents
+  // and by "person:<id>" for hands. The source is 0.
+  readonly hops: Readonly<Record<string, number>>;
+}
+
+export interface ExposureScore {
+  readonly contaminatedSurfaces: number;
+  readonly chainLength: number;
+  readonly residentExposures: Readonly<Record<string, number>>;
+  readonly momentsMissed: Readonly<Record<"1" | "2" | "4" | "5", number>>;
+  readonly score: number;
+}
+
+// The full output object. Once the Muse Spark prompt and the client consume it, this shape
+// does not change without updating both in the same commit.
 export interface Analysis {
   readonly clipId: string;
+  readonly scenario: Scenario;
+  readonly pathogen: PathogenProfile;
   readonly entities: readonly Entity[];
   readonly candidates: readonly ContactCandidate[];
   readonly adjudications: readonly Adjudication[];
   readonly contacts: readonly ContactEvent[];
+  readonly hygieneEvents: readonly HygieneEvent[];
+  readonly gloveBoxTouches: readonly GloveBoxTouch[];
+  readonly gloveEvents: readonly GloveEvent[];
+  readonly propagation: PropagationResult;
+  readonly momentMisses: readonly MomentMiss[];
+  readonly score: ExposureScore;
 }

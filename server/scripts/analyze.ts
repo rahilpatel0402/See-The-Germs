@@ -35,4 +35,12 @@ for (const c of analysis.candidates) {
   );
 }
 console.log(`\ncontacts after adjudication rules: ${analysis.contacts.length} (ambiguous candidates without a verdict are excluded)`);
+console.log(`scenario: source ${label.get(analysis.scenario.sourceEntityId) ?? analysis.scenario.sourceEntityId}, pathogen ${analysis.pathogen.label}`);
+for (const h of analysis.hygieneEvents) console.log(`  hygiene  ${h.t.toFixed(1).padStart(5)} s  ${label.get(h.handId) ?? h.handId} ${h.agent} ${h.effective ? "effective" : "INEFFECTIVE for this pathogen"}`);
+for (const g of analysis.gloveEvents) console.log(`  glove    ${g.t.toFixed(1).padStart(5)} s  ${label.get(g.handId) ?? g.handId} ${g.type} (${g.source})`);
+for (const t of analysis.propagation.transfers) console.log(`  transfer ${t.t.toFixed(1).padStart(5)} s  ${label.get(t.fromId) ?? t.fromId} -> ${label.get(t.toId) ?? t.toId}`);
+for (const m of analysis.momentMisses) console.log(`  MOMENT ${m.moment} ${m.t.toFixed(1).padStart(5)} s  ${label.get(m.handId) ?? m.handId}, downstream: ${m.downstream.map((d) => label.get(d) ?? d).join(", ") || "none"}`);
+const s = analysis.score;
+console.log(`score: ${s.score} (surfaces ${s.contaminatedSurfaces}, chain ${s.chainLength}, exposures ${Object.values(s.residentExposures).reduce((a, b) => a + b, 0)}, moments missed ${analysis.momentMisses.length})`);
+console.log(`contaminated at end: ${analysis.propagation.contaminated.map((d) => label.get(d) ?? d).join(", ")}`);
 console.log(`analysis written to data/clips/${clipId}/analysis.json`);

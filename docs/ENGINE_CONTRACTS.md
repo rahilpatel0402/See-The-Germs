@@ -33,7 +33,17 @@ Why this shape: on the feasibility clip these exact rules reproduced every real 
 
 Input: `LabeledContact[]` and `DetectedContact[]`, both `{ handId, entityId, startT, endT }`, plus a tolerance in seconds. Output: `AccuracyReport { precision, recall, matched, matches, misses, falseAlarms }`. A label matches a detection when hand, entity, and start agree within the tolerance; greedy one-to-one in time order. Empty inputs score 1 so a clean run is not penalized. `npm run accuracy -- <clipId>` reads `labels.json` and `analysis.json`, prints the report, and writes `accuracy.json`.
 
-## Proposed for Wed Oct 28: awaiting a yes
+## Wednesday modules, approved and written Mon Oct 26 evening
+
+Everything below is implemented as stated, with these decisions made while writing, flagged for Rahil:
+- Chain length counts transfer edges (5 for clip A), matching the PLAN.md narrative chain. Graph hops stay in `propagation.hops` for the chain graph view, where everything one hand touches is depth 2.
+- Doff rule: `DOFF_EXPOSES_BARE_HAND = true` in config.ts. On doff the bare hand gets its pre-glove state back and also inherits anything the glove picked up. Set false to restore the pre-glove state only. Clinical call, needs confirmation.
+- Moment 5 fires only when the next contact is in the healthcare area, as PLAN.md 6.5 says. Patient zone A object to patient zone B object is not scored by any rule. Clinical call, needs confirmation.
+- Clip A by these rules misses Moment 5 (leaving rail A) and Moment 1 (before resident B). SCHEDULE.md Gate 3 says "5, 4, 1"; Moment 4 needs a resident contact before leaving, and clip A has none before resident B. Confirm which is intended.
+- Glove events carry the person's bare hand entity id as `handId` for both don and doff.
+- Exposure score excludes the scenario source from the contaminated surface count, so a clean run scores 0.
+
+### Original proposal
 
 Two small additions to `Entity` first, both optional so existing clips keep working:
 - `person?: string` (default `"P1"`). The bare hand and gloved hand classes of the same person are the same physical hands. Contacts from either class apply to the hand state of that person. Hand state is keyed by person, not by SAM class.

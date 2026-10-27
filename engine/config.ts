@@ -42,6 +42,49 @@ export const GLOVE_MIN_CONFIDENCE = 0.85;
 // The sampling rate every clip is resampled to before SAM. Frame index N is at N / SAMPLE_FPS s.
 export const SAMPLE_FPS = 10;
 
+export interface HygieneConfig {
+  // Heuristic: a hand must dwell at a dispenser this long for it to count as a hygiene event
+  // (PLAN.md 6.4). A brush past the bottle is not a rub.
+  readonly minDwellS: number;
+}
+
+export const HYGIENE_CONFIG: HygieneConfig = { minDwellS: 1.0 };
+
+export interface GloveConfig {
+  // Heuristic: consecutive frames the gloved class must be present to count as a glove on.
+  readonly openFrames: number;
+  // Heuristic: consecutive frames the gloved class must be absent to count as a glove off.
+  readonly closeFrames: number;
+  // Heuristic: how far back (don) or forward (doff) to look for the bare hand, in frames
+  // (1.0 s at 10 fps, PLAN.md 6.4).
+  readonly handoverWindowFrames: number;
+  // Heuristic: the bare and gloved tracks must be within this fraction of frame width for the
+  // handover to be the same hand.
+  readonly maxHandoverDistanceFraction: number;
+}
+
+export const GLOVE_CONFIG: GloveConfig = {
+  openFrames: 3,
+  closeFrames: 3,
+  handoverWindowFrames: 10,
+  maxHandoverDistanceFraction: 0.15,
+};
+
+// Clinical rule choice, flagged for Rahil: on doff, the bare hand gets the pre-glove state back
+// (PLAN.md 6.4) and, when true, also inherits contamination the glove picked up, because
+// doffing is itself a contamination step. False restores the pre-glove state only.
+export const DOFF_EXPOSES_BARE_HAND = true;
+
+export interface ScoreWeights {
+  readonly residentExposure: number;
+  readonly contaminatedSurface: number;
+  readonly momentMiss: number;
+}
+
+// Heuristic weights from PLAN.md 6.6, shown in the UI as a heuristic. They exist so the
+// counterfactual has a before and after number.
+export const SCORE_WEIGHTS: ScoreWeights = { residentExposure: 10, contaminatedSurface: 3, momentMiss: 2 };
+
 // Dilation radius in pixels for a given frame width, never less than one pixel.
 export function dilationPx(config: ContactConfig, frameSize: FrameSize): number {
   return Math.max(1, Math.round(frameSize.w * config.dilationFraction));
