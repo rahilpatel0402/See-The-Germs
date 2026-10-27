@@ -48,6 +48,13 @@ Everything below is implemented as stated, with these decisions made while writi
 - Moment 5 fires on any zone change away from patient surroundings, including patient zone A to patient zone B. Implemented.
 - Gate 3 wording: his call was "best suitable". Rules stay as written (clip A flags 5 and 1); the clip A script is unchanged.
 
+## Polish round, Tue Oct 27 evening
+
+- `contaminatedAt` and `recentlyContaminated` moved from the client into `engine/propagation.ts` with tests that pin them to `propagate`'s final state, since the overlay and the counterfactual glow depend on them.
+- "Vision reviewed" markers on the timeline open a hover card with the two annotated frames Spark saw, the verdict, and the reasoning, served by `GET /api/clips/:id/adjudication/:candidateId/:n.png`.
+- Arrow keys step one frame (ten with shift), space toggles play, outside form controls.
+- Phone layout: controls wrap, selects shrink, no horizontal overflow. Verified at 600 px; headless desktop Chrome cannot go narrower than about 500 px, so the 390 px check is for a real phone.
+
 ## Second review, Tue Oct 27 evening: ten more fixes, two of them rules
 
 For Rahil's eye:
