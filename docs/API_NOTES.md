@@ -279,3 +279,16 @@ Staging lessons for tomorrow's dev clip and the Saturday shoot:
 Gate 1: SAM 3.1 returns usable hand and object tracks on Rahil's own footage and the masks decode in TypeScript. Met. Backend: Meta Model API. fal.ai stays unused.
 
 Office hours question for Tuesday night, pick one: (a) on video, are object ids ever reused after an object leaves the frame and a new instance of the concept appears; or (b) is there a recommended phrase form for "gloved hand" versus "bare hand" so the gloved class does not fire on skin at low confidence.
+
+## 12. Vision adjudication verified (Oct 27)
+
+`npm run adjudicate -- feasibility --force bare_hand:rail_A:230 --force bare_hand:rail_A:42` sent two annotated 720x1280 frame pairs (hand outline cyan, object outline magenta, drawn with sharp from the parser's SVG paths) to `muse-spark-1.3` on the Responses API with the prompt in `server/prompts/adjudicate.md`.
+
+| Candidate | Reality | Verdict | Reasoning (model) |
+| --- | --- | --- | --- |
+| 23.0 s bare hand over rail | pass in front, no touch | passing_in_front | open hand hovers over the rail with the rail visible between the fingers and finger shadows on the floor |
+| 4.2 s bare hand near rail | reaching past the rail to the remote | passing_in_front | hand is holding a separate black object below the rail with floor visible between them |
+
+Two of two correct, both with reasoning grounded in visible cues. Per call: about 2,690 input tokens (two images at detail high, roughly 1,300 each, plus prompt), 500 to 660 output tokens of which 440 to 600 reasoning at effort low, 4.6 to 5.3 s, about $0.006. Twelve per clip is about $0.07. No prompt caching on these two calls (cached 0); the instructions are identical, so later calls should cache the prefix.
+
+Note on the budget: forced verdicts are cached and count against the 12 per clip cap like any other. Forcing is a development tool; the engine ignores verdicts on confident candidates.

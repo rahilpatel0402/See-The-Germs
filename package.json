@@ -13,13 +13,15 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev:server": "tsx watch server/index.ts",
     "analyze": "tsx server/scripts/analyze.ts",
-    "accuracy": "tsx server/scripts/accuracy.ts"
+    "accuracy": "tsx server/scripts/accuracy.ts",
+    "adjudicate": "tsx server/scripts/adjudicate.ts"
   },
   "dependencies": {
     "@meta-sam/parser": "0.1.0",
     "express": "^5.1.0",
     "multer": "^2.0.2",
-    "openai": "^7.44.0"
+    "openai": "^7.44.0",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

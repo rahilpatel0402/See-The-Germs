@@ -43,6 +43,25 @@ Everything below is implemented as stated, with these decisions made while writi
 - Glove events carry the person's bare hand entity id as `handId` for both don and doff.
 - Exposure score excludes the scenario source from the contaminated surface count, so a clean run scores 0.
 
+## Rahil's answers, Tue Oct 27
+- Doff: contamination on doff depends on removal technique, and touching the glove's outer surface contaminates the hand. Technique is not visible to the pipeline, so `DOFF_EXPOSES_BARE_HAND` stays true and the limitation says so.
+- Moment 5 fires on any zone change away from patient surroundings, including patient zone A to patient zone B. Implemented.
+- Gate 3 wording: his call was "best suitable". Rules stay as written (clip A flags 5 and 1); the clip A script is unchanged.
+
+## Vision adjudication, approved Tue Oct 27 and written
+
+### engine/adjudication.ts (pure)
+Input: `ContactCandidate[]`, existing `Adjudication[]`, `AdjudicationConfig { capPerClip: 12 }`. Output: `AdjudicationPlan { selected: ContactCandidate[]; skipped: ContactCandidate[]; frames: Record<candidateId, { first: number; middle: number }> }`. Only ambiguous candidates without a cached verdict are eligible. If more than the cap, the lowest peak intersection ones are selected first and the rest are skipped and kept as contacts (PLAN.md 6.8). Frames are the first and the middle frame of the candidate window. Deterministic order. Tests on synthetic candidates.
+
+### server/spark.ts
+`SparkBackend { name; completeJson(req: { instructions: string; text: string; images: Buffer[] (PNG); schema: object; schemaName: string; maxOutputTokens: number }): Promise<{ json: unknown; usage: { inputTokens, outputTokens, reasoningTokens, cachedTokens }; elapsedMs }> }`. `MetaSparkBackend` uses `muse-spark-1.3` on the Responses API with `input_image` data URLs, `text.format` json_schema strict, temperature 0, reasoning effort low, `store: false` (the shape verified in docs/API_NOTES.md section 5). Baseten adapter later builds a chat completion from the same request. One log line per call with tokens and cost.
+
+### server/frames.ts
+`renderAnnotatedFrame(clipId, frameIndex, outlines: { entityId; mask: FrameMask; color }[]): Promise<Buffer>`: extracts the sampled frame at `frameIndex / fps` with ffmpeg, traces each mask to an SVG path with the parser's `decodeMaskToSVGPath` offset by its bounds, and composites the stroked paths onto the frame with `sharp`. Hand outline cyan, object outline magenta, nothing else drawn. New dependency: `sharp` (prebuilt binary, no Python).
+
+### server/adjudicate.ts and the route
+`adjudicateClip(clipId, backend)`: load tracks, detect candidates, build the plan, and for each selected candidate render the two frames, send them with the object label and the prompt in `server/prompts/adjudicate.md`, validate the verdict against `{ verdict: touching | passing_in_front | unclear; reasoning: string }`, and append to `adjudications.json`. Cached verdicts are never re-asked. Then `runAnalysis` consumes them. `POST /api/adjudicate { clipId }` and `npm run adjudicate -- <clipId>`. The prompt asks one perception question and never mentions pathogens, hygiene, or zones.
+
 ### Original proposal
 
 Two small additions to `Entity` first, both optional so existing clips keep working:

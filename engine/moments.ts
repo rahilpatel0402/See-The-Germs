@@ -80,10 +80,11 @@ export function detectMomentMisses(input: MomentsInput, base: PropagationResult,
         }
       }
 
-      // Moment 5: after touching patient surroundings, before leaving to the healthcare area.
+      // Moment 5: after touching patient surroundings, before leaving that zone for anywhere
+      // else: the healthcare area or another patient zone (Rahil, Oct 27).
       if (e.class === "object" && isPatientZone(e.zone) && next !== undefined) {
         const nextZone = entityOf(next.entityId).zone;
-        if (nextZone === "healthcare_area" && !hygieneBetween(person, c.endT, next.startT)) {
+        if (nextZone !== e.zone && !hygieneBetween(person, c.endT, next.startT)) {
           found.push({ moment: 5, handId: c.handId, t: c.endT });
         }
       }

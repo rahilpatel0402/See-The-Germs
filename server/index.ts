@@ -11,7 +11,9 @@ import { optionalEnv } from "./env.ts";
 import { readEntities, validateEntities, writeEntities } from "./entities.ts";
 import { HttpError } from "./errors.ts";
 import { TMP_DIR } from "./paths.ts";
+import { adjudicateClip } from "./adjudicate.ts";
 import { MetaSamBackend, segmentPhrase } from "./sam.ts";
+import { MetaSparkBackend } from "./spark.ts";
 
 const PORT = Number(optionalEnv("PORT", "8787"));
 // Heuristic cap so a judge cannot burn the credit budget with one upload: 45 s of video.
@@ -22,6 +24,7 @@ await mkdir(TMP_DIR, { recursive: true });
 const app = express();
 const upload = multer({ dest: TMP_DIR, limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
 const backend = new MetaSamBackend();
+const spark = new MetaSparkBackend();
 
 app.use(express.json({ limit: "1mb" }));
 app.use((_req, res, next) => {
@@ -97,6 +100,15 @@ app.post("/api/analyze", wrap(async (req, res) => {
   else if (body.pathogen !== undefined) throw new HttpError(400, "pathogen must be one of mrsa, c_auris, c_difficile, norovirus");
   if (typeof body.sourceEntityId === "string") override.sourceEntityId = body.sourceEntityId;
   res.json(await runAnalysis(clipId, override));
+}));
+
+// Sends ambiguous candidates to Spark vision (cached, capped) and returns the fresh analysis.
+app.post("/api/adjudicate", wrap(async (req, res) => {
+  const clipId = String((req.body as { clipId?: unknown })?.clipId ?? "");
+  await readMeta(clipId);
+  const run = await adjudicateClip(clipId, spark);
+  const analysis = await runAnalysis(clipId);
+  res.json({ added: run.added, skipped: run.plan.skipped.map((c) => c.id), adjudications: run.all, analysis });
 }));
 
 app.get("/api/clips/:id/scenario", wrap(async (req, res) => {

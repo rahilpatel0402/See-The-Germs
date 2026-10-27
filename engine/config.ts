@@ -70,10 +70,19 @@ export const GLOVE_CONFIG: GloveConfig = {
   maxHandoverDistanceFraction: 0.15,
 };
 
-// Clinical rule choice, flagged for Rahil: on doff, the bare hand gets the pre-glove state back
-// (PLAN.md 6.4) and, when true, also inherits contamination the glove picked up, because
-// doffing is itself a contamination step. False restores the pre-glove state only.
+// Clinical rule, confirmed by Rahil Oct 27: whether the bare hand is contaminated on doff
+// depends on removal technique, and touching the glove's outer surface contaminates the hand.
+// Technique is not visible to this pipeline, so it fails toward caution: on doff the hand gets
+// its pre-glove state back and also inherits what the glove picked up. Stated in limitations.
 export const DOFF_EXPOSES_BARE_HAND = true;
+
+export interface AdjudicationConfig {
+  // Heuristic: at most this many Spark vision calls per clip, to protect the credit budget
+  // (PLAN.md 6.8). Lowest-overlap candidates go first; the rest stay contacts unreviewed.
+  readonly capPerClip: number;
+}
+
+export const ADJUDICATION_CONFIG: AdjudicationConfig = { capPerClip: 12 };
 
 export interface ScoreWeights {
   readonly residentExposure: number;

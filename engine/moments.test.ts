@@ -65,6 +65,14 @@ test("Moment 1 looks back past same-zone contacts to the last contact outside th
   assert.deepEqual(run(contacts).map((m) => [m.moment, m.t]), [[1, 7]]);
 });
 
+test("Moment 5 also fires when leaving patient zone A objects for patient zone B", () => {
+  const contacts = [contact("bare_hand", "rail_A", 1, 2), contact("bare_hand", "blanket_B", 4, 5)];
+  assert.deepEqual(run(contacts).map((m) => [m.moment, m.t]), [[5, 2]]);
+  // Then touching resident B adds Moment 1 at the resident contact, scored against the rail.
+  const withResident = [...contacts, contact("bare_hand", "resident_B", 7, 8)];
+  assert.deepEqual(run(withResident).map((m) => [m.moment, m.t]), [[5, 2], [1, 7]]);
+});
+
 test("moving inside one patient zone is not a miss, and a first contact is never a miss", () => {
   assert.deepEqual(run([contact("bare_hand", "rail_A", 1, 2)]), []);
   assert.deepEqual(run([contact("bare_hand", "blanket_B", 1, 2), contact("bare_hand", "resident_B", 3, 4)]), []);
