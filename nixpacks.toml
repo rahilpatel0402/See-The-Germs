@@ -1,0 +1,10 @@
+# Railway build. ffmpeg and ffprobe come from apt; the client is built into client/dist and
+# served by the Express process, so one service hosts the whole app.
+[phases.setup]
+aptPkgs = ["ffmpeg"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"
