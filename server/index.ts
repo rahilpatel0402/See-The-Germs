@@ -15,7 +15,7 @@ import { HttpError } from "./errors.ts";
 import { analysisPath, sampledPath, TMP_DIR } from "./paths.ts";
 import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
-import { MetaSamBackend, segmentPhrase } from "./sam.ts";
+import { deleteRemoteFile, MetaSamBackend, segmentPhrase } from "./sam.ts";
 import { MetaSparkBackend } from "./spark.ts";
 
 const PORT = Number(optionalEnv("PORT", "8787"));
@@ -156,6 +156,8 @@ app.post("/api/segment", wrap(async (req, res) => {
     res.end();
     return;
   }
+  // Every class is cached now, so the clip does not need to stay on the Meta side.
+  await deleteRemoteFile(await readMeta(meta.id)).catch((err: Error) => console.log(`files   | ${meta.id} | remote delete failed: ${err.message}`));
   if (stream) {
     res.write(`${JSON.stringify({ done: true, clipId: meta.id })}\n`);
     res.end();

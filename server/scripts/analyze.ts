@@ -3,9 +3,9 @@
 // engine, writes analysis.json, and prints the contact timeline to compare with reality.
 import "../env.ts";
 import { runAnalysis } from "../analysis.ts";
-import { ensureClip } from "../clips.ts";
+import { ensureClip, readMeta } from "../clips.ts";
 import { readEntities } from "../entities.ts";
-import { MetaSamBackend, segmentPhrase } from "../sam.ts";
+import { deleteRemoteFile, MetaSamBackend, segmentPhrase } from "../sam.ts";
 
 const clipId = process.argv[2];
 if (!clipId) {
@@ -24,6 +24,8 @@ for (const phrase of new Set(entities.map((e) => e.samPhrase))) {
   const objects = new Set(track.records.map((r) => r.objectId)).size;
   console.log(`track   | ${phrase.padEnd(24)} | frames=${String(frames).padStart(4)} objects=${objects}`);
 }
+
+await deleteRemoteFile(await readMeta(clipId)).catch((err: Error) => console.log(`files   | ${clipId} | remote delete failed: ${err.message}`));
 
 const analysis = await runAnalysis(clipId);
 const label = new Map(entities.map((e) => [e.id, e.label]));

@@ -66,11 +66,14 @@ export async function ensureRemoteFile(clip: ClipMeta): Promise<string> {
   return uploaded.id;
 }
 
+// Removes the clip from the Meta Files API once every class is cached. A later new phrase
+// simply uploads again. Keeps footage on the API side only as long as segmentation needs it.
 export async function deleteRemoteFile(clip: ClipMeta): Promise<void> {
   if (!clip.remoteFileId) return;
   await metaClient().files.delete(clip.remoteFileId);
   const { remoteFileId: _dropped, ...rest } = clip;
   await writeMeta(rest);
+  console.log(`files   | ${clip.id} | deleted remote ${clip.remoteFileId} after segmentation`);
 }
 
 // Pass events through to the parser while capturing usage from the terminal event.
