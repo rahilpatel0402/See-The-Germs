@@ -18,5 +18,16 @@ Output: `ContactCandidate[]` exactly as CLAUDE.md defines it: `{ id, handId, ent
 
 Why this shape: on the feasibility clip these exact rules reproduced every real touch within a second and put the 0.4 s reach-across in the ambiguous band, and the engine never needs to know masks came from SAM.
 
+## Server modules (written Mon Oct 26 evening under the "engine plus server skeleton" approval)
+
+- `server/ffmpeg.ts`: `probe(file): ProbeInfo` (display size after rotation, codec, fps, frames, duration) and `resample(src, dst, fps)` (constant fps, shorter side 720, H.264, faststart, no audio). Frame N of the output is at N / fps seconds.
+- `server/clips.ts`: `ClipMeta` in `data/clips/<id>/meta.json`. `ensureClip(id)` probes and resamples a folder that has a `source.*` file, `createClipFromUpload(tmpPath, name)` makes a new clip id and does the same, `readMeta`, `writeMeta`, `listClipIds`.
+- `server/entities.ts`: `EntityConfig` = engine `Entity` plus optional `minConfidence`. `DEFAULT_ENTITIES` for the clip A props. Stored per clip in `entities.json`, validated on write.
+- `server/sam.ts`: `SegmentationBackend { name; segmentVideo(clip, phrase): SegmentationResult }` and `MetaSamBackend`. `segmentPhrase(clipId, phrase, backend)` returns the cached `TrackFile` (`tracks/<slug>.json`: records, usage, elapsed, frame size, fps) or calls the backend once and caches. One upload per clip, file id kept in meta. One log line per call with frames, objects, latency, billed frames, cost.
+- `server/tracks.ts`: `loadTracks(clipId): { tracks: Tracks; entities; missingPhrases }`. Unions all records of a phrase in a frame into one entity (PLAN.md 6.1 fallback), applies `minConfidence`, and fills every sampled frame so the clip length is known.
+- `server/analysis.ts`: `runAnalysis(clipId): Analysis`. Loads tracks, runs `detectContacts`, reads `adjudications.json` if present, applies the CLAUDE.md contact rule, writes `analysis.json`.
+- `server/index.ts`: `GET /api/health`, `GET /api/clips`, `POST /api/clips` (multipart `video`, 45 s cap), `GET /api/clips/:id`, `PUT /api/clips/:id/entities`, `POST /api/segment { clipId }`, `POST /api/analyze { clipId }`. Keys only here.
+- `server/scripts/analyze.ts`: `npm run analyze -- <clipId>`: ensure, segment missing phrases, analyze, print the timeline.
+
 ## gloves.ts, propagation.ts, moments.ts, score.ts (Wed Oct 28)
 To be stated Tuesday night after Gate 2.

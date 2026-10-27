@@ -1,0 +1,102 @@
+// Express API. Keys stay here; the client never talks to Meta directly.
+import "./env.ts";
+import { mkdir } from "node:fs/promises";
+import express, { type NextFunction, type Request, type Response } from "express";
+import multer from "multer";
+import { runAnalysis } from "./analysis.ts";
+import { createClipFromUpload, ensureClip, listClipIds, readMeta } from "./clips.ts";
+import { optionalEnv } from "./env.ts";
+import { readEntities, validateEntities, writeEntities } from "./entities.ts";
+import { HttpError } from "./errors.ts";
+import { TMP_DIR } from "./paths.ts";
+import { MetaSamBackend, segmentPhrase } from "./sam.ts";
+
+const PORT = Number(optionalEnv("PORT", "8787"));
+// Heuristic cap so a judge cannot burn the credit budget with one upload: 45 s of video.
+const MAX_UPLOAD_SECONDS = 45;
+const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
+
+await mkdir(TMP_DIR, { recursive: true });
+const app = express();
+const upload = multer({ dest: TMP_DIR, limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
+const backend = new MetaSamBackend();
+
+app.use(express.json({ limit: "1mb" }));
+app.use((_req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", optionalEnv("CLIENT_ORIGIN", "*"));
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
+  next();
+});
+app.options("/{*path}", (_req, res) => res.sendStatus(204));
+
+type Handler = (req: Request, res: Response) => Promise<void>;
+const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
+
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+app.get("/api/clips", wrap(async (_req, res) => {
+  res.json({ clips: await listClipIds() });
+}));
+
+app.post("/api/clips", upload.single("video"), wrap(async (req, res) => {
+  if (!req.file) throw new HttpError(400, "send the video as multipart field 'video'");
+  const meta = await createClipFromUpload(req.file.path, req.file.originalname);
+  if (meta.source.durationS > MAX_UPLOAD_SECONDS) {
+    throw new HttpError(413, `clip is ${meta.source.durationS.toFixed(1)} s; the limit is ${MAX_UPLOAD_SECONDS} s`);
+  }
+  res.status(201).json({ clip: meta, entities: await readEntities(meta.id) });
+}));
+
+app.get("/api/clips/:id", wrap(async (req, res) => {
+  const meta = await ensureClip(String(req.params["id"]));
+  res.json({ clip: meta, entities: await readEntities(meta.id) });
+}));
+
+app.put("/api/clips/:id/entities", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  const entities: unknown = req.body;
+  try {
+    validateEntities(entities);
+  } catch (err) {
+    throw new HttpError(400, (err as Error).message);
+  }
+  await writeEntities(meta.id, entities);
+  res.json({ entities });
+}));
+
+// Runs SAM for every entity phrase that has no cached track yet. Idempotent.
+app.post("/api/segment", wrap(async (req, res) => {
+  const clipId = String((req.body as { clipId?: unknown })?.clipId ?? "");
+  const meta = await readMeta(clipId);
+  const entities = await readEntities(meta.id);
+  const phrases = [...new Set(entities.map((e) => e.samPhrase))];
+  const summary = [];
+  for (const phrase of phrases) {
+    const track = await segmentPhrase(meta.id, phrase, backend);
+    summary.push({
+      phrase,
+      frames: new Set(track.records.map((r) => r.frameIndex)).size,
+      objects: new Set(track.records.map((r) => r.objectId)).size,
+      billedFrames: track.usage.videoFramesProcessed ?? null,
+    });
+  }
+  res.json({ clipId: meta.id, tracks: summary });
+}));
+
+app.post("/api/analyze", wrap(async (req, res) => {
+  const clipId = String((req.body as { clipId?: unknown })?.clipId ?? "");
+  await readMeta(clipId);
+  res.json(await runAnalysis(clipId));
+}));
+
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  const status = err instanceof HttpError ? err.status : 500;
+  const message = err instanceof Error ? err.message : "unknown error";
+  if (status === 500) console.error(err);
+  res.status(status).json({ error: message });
+});
+
+app.listen(PORT, () => {
+  console.log(`server  | listening on http://localhost:${PORT}`);
+});

@@ -1,0 +1,30 @@
+{
+  "name": "see-the-germs",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Contamination chains made visible on staged video of care tasks. Staff training and audit aid, not surveillance, not medical advice.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "test": "node --test \"engine/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev:server": "tsx watch server/index.ts",
+    "analyze": "tsx server/scripts/analyze.ts"
+  },
+  "dependencies": {
+    "@meta-sam/parser": "0.1.0",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "openai": "^7.44.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
