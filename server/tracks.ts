@@ -1,11 +1,16 @@
 // Turns cached SAM track files plus the entity table into the engine's Tracks input.
 // One entity per SAM class for now: all records of a phrase in a frame are unioned, which is
 // the PLAN.md 6.1 fallback ("hands of P1"). Per-hand entities come later if the clips need them.
+// Frames are decoded on demand with a small cache: a full-frame raster per entity per frame
+// for a whole clip would be gigabytes.
 import { fromRecord, union } from "../engine/masks.ts";
 import type { Entity, FrameMask, MaskRecord, Tracks } from "../engine/types.ts";
 import { readMeta } from "./clips.ts";
-import { readEntities, type EntityConfig } from "./entities.ts";
+import { passesConfidence, readEntities, type EntityConfig } from "./entities.ts";
 import { readTrack } from "./sam.ts";
+
+// Frames kept decoded at once. The engine walks forward and looks back at most ten frames.
+const FRAME_CACHE_SIZE = 24;
 
 // What the client needs to draw the overlay: raw records per entity, minConfidence applied,
 // payloads left encoded so the browser decodes lazily.
@@ -24,9 +29,7 @@ export async function tracksPayload(clipId: string): Promise<TracksPayload> {
   for (const entity of entities) {
     const track = await readTrack(clipId, entity.samPhrase);
     if (!track) continue;
-    tracks[entity.id] = track.records.filter(
-      (r) => entity.minConfidence === undefined || r.confidence === undefined || r.confidence >= entity.minConfidence,
-    );
+    tracks[entity.id] = track.records.filter((r) => passesConfidence(entity, r));
   }
   return { frameSize: { w: meta.sampled.width, h: meta.sampled.height }, fps: meta.fps, frames: meta.sampled.frames, entities: plainEntities(entities), tracks };
 }
@@ -50,35 +53,49 @@ export interface LoadedTracks {
   readonly missingPhrases: readonly string[];
 }
 
+const EMPTY_FRAME: ReadonlyMap<string, FrameMask> = new Map();
+
 export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   const meta = await readMeta(clipId);
   const entities = await readEntities(clipId);
   const frameSize = { w: meta.sampled.width, h: meta.sampled.height };
-  const frames = new Map<number, Map<string, FrameMask>>();
   const missing: string[] = [];
 
+  // entity id -> frame index -> records (small: encoded payloads only).
+  const byEntity = new Map<string, Map<number, MaskRecord[]>>();
   for (const entity of entities) {
     const track = await readTrack(clipId, entity.samPhrase);
     if (!track) {
       missing.push(entity.samPhrase);
       continue;
     }
-    const perFrame = new Map<number, FrameMask[]>();
+    const perFrame = new Map<number, MaskRecord[]>();
     for (const record of track.records) {
-      if (entity.minConfidence !== undefined && record.confidence !== undefined && record.confidence < entity.minConfidence) continue;
-      const list = perFrame.get(record.frameIndex) ?? [];
-      list.push(fromRecord(record, frameSize));
-      perFrame.set(record.frameIndex, list);
+      if (!passesConfidence(entity, record)) continue;
+      (perFrame.get(record.frameIndex) ?? perFrame.set(record.frameIndex, []).get(record.frameIndex)!).push(record);
     }
-    for (const [frameIndex, masks] of perFrame) {
-      const frame = frames.get(frameIndex) ?? new Map<string, FrameMask>();
-      frame.set(entity.id, union(masks));
-      frames.set(frameIndex, frame);
-    }
+    byEntity.set(entity.id, perFrame);
   }
 
-  // Every sampled frame exists in the map even when nothing was seen, so maxFrame is the clip length.
-  for (let f = 0; f < meta.sampled.frames; f++) if (!frames.has(f)) frames.set(f, new Map());
+  const cache = new Map<number, ReadonlyMap<string, FrameMask>>();
+  const masksAt = (frameIndex: number): ReadonlyMap<string, FrameMask> => {
+    const hit = cache.get(frameIndex);
+    if (hit) return hit;
+    let frame: Map<string, FrameMask> | null = null;
+    for (const [entityId, perFrame] of byEntity) {
+      const records = perFrame.get(frameIndex);
+      if (!records) continue;
+      (frame ??= new Map()).set(entityId, union(records.map((r) => fromRecord(r, frameSize))));
+    }
+    const result = frame ?? EMPTY_FRAME;
+    cache.set(frameIndex, result);
+    if (cache.size > FRAME_CACHE_SIZE) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+    return result;
+  };
 
-  return { tracks: { frameSize, fps: meta.fps, entities: plainEntities(entities), frames }, entities, missingPhrases: missing };
+  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount: meta.sampled.frames, entities: plainEntities(entities), masksAt };
+  return { tracks, entities, missingPhrases: missing };
 }

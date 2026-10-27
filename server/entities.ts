@@ -1,8 +1,15 @@
 // Per-clip entity table: which SAM phrase to ask for, what to call it, which zone it is in.
 // Stored at data/clips/<id>/entities.json and editable before segmentation.
 import { readFile, writeFile } from "node:fs/promises";
-import type { Entity } from "../engine/types.ts";
+import { GLOVE_MIN_CONFIDENCE } from "../engine/config.ts";
+import type { Entity, MaskRecord } from "../engine/types.ts";
 import { entitiesPath } from "./paths.ts";
+
+// The one place that decides whether a SAM record counts for an entity. Used by the engine
+// input, the overlay payload, and the adjudication images, so they can never disagree.
+export function passesConfidence(entity: { readonly minConfidence?: number }, record: MaskRecord): boolean {
+  return entity.minConfidence === undefined || record.confidence === undefined || record.confidence >= entity.minConfidence;
+}
 
 export interface EntityConfig extends Entity {
   // Records below this SAM confidence are dropped when tracks are loaded. Used for the gloved
@@ -14,7 +21,7 @@ export interface EntityConfig extends Entity {
 // describe appearance, not function; edit them per clip.
 export const DEFAULT_ENTITIES: readonly EntityConfig[] = [
   { id: "bare_hand", label: "bare hand", class: "bare_hand", zone: "healthcare_area", samPhrase: "bare hand", person: "P1" },
-  { id: "gloved_hand", label: "gloved hand", class: "gloved_hand", zone: "healthcare_area", samPhrase: "gloved hand", person: "P1", minConfidence: 0.85 },
+  { id: "gloved_hand", label: "gloved hand", class: "gloved_hand", zone: "healthcare_area", samPhrase: "gloved hand", person: "P1", minConfidence: GLOVE_MIN_CONFIDENCE },
   { id: "rail_A", label: "bed rail A", class: "object", zone: "patient_zone_A", samPhrase: "white rod" },
   { id: "iv_pole", label: "IV pole", class: "object", zone: "healthcare_area", samPhrase: "floor lamp" },
   { id: "phone", label: "phone", class: "object", zone: "healthcare_area", samPhrase: "phone" },

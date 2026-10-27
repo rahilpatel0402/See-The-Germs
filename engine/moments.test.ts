@@ -73,6 +73,14 @@ test("Moment 5 also fires when leaving patient zone A objects for patient zone B
   assert.deepEqual(run(withResident).map((m) => [m.moment, m.t]), [[5, 2], [1, 7]]);
 });
 
+test("touching the same resident twice after one unwashed arrival is one Moment 1 miss, not two", () => {
+  const contacts = [contact("bare_hand", "phone", 1, 2), contact("bare_hand", "resident_B", 5, 6), contact("bare_hand", "resident_B", 8, 9)];
+  assert.deepEqual(run(contacts).map((m) => [m.moment, m.t]), [[1, 5]]);
+  // Leaving the zone and coming back without hygiene is a new lapse.
+  const again = [...contacts, contact("bare_hand", "phone", 11, 12), contact("bare_hand", "resident_B", 14, 15)];
+  assert.deepEqual(run(again).map((m) => [m.moment, m.t]), [[1, 5], [4, 9], [1, 14]]);
+});
+
 test("moving inside one patient zone is not a miss, and a first contact is never a miss", () => {
   assert.deepEqual(run([contact("bare_hand", "rail_A", 1, 2)]), []);
   assert.deepEqual(run([contact("bare_hand", "blanket_B", 1, 2), contact("bare_hand", "resident_B", 3, 4)]), []);

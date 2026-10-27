@@ -53,16 +53,15 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
   const fps = tracks.fps;
   if (!(fps > 0)) throw new Error(`detectContacts: fps must be positive, got ${fps}`);
 
-  let maxFrame = -1;
-  for (const f of tracks.frames.keys()) if (f > maxFrame) maxFrame = f;
+  if (!Number.isInteger(tracks.frameCount) || tracks.frameCount < 0) throw new Error(`detectContacts: bad frameCount ${tracks.frameCount}`);
 
   const states = new Map<string, PairState>();
   const out: ContactCandidate[] = [];
 
-  for (let f = 0; f <= maxFrame; f++) {
-    const frame = tracks.frames.get(f);
+  for (let f = 0; f < tracks.frameCount; f++) {
+    const frame = tracks.masksAt(f);
     for (const hand of hands) {
-      const handMask = frame?.get(hand.id);
+      const handMask = frame.get(hand.id);
       const dilated: FrameMask | undefined = handMask === undefined ? undefined : dilate(handMask, k);
       for (const target of targets) {
         const key = `${hand.id}|${target.id}`;
@@ -71,7 +70,7 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
           state = newState();
           states.set(key, state);
         }
-        const targetMask = frame?.get(target.id);
+        const targetMask = frame.get(target.id);
         const inter = dilated !== undefined && targetMask !== undefined ? intersectArea(dilated, targetMask) : 0;
         const hit = inter >= floor;
 

@@ -54,7 +54,13 @@ export const api = {
     post<Counterfactual>("/api/counterfactual", { clipId, t, agent, ...override }),
   explainCounterfactual: (clipId: string, t: number, agent: HygieneAgent, override?: ScenarioOverride) =>
     post<{ explanation: string }>("/api/counterfactual/explain", { clipId, t, agent, ...override }),
-  narrative: (clipId: string) => request<NarrativeFile>(`/api/clips/${encodeURIComponent(clipId)}/narrative`),
+  narrative: (clipId: string, scenario?: ScenarioOverride) => {
+    const q = new URLSearchParams();
+    if (scenario?.pathogen) q.set("pathogen", scenario.pathogen);
+    if (scenario?.sourceEntityId) q.set("sourceEntityId", scenario.sourceEntityId);
+    const qs = q.toString();
+    return request<NarrativeFile>(`/api/clips/${encodeURIComponent(clipId)}/narrative${qs ? `?${qs}` : ""}`);
+  },
   narrate: (clipId: string, override?: ScenarioOverride) => post<NarrativeFile>("/api/narrate", { clipId, ...override }),
   videoUrl: (clipId: string) => `/api/clips/${encodeURIComponent(clipId)}/video`,
 };

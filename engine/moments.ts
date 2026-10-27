@@ -46,6 +46,9 @@ export function detectMomentMisses(input: MomentsInput, base: PropagationResult,
   const found: Array<Omit<MomentMiss, "downstream">> = [];
   for (const [person, list] of perPerson) {
     const contacts = [...list].sort((a, b) => a.startT - b.startT || a.endT - b.endT);
+    // One Moment 1 miss per lapse: touching the same resident twice after one unwashed arrival
+    // is one missed moment, not two. Keyed by the outside contact that started the lapse.
+    const chargedOutside = new Set<number>();
     for (let i = 0; i < contacts.length; i++) {
       const c = contacts[i] as ContactEvent;
       const e = entityOf(c.entityId);
@@ -55,14 +58,17 @@ export function detectMomentMisses(input: MomentsInput, base: PropagationResult,
       // Moment 1: before touching a patient. Look back to the last contact outside this patient zone.
       if (e.class === "resident_zone") {
         let outside: ContactEvent | undefined;
+        let outsideIndex = -1;
         for (let j = i - 1; j >= 0; j--) {
           const cj = contacts[j] as ContactEvent;
           if (entityOf(cj.entityId).zone !== e.zone) {
             outside = cj;
+            outsideIndex = j;
             break;
           }
         }
-        if (outside !== undefined && !hygieneBetween(person, outside.endT, c.startT)) {
+        if (outside !== undefined && !chargedOutside.has(outsideIndex) && !hygieneBetween(person, outside.endT, c.startT)) {
+          chargedOutside.add(outsideIndex);
           found.push({ moment: 1, handId: c.handId, t: c.startT });
         }
       }

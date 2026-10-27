@@ -2,7 +2,7 @@
 // tracks/, and later adjudications.json and analysis.json.
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { SAMPLE_FPS } from "../engine/config.ts";
 import { DEFAULT_ENTITIES, writeEntities } from "./entities.ts";
@@ -75,14 +75,34 @@ export function newClipId(): string {
   return `c_${Date.now().toString(36)}_${randomBytes(3).toString("hex")}`;
 }
 
-// Moves an uploaded temp file into a new clip folder and runs ensureClip on it.
-export async function createClipFromUpload(tmpPath: string, originalName: string): Promise<ClipMeta> {
+// Moves an uploaded temp file into a new clip folder and runs ensureClip on it. The duration
+// cap is checked with a probe before any resampling, and a rejected clip leaves nothing behind.
+export async function createClipFromUpload(tmpPath: string, originalName: string, maxSeconds: number): Promise<ClipMeta> {
   const ext = path.extname(originalName).toLowerCase();
-  if (!SOURCE_EXTENSIONS.includes(ext)) throw new HttpError(400, `unsupported video type ${ext || "(none)"}; use mp4 or mov`);
+  if (!SOURCE_EXTENSIONS.includes(ext)) {
+    await rm(tmpPath, { force: true });
+    throw new HttpError(400, `unsupported video type ${ext || "(none)"}; use mp4 or mov`);
+  }
+  let info: ProbeInfo;
+  try {
+    info = await probe(tmpPath);
+  } catch {
+    await rm(tmpPath, { force: true });
+    throw new HttpError(400, "the file is not a readable video");
+  }
+  if (info.durationS > maxSeconds) {
+    await rm(tmpPath, { force: true });
+    throw new HttpError(413, `clip is ${info.durationS.toFixed(1)} s; the limit is ${maxSeconds} s`);
+  }
   const id = newClipId();
   await mkdir(clipDir(id), { recursive: true });
   await rename(tmpPath, path.join(clipDir(id), `source${ext}`));
-  return ensureClip(id);
+  try {
+    return await ensureClip(id);
+  } catch (err) {
+    await rm(clipDir(id), { recursive: true, force: true });
+    throw err;
+  }
 }
 
 export async function listClipIds(): Promise<string[]> {

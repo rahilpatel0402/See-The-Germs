@@ -1,19 +1,20 @@
 // Vision adjudication of ambiguous contact candidates. SAM finds, Spark adjudicates, the
-// engine decides. Verdicts are cached in adjudications.json and never re-asked.
+// engine decides. Verdicts are cached in adjudications.json and never re-asked. A call that
+// fails is not cached, so a transient outage never becomes a permanent "verdict".
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { planAdjudication, type AdjudicationPlan } from "../engine/adjudication.ts";
-import { ADJUDICATION_CONFIG, CONTACT_CONFIG } from "../engine/config.ts";
-import { detectContacts } from "../engine/contacts.ts";
+import { ADJUDICATION_CONFIG } from "../engine/config.ts";
 import type { Adjudication, ContactCandidate, MaskRecord, Verdict } from "../engine/types.ts";
 import { readAdjudications } from "./analysis.ts";
+import { passesConfidence, type EntityConfig } from "./entities.ts";
 import { HttpError } from "./errors.ts";
 import { renderAnnotatedFrame, type Outline } from "./frames.ts";
 import { adjudicationsPath, clipDir } from "./paths.ts";
+import { perceptionFor } from "./pipeline.ts";
 import { readTrack } from "./sam.ts";
 import { estimateSparkCost, type SparkBackend } from "./spark.ts";
-import { loadTracks } from "./tracks.ts";
 
 const VERDICTS: readonly Verdict[] = ["touching", "passing_in_front", "unclear"];
 const HAND_COLOR = "#00e5ff";
@@ -30,9 +31,15 @@ const SCHEMA = {
   required: ["verdict", "reasoning"],
 };
 
+export interface AdjudicationFailure {
+  readonly candidateId: string;
+  readonly reason: string;
+}
+
 export interface AdjudicationRun {
   readonly plan: AdjudicationPlan;
   readonly added: readonly Adjudication[];
+  readonly failed: readonly AdjudicationFailure[];
   readonly all: readonly Adjudication[];
 }
 
@@ -40,26 +47,23 @@ async function loadPrompt(): Promise<string> {
   return readFile(path.join(process.cwd(), "server", "prompts", "adjudicate.md"), "utf8");
 }
 
-function parseVerdict(json: unknown): Adjudication | null {
+function parseVerdict(json: unknown): Omit<Adjudication, "candidateId"> | null {
   const v = json as { verdict?: unknown; reasoning?: unknown };
   if (typeof v?.verdict !== "string" || !(VERDICTS as readonly string[]).includes(v.verdict)) return null;
   if (typeof v.reasoning !== "string") return null;
-  return { candidateId: "", verdict: v.verdict as Verdict, reasoning: v.reasoning.trim().slice(0, 400) };
+  return { verdict: v.verdict as Verdict, reasoning: v.reasoning.trim().slice(0, 400) };
 }
 
-// Records of one entity at one frame, honoring the entity's minConfidence.
-async function recordsAt(clipId: string, samPhrase: string, minConfidence: number | undefined, frameIndex: number): Promise<MaskRecord[]> {
-  const track = await readTrack(clipId, samPhrase);
-  if (!track) throw new HttpError(409, `clip ${clipId} has no track for "${samPhrase}"`);
-  return track.records.filter(
-    (r) => r.frameIndex === frameIndex && (minConfidence === undefined || r.confidence === undefined || r.confidence >= minConfidence),
-  );
+// Records of one entity at one frame, with the same confidence rule as the engine input.
+async function recordsAt(clipId: string, entity: EntityConfig, frameIndex: number): Promise<MaskRecord[]> {
+  const track = await readTrack(clipId, entity.samPhrase);
+  if (!track) throw new HttpError(409, `clip ${clipId} has no track for "${entity.samPhrase}"`);
+  return track.records.filter((r) => r.frameIndex === frameIndex && passesConfidence(entity, r));
 }
 
 export async function adjudicateClip(clipId: string, backend: SparkBackend, options: { force?: readonly string[] } = {}): Promise<AdjudicationRun> {
-  const { tracks, entities, missingPhrases } = await loadTracks(clipId);
-  if (missingPhrases.length > 0) throw new HttpError(409, `clip ${clipId} is not segmented for: ${missingPhrases.join(", ")}`);
-  const candidates = detectContacts(tracks, CONTACT_CONFIG);
+  const perception = await perceptionFor(clipId);
+  const candidates = perception.candidates;
   const existing = await readAdjudications(clipId);
   const plan = planAdjudication(candidates, existing, ADJUDICATION_CONFIG);
 
@@ -71,12 +75,13 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
     .filter((c): c is ContactCandidate => c !== undefined && !done.has(c.id) && !plan.selected.some((s) => s.id === c.id));
   const queue = [...plan.selected, ...forced];
 
-  const byId = new Map(entities.map((e) => [e.id, e]));
+  const byId = new Map(perception.entityConfigs.map((e) => [e.id, e]));
   const prompt = await loadPrompt();
   const outDir = path.join(clipDir(clipId), "adjudication");
   await mkdir(outDir, { recursive: true });
   const all = [...existing];
   const added: Adjudication[] = [];
+  const failed: AdjudicationFailure[] = [];
 
   for (const candidate of queue) {
     const hand = byId.get(candidate.handId);
@@ -86,8 +91,8 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
     const images: Buffer[] = [];
     for (const [n, frameIndex] of [frames.first, frames.middle].entries()) {
       const outlines: Outline[] = [
-        { records: await recordsAt(clipId, hand.samPhrase, hand.minConfidence, frameIndex), color: HAND_COLOR },
-        { records: await recordsAt(clipId, object.samPhrase, object.minConfidence, frameIndex), color: OBJECT_COLOR },
+        { records: await recordsAt(clipId, hand, frameIndex), color: HAND_COLOR },
+        { records: await recordsAt(clipId, object, frameIndex), color: OBJECT_COLOR },
       ];
       const png = await renderAnnotatedFrame(clipId, frameIndex, outlines);
       await writeFile(path.join(outDir, `${candidate.id.replace(/[^A-Za-z0-9_-]/g, "_")}-${n + 1}.png`), png);
@@ -104,7 +109,7 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
         console.log(
           `spark   | ${clipId} | adjudicate ${candidate.id.padEnd(28)} | ${parsed ? parsed.verdict.padEnd(16) : "INVALID JSON    "} | in=${result.usage.inputTokens} (cached ${result.usage.cachedTokens}) out=${result.usage.outputTokens} (reasoning ${result.usage.reasoningTokens}) | ${String(result.elapsedMs).padStart(5)} ms | $${estimateSparkCost(result.usage).toFixed(4)}`,
         );
-        if (parsed) adjudication = { ...parsed, candidateId: candidate.id };
+        if (parsed) adjudication = { candidateId: candidate.id, ...parsed };
         else lastError = `invalid verdict: ${JSON.stringify(result.json).slice(0, 120)}`;
       } catch (err) {
         lastError = (err as Error).message;
@@ -112,9 +117,10 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
       }
     }
     if (adjudication === null) {
-      // Fail toward caution for an infection control tool: keep the candidate as a contact and
-      // say plainly that the model did not decide.
-      adjudication = { candidateId: candidate.id, verdict: "unclear", reasoning: `model unavailable: ${lastError}` };
+      // Not cached: the candidate stays unreviewed and is planned again next run. Until then
+      // the engine treats it as an ambiguous candidate without a verdict, which is not a contact.
+      failed.push({ candidateId: candidate.id, reason: lastError });
+      continue;
     }
     all.push(adjudication);
     added.push(adjudication);
@@ -122,5 +128,5 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
   }
 
   if (!existsSync(adjudicationsPath(clipId))) await writeFile(adjudicationsPath(clipId), "[]");
-  return { plan, added, all };
+  return { plan, added, failed, all };
 }

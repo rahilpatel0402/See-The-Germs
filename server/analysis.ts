@@ -40,10 +40,12 @@ export function validateScenario(value: unknown, entityIds: ReadonlySet<string>)
   return { sourceEntityId: v.sourceEntityId, pathogen: v.pathogen };
 }
 
+// Writes analysis.json only for the stored scenario. Overrides are per run and never persisted,
+// so a reload always shows the stored scenario and the cached file never lies.
 export async function runAnalysis(clipId: string, override?: { pathogen?: Scenario["pathogen"]; sourceEntityId?: string }): Promise<Analysis> {
-  const { buildPipeline } = await import("./pipeline.ts");
+  const { buildPipeline, hasOverride } = await import("./pipeline.ts");
   const { analysis } = await buildPipeline(clipId, override ?? {});
-  await writeFile(analysisPath(clipId), JSON.stringify(analysis, null, 2));
+  if (!hasOverride(override ?? {})) await writeFile(analysisPath(clipId), JSON.stringify(analysis, null, 2));
   return analysis;
 }
 
@@ -51,9 +53,10 @@ export async function runCounterfactualFor(
   clipId: string,
   insert: { t: number; handId?: string; agent?: string },
   override?: { pathogen?: Scenario["pathogen"]; sourceEntityId?: string },
+  prebuilt?: { analysis: Analysis; propInput: import("../engine/propagation.ts").PropagationInput },
 ): Promise<Counterfactual> {
   const { buildPipeline } = await import("./pipeline.ts");
-  const { analysis, propInput } = await buildPipeline(clipId, override ?? {});
+  const { analysis, propInput } = prebuilt ?? (await buildPipeline(clipId, override ?? {}));
   const hands = analysis.entities.filter((e) => e.class === "bare_hand" || e.class === "gloved_hand");
   const handId = insert.handId ?? hands[0]?.id;
   if (!handId || !hands.some((h) => h.id === handId)) throw new HttpError(400, "handId must name a hand entity in this clip");

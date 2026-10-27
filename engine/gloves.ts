@@ -37,13 +37,13 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
     persons.set(p, slot);
   }
 
-  let maxFrame = -1;
-  for (const f of tracks.frames.keys()) if (f > maxFrame) maxFrame = f;
+  const maxFrame = tracks.frameCount - 1;
   const maxDistance = config.maxHandoverDistanceFraction * tracks.frameSize.w;
   const centers = new Map<string, Point | undefined>();
   const centerOf = (entityId: string, f: number): Point | undefined => {
+    if (f < 0 || f > maxFrame) return undefined;
     const key = `${entityId}@${f}`;
-    if (!centers.has(key)) centers.set(key, center(tracks.frames.get(f)?.get(entityId)));
+    if (!centers.has(key)) centers.set(key, center(tracks.masksAt(f).get(entityId)));
     return centers.get(key);
   };
   const bareNear = (bareId: string, from: number, to: number, target: Point): boolean => {

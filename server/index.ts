@@ -7,7 +7,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import multer from "multer";
 import { readScenario, runAnalysis, runCounterfactualFor, validateScenario, writeScenario } from "./analysis.ts";
 import { explainCounterfactual, narrateClip, readNarrative } from "./narrate.ts";
-import { parseScenarioOverride } from "./pipeline.ts";
+import { buildPipeline, parseScenarioOverride } from "./pipeline.ts";
 import { createClipFromUpload, ensureClip, listClipIds, readMeta } from "./clips.ts";
 import { optionalEnv } from "./env.ts";
 import { readEntities, validateEntities, writeEntities } from "./entities.ts";
@@ -81,10 +81,7 @@ app.post("/api/clips", upload.single("video"), wrap(async (req, res) => {
     await rm(req.file.path, { force: true });
     throw new HttpError(429, `the daily upload limit of ${MAX_UPLOADS_PER_DAY} clips is reached; the demo clips still work`);
   }
-  const meta = await createClipFromUpload(req.file.path, req.file.originalname);
-  if (meta.source.durationS > MAX_UPLOAD_SECONDS) {
-    throw new HttpError(413, `clip is ${meta.source.durationS.toFixed(1)} s; the limit is ${MAX_UPLOAD_SECONDS} s`);
-  }
+  const meta = await createClipFromUpload(req.file.path, req.file.originalname, MAX_UPLOAD_SECONDS);
   res.status(201).json({ clip: meta, entities: await readEntities(meta.id) });
 }));
 
@@ -165,11 +162,13 @@ app.post("/api/counterfactual", wrap(async (req, res) => {
   res.json(await runCounterfactualFor(clipId, insert, parseScenarioOverride(body)));
 }));
 
-// Cached narrative only; 404 until generated.
+// The cached narrative for the clip's current analysis (query pathogen and sourceEntityId
+// select a scenario); 404 until generated for exactly that analysis.
 app.get("/api/clips/:id/narrative", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
-  const file = await readNarrative(meta.id);
-  if (!file) throw new HttpError(404, `clip ${meta.id} has no narrative yet`);
+  const { analysis } = await buildPipeline(meta.id, parseScenarioOverride(req.query as { pathogen?: unknown; sourceEntityId?: unknown }));
+  const file = await readNarrative(meta.id, analysis);
+  if (!file) throw new HttpError(404, `clip ${meta.id} has no narrative for this scenario yet`);
   res.json(file);
 }));
 
@@ -182,20 +181,21 @@ app.post("/api/narrate", wrap(async (req, res) => {
   res.json(await narrateClip(clipId, analysis, spark));
 }));
 
-// Two sentences on one counterfactual, on demand.
+// Two sentences on one counterfactual, cached per clip, scenario, time, and agent.
 app.post("/api/counterfactual/explain", wrap(async (req, res) => {
   const body = (req.body ?? {}) as { clipId?: unknown; t?: unknown; handId?: unknown; agent?: unknown; pathogen?: unknown; sourceEntityId?: unknown };
   const clipId = String(body.clipId ?? "");
   await readMeta(clipId);
   const override = parseScenarioOverride(body);
-  const analysis = await runAnalysis(clipId, override);
+  const pipeline = await buildPipeline(clipId, override);
   const insert = {
     t: Number(body.t),
     ...(typeof body.handId === "string" ? { handId: body.handId } : {}),
     ...(typeof body.agent === "string" ? { agent: body.agent } : {}),
   };
-  const cf = await runCounterfactualFor(clipId, insert, override);
-  res.json({ explanation: await explainCounterfactual(analysis, cf, spark) });
+  const cf = await runCounterfactualFor(clipId, insert, override, pipeline);
+  const file = await explainCounterfactual(pipeline.analysis, cf, spark);
+  res.json({ explanation: file.explanation, cached: file });
 }));
 
 // Sends ambiguous candidates to Spark vision (cached, capped) and returns the fresh analysis.
@@ -204,7 +204,7 @@ app.post("/api/adjudicate", wrap(async (req, res) => {
   await readMeta(clipId);
   const run = await adjudicateClip(clipId, spark);
   const analysis = await runAnalysis(clipId);
-  res.json({ added: run.added, skipped: run.plan.skipped.map((c) => c.id), adjudications: run.all, analysis });
+  res.json({ added: run.added, failed: run.failed, skipped: run.plan.skipped.map((c) => c.id), adjudications: run.all, analysis });
 }));
 
 app.get("/api/clips/:id/scenario", wrap(async (req, res) => {

@@ -29,7 +29,9 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
   const requestId = useRef(0);
 
   // Reset when the clip or the scenario changes. The deep link applies once, on first load.
+  // Bumping requestId drops any response still in flight.
   useEffect(() => {
+    requestId.current++;
     if (!deepLinkUsed && analysis && Number.isFinite(initialCf) && initialCf > 0) {
       deepLinkUsed = true;
       setT(initialCf);
@@ -41,6 +43,14 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
     setExplanation(null);
     onResult(null);
   }, [clipId, analysis, onResult]);
+
+  const deactivate = () => {
+    requestId.current++;
+    setActive(false);
+    setResult(null);
+    setExplanation(null);
+    onResult(null);
+  };
 
   useEffect(() => {
     if (!active || !analysis) return;
@@ -74,12 +84,8 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
             type="checkbox"
             checked={active}
             onChange={(e) => {
-              setActive(e.target.checked);
-              if (!e.target.checked) {
-                setResult(null);
-                setExplanation(null);
-                onResult(null);
-              }
+              if (e.target.checked) setActive(true);
+              else deactivate();
             }}
           />{" "}
           What if hands had been cleaned at

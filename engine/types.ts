@@ -65,13 +65,17 @@ export interface FrameMask {
   readonly data: Uint8Array;
 }
 
-// Everything the contact detector needs, already decoded. frames maps frame index to the masks
-// present in that frame, keyed by entity id. A missing entity in a frame means not visible.
+// Everything the contact detector needs. masksAt returns the masks present in a frame keyed by
+// entity id; a missing entity means not visible. It is a function so the caller can decode
+// lazily: a full-frame raster per entity per frame does not fit in memory for a long clip.
+// The engine only ever walks frames in order and looks back a few frames.
 export interface Tracks {
   readonly frameSize: FrameSize;
   readonly fps: number;
+  // Frames are 0 to frameCount - 1.
+  readonly frameCount: number;
   readonly entities: readonly Entity[];
-  readonly frames: ReadonlyMap<number, ReadonlyMap<string, FrameMask>>;
+  masksAt(frameIndex: number): ReadonlyMap<string, FrameMask>;
 }
 
 export type CandidateConfidence = "confident" | "ambiguous";

@@ -48,6 +48,13 @@ Everything below is implemented as stated, with these decisions made while writi
 - Moment 5 fires on any zone change away from patient surroundings, including patient zone A to patient zone B. Implemented.
 - Gate 3 wording: his call was "best suitable". Rules stay as written (clip A flags 5 and 1); the clip A script is unchanged.
 
+## Review fixes, Tue Oct 27 afternoon
+
+A code review over engine, server, and client found ten issues; all fixed. Two touch the rules and need Rahil's eye:
+- Moment 1 is now one miss per lapse: touching the same resident twice after one unwashed arrival is one missed moment, not two. Leaving the zone and returning without hygiene is a new lapse. Previously each resident touch was charged.
+- `Tracks` changed from a prebuilt map of frames to `masksAt(frameIndex)` plus `frameCount`, so the server decodes masks on demand with a 24 frame cache. The old shape held every frame of every entity as a full-frame raster at once, about a gigabyte for the 25 s feasibility clip.
+Other fixes: scenario overrides are never written to analysis.json; narratives and counterfactual explanations are cached per input hash so each scenario keeps its own and nothing calls Spark twice; the 45 s cap is checked by probe before resampling and rejected uploads leave nothing on disk; a failed adjudication call is not cached as a verdict; a late counterfactual response cannot re-activate the overlay after the box is unchecked; adjudication frames are extracted at the middle of the frame interval; candidates and glove events are computed once per clip and cached until the tracks change; one `passesConfidence` helper replaces three copies and the glove default reads `GLOVE_MIN_CONFIDENCE`.
+
 ## Round three, approved and written Tue Oct 27
 
 Written as stated. Decisions made while writing:

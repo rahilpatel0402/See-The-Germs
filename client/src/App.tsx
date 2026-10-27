@@ -72,10 +72,10 @@ export function App() {
         }
         if (cancelled) return;
         setAnalysis(a);
-        // A cached narrative loads silently; a missing one waits for a click so uploads do not
-        // call the model until someone asks.
+        // A cached narrative for exactly this analysis loads silently; a missing one waits for a
+        // click so uploads do not call the model until someone asks.
         try {
-          const n = await api.narrative(clipId);
+          const n = await api.narrative(clipId, { pathogen: a.scenario.pathogen, sourceEntityId: a.scenario.sourceEntityId });
           if (!cancelled) {
             setNarrative(n.narrative);
             setNarrativeState("ready");
@@ -95,6 +95,13 @@ export function App() {
   }, [clipId]);
 
   const index: OverlayIndex | null = useMemo(() => (tracks ? buildOverlayIndex(tracks) : null), [tracks]);
+
+  // The scenario the displayed analysis was computed with. Counterfactual and narrative requests
+  // always carry it, so they can never disagree with what is on screen, even after a reload.
+  const scenario: ScenarioOverride = useMemo(
+    () => (analysis ? { pathogen: analysis.scenario.pathogen, sourceEntityId: analysis.scenario.sourceEntityId } : {}),
+    [analysis],
+  );
 
   const rerun = async (next: ScenarioOverride) => {
     if (!clipId) return;
@@ -118,7 +125,7 @@ export function App() {
     setNarrativeState("loading");
     setNarrativeError(null);
     api
-      .narrate(clipId, override)
+      .narrate(clipId, scenario)
       .then((n) => {
         setNarrative(n.narrative);
         setNarrativeState("ready");
@@ -215,7 +222,7 @@ export function App() {
             </p>
           ) : null}
           <Timeline analysis={analysis} duration={duration} currentTime={currentTime} onSeek={seek} onHover={setHighlight} />
-          {clipId ? <CounterfactualBar clipId={clipId} analysis={analysis} duration={duration} override={override} onResult={onCounterfactual} /> : null}
+          {clipId ? <CounterfactualBar clipId={clipId} analysis={analysis} duration={duration} override={scenario} onResult={onCounterfactual} /> : null}
           {busy ? <p className="status">Working...</p> : null}
           {error ? <p className="status error">{error}</p> : null}
         </div>

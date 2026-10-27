@@ -36,6 +36,8 @@ const handGrip = fromPattern([
   "...####...", "...####...", "..........", "..........",
 ]);
 
+const EMPTY: ReadonlyMap<string, FrameMask> = new Map();
+
 function tracks(entities: Entity[], perFrame: Array<Record<string, FrameMask | undefined>>): Tracks {
   const frames = new Map<number, Map<string, FrameMask>>();
   perFrame.forEach((masks, f) => {
@@ -43,7 +45,7 @@ function tracks(entities: Entity[], perFrame: Array<Record<string, FrameMask | u
     for (const [id, mask] of Object.entries(masks)) if (mask) m.set(id, mask);
     frames.set(f, m);
   });
-  return { frameSize: SIZE, fps: FPS, entities, frames };
+  return { frameSize: SIZE, fps: FPS, frameCount: perFrame.length, entities, masksAt: (f) => frames.get(f) ?? EMPTY };
 }
 
 function seq(hits: boolean[], handMask = handTouch): Array<Record<string, FrameMask | undefined>> {

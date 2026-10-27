@@ -21,6 +21,8 @@ function blob(left: number, top: number): FrameMask {
 }
 
 // Timeline of [bareMask | null, glovedMask | null] per frame.
+const EMPTY: ReadonlyMap<string, FrameMask> = new Map();
+
 function tracks(frames: Array<[FrameMask | null, FrameMask | null]>): Tracks {
   const map = new Map<number, Map<string, FrameMask>>();
   frames.forEach(([b, g], f) => {
@@ -29,7 +31,7 @@ function tracks(frames: Array<[FrameMask | null, FrameMask | null]>): Tracks {
     if (g) m.set(gloved.id, g);
     map.set(f, m);
   });
-  return { frameSize: SIZE, fps: 10, entities: [bare, gloved], frames: map };
+  return { frameSize: SIZE, fps: 10, frameCount: frames.length, entities: [bare, gloved], masksAt: (f) => map.get(f) ?? EMPTY };
 }
 
 const near = blob(5, 3);

@@ -2,7 +2,8 @@
 
 Ideas that appeared during the build and were not in the ladder. Written down so they stop costing attention. Nothing here is scheduled.
 
-- Narrative prompt: lead the coaching note with the one change, then the two facts that justify it, instead of replaying the timeline. Try on the real clips Monday before the video.
+- Engine pass speed: contacts plus gloves over 247 frames take about 7 s on first request per clip (cached after). Dilating and intersecting on bounds-cropped rasters instead of full frames would cut it several times. Only matters if live uploads feel slow.
+- Narrative prompt: iterate on the real clips Monday before the video. The structure (one change first, then the facts) is in place.
 - Per-hand entities when two hands of one person matter (PLAN.md 6.1 fallback is one entity per SAM class today).
 - Moment 5 and Moment 4 "downstream" could also list the moments that would have been avoided, not only the entities kept clean.
 - Chain graph: curved edges and a hover card showing the frame at the transfer time.

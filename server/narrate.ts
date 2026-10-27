@@ -1,9 +1,10 @@
 // Muse Spark text: structured analysis in, coaching note and audit summary out. Validated,
-// retried once, cached by a hash of the input so the same analysis never calls Spark twice.
-// The model explains; it never produces, edits, or overrides contacts, transfers, moments, or scores.
+// retried once, cached per input hash so the same analysis never calls Spark twice and every
+// scenario of a clip keeps its own narrative. The model explains; it never produces, edits, or
+// overrides contacts, transfers, moments, or scores.
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Analysis, Counterfactual, Narrative } from "../engine/types.ts";
 import { clipDir } from "./paths.ts";
@@ -32,6 +33,9 @@ const EXPLAIN_SCHEMA = {
 const COACHING_WORDS: readonly [number, number] = [100, 210];
 const AUDIT_WORDS: readonly [number, number] = [85, 175];
 const TOP_FIX_WORDS = 45;
+// Reasoning tokens count against the output cap; the first live narrative used 3,150 of them.
+const NARRATIVE_MAX_OUTPUT = 8000;
+const EXPLAIN_MAX_OUTPUT = 4000;
 
 // Anything that reads as patient-facing or clinical advice fails validation.
 const DISALLOWED = /\b(diagnos\w*|prescri\w*|dosage|medication|antibiotic\w*|treat(ment)? plan|see a doctor|should be (treated|tested|isolated)|the (resident|patient) (should|needs|must))\b/i;
@@ -45,8 +49,21 @@ export interface NarrativeFile {
   readonly narrative: Narrative;
 }
 
-export function narrativePath(clipId: string): string {
-  return path.join(clipDir(clipId), "narrative.json");
+export interface ExplanationFile {
+  readonly hash: string;
+  readonly model: string;
+  readonly backend: string;
+  readonly createdAt: string;
+  readonly usage: SparkUsage;
+  readonly explanation: string;
+}
+
+export function narrativePath(clipId: string, hash: string): string {
+  return path.join(clipDir(clipId), "narratives", `${hash}.json`);
+}
+
+export function explanationPath(clipId: string, hash: string): string {
+  return path.join(clipDir(clipId), "explanations", `${hash}.json`);
 }
 
 // The subset of the analysis Spark gets: labels instead of ids, no masks, no candidates.
@@ -77,6 +94,17 @@ export function hashInput(input: object): string {
   return createHash("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
 }
 
+// The cache key covers the prompt too, so editing the prompt invalidates old narratives.
+let promptCache: string | null = null;
+async function promptText(): Promise<string> {
+  if (promptCache === null) promptCache = await readFile(path.join(process.cwd(), "server", "prompts", "narrate.md"), "utf8");
+  return promptCache;
+}
+
+export async function narrativeHash(analysis: Analysis): Promise<string> {
+  return hashInput({ prompt: await promptText(), input: trimForNarrative(analysis) });
+}
+
 const words = (s: string): number => s.trim().split(/\s+/).filter(Boolean).length;
 
 export function validateNarrative(json: unknown): { ok: true; narrative: Narrative } | { ok: false; reason: string } {
@@ -98,20 +126,29 @@ export function validateNarrative(json: unknown): { ok: true; narrative: Narrati
 }
 
 async function loadPrompt(): Promise<string> {
-  return readFile(path.join(process.cwd(), "server", "prompts", "narrate.md"), "utf8");
+  return promptText();
 }
 
-export async function readNarrative(clipId: string): Promise<NarrativeFile | null> {
-  const file = narrativePath(clipId);
+async function readJson<T>(file: string): Promise<T | null> {
   if (!existsSync(file)) return null;
-  return JSON.parse(await readFile(file, "utf8")) as NarrativeFile;
+  return JSON.parse(await readFile(file, "utf8")) as T;
+}
+
+async function writeJson(file: string, value: unknown): Promise<void> {
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, JSON.stringify(value, null, 2));
+}
+
+// The cached narrative for exactly this analysis, or null.
+export async function readNarrative(clipId: string, analysis: Analysis): Promise<NarrativeFile | null> {
+  return readJson<NarrativeFile>(narrativePath(clipId, await narrativeHash(analysis)));
 }
 
 export async function narrateClip(clipId: string, analysis: Analysis, backend: SparkBackend): Promise<NarrativeFile> {
   const input = trimForNarrative(analysis);
-  const hash = hashInput(input);
-  const cached = await readNarrative(clipId);
-  if (cached && cached.hash === hash) return cached;
+  const hash = await narrativeHash(analysis);
+  const cached = await readJson<NarrativeFile>(narrativePath(clipId, hash));
+  if (cached) return cached;
 
   const prompt = await loadPrompt();
   const baseText = `Analysis record:\n${JSON.stringify(input, null, 2)}`;
@@ -120,8 +157,7 @@ export async function narrateClip(clipId: string, analysis: Analysis, backend: S
     const text = attempt === 0 ? baseText : `${baseText}\n\nYour previous answer failed validation: ${lastReason}. Try again and respect the word counts and the rules.`;
     let result;
     try {
-      // Reasoning tokens count against this cap; the first live run used 2,205 of them at low effort.
-      result = await backend.completeJson({ instructions: prompt, text, images: [], schemaName: "narrative", schema: NARRATIVE_SCHEMA, maxOutputTokens: 8000 });
+      result = await backend.completeJson({ instructions: prompt, text, images: [], schemaName: "narrative", schema: NARRATIVE_SCHEMA, maxOutputTokens: NARRATIVE_MAX_OUTPUT });
     } catch (err) {
       lastReason = (err as Error).message;
       console.log(`spark   | ${clipId} | narrate attempt ${attempt + 1} failed: ${lastReason}`);
@@ -133,7 +169,7 @@ export async function narrateClip(clipId: string, analysis: Analysis, backend: S
     );
     if (checked.ok) {
       const file: NarrativeFile = { hash, model: backend.model, backend: backend.name, createdAt: new Date().toISOString(), usage: result.usage, narrative: checked.narrative };
-      await writeFile(narrativePath(clipId), JSON.stringify(file, null, 2));
+      await writeJson(narrativePath(clipId, hash), file);
       return file;
     }
     lastReason = checked.reason;
@@ -141,21 +177,27 @@ export async function narrateClip(clipId: string, analysis: Analysis, backend: S
   throw new Error(`narrative failed validation twice: ${lastReason}`);
 }
 
-// Two sentences on a counterfactual. Not cached to disk; the client asks only on demand.
-export async function explainCounterfactual(analysis: Analysis, cf: Counterfactual, backend: SparkBackend): Promise<string> {
+// Two sentences on a counterfactual, cached per clip, scenario, time, and agent.
+export async function explainCounterfactual(analysis: Analysis, cf: Counterfactual, backend: SparkBackend): Promise<ExplanationFile> {
   const label = new Map(analysis.entities.map((e) => [e.id, e.label]));
   const name = (id: string): string => label.get(id) ?? id;
   const input = {
     pathogen: analysis.pathogen.label,
+    scenario_source: name(analysis.scenario.sourceEntityId),
     inserted: { hand: name(cf.inserted.handId), at_s: cf.inserted.t, agent: cf.inserted.agent, effective_for_this_pathogen: cf.inserted.effective },
     before: cf.before,
     after: cf.after,
     kept_clean: cf.keptClean.map(name),
   };
   const prompt = `${await loadPrompt()}\n\nFor this request, write exactly two sentences explaining the before and after numbers for the inserted hand hygiene event. Plain language. If the agent is not effective against the pathogen, say that is why nothing changed.`;
-  const result = await backend.completeJson({ instructions: prompt, text: JSON.stringify(input, null, 2), images: [], schemaName: "counterfactual_explanation", schema: EXPLAIN_SCHEMA, maxOutputTokens: 4000 });
+  const hash = hashInput({ prompt, input });
+  const cached = await readJson<ExplanationFile>(explanationPath(analysis.clipId, hash));
+  if (cached) return cached;
+  const result = await backend.completeJson({ instructions: prompt, text: JSON.stringify(input, null, 2), images: [], schemaName: "counterfactual_explanation", schema: EXPLAIN_SCHEMA, maxOutputTokens: EXPLAIN_MAX_OUTPUT });
   const text = (result.json as { counterfactual_explanation?: unknown })?.counterfactual_explanation;
   if (typeof text !== "string" || !text.trim() || DISALLOWED.test(text)) throw new Error("counterfactual explanation failed validation");
   console.log(`spark   | ${analysis.clipId} | explain counterfactual at ${cf.inserted.t}s | in=${result.usage.inputTokens} out=${result.usage.outputTokens} | $${estimateSparkCost(result.usage).toFixed(4)}`);
-  return text.trim();
+  const file: ExplanationFile = { hash, model: backend.model, backend: backend.name, createdAt: new Date().toISOString(), usage: result.usage, explanation: text.trim() };
+  await writeJson(explanationPath(analysis.clipId, hash), file);
+  return file;
 }

@@ -24,7 +24,8 @@ export async function rawFramePath(clipId: string, frameIndex: number): Promise<
   const meta = await readMeta(clipId);
   await mkdir(framesDir(clipId), { recursive: true });
   const file = path.join(framesDir(clipId), `f${String(frameIndex).padStart(5, "0")}.png`);
-  if (!existsSync(file)) await extractFrame(sampledPath(clipId), frameIndex / meta.fps, file);
+  // Seek to the middle of the frame's interval so timebase rounding cannot land on a neighbour.
+  if (!existsSync(file)) await extractFrame(sampledPath(clipId), (frameIndex + 0.5) / meta.fps, file);
   return file;
 }
 
