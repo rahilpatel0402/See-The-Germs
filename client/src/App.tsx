@@ -6,6 +6,7 @@ import { CounterfactualBar } from "./CounterfactualBar.tsx";
 import { Drawer } from "./Drawer.tsx";
 import { buildOverlayIndex, type OverlayIndex } from "./overlay.ts";
 import { Timeline } from "./Timeline.tsx";
+import { Upload } from "./Upload.tsx";
 import { VideoStage } from "./VideoStage.tsx";
 
 const BADGE = "Staged synthetic footage. Staff training and audit aid. Not surveillance. Not medical advice.";
@@ -37,16 +38,23 @@ export function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [highlight, setHighlight] = useState<string | null>(null);
+  const [upload, setUpload] = useState<{ open: boolean; resume: string | null }>({ open: params.get("upload") === "1", resume: null });
+
+  const refreshClips = useCallback(
+    () =>
+      api
+        .clips()
+        .then(({ clips }) => {
+          setClips(clips);
+          setClipId((current) => current ?? clips[0] ?? null);
+        })
+        .catch((e: Error) => setError(e.message)),
+    [],
+  );
 
   useEffect(() => {
-    api
-      .clips()
-      .then(({ clips }) => {
-        setClips(clips);
-        setClipId((current) => current ?? clips[0] ?? null);
-      })
-      .catch((e: Error) => setError(e.message));
-  }, []);
+    void refreshClips();
+  }, [refreshClips]);
 
   useEffect(() => {
     if (!clipId) return;
@@ -67,8 +75,18 @@ export function App() {
         try {
           a = await api.analysis(clipId);
         } catch (e) {
-          if (e instanceof ApiError && e.status === 404) a = await api.analyze(clipId);
-          else throw e;
+          if (e instanceof ApiError && e.status === 404) {
+            try {
+              a = await api.analyze(clipId);
+            } catch (inner) {
+              // Not segmented yet: a clip whose setup was interrupted. Resume it in the upload panel.
+              if (inner instanceof ApiError && inner.status === 409) {
+                if (!cancelled) setUpload({ open: true, resume: clipId });
+                return;
+              }
+              throw inner;
+            }
+          } else throw e;
         }
         if (cancelled) return;
         setAnalysis(a);
@@ -188,11 +206,28 @@ export function App() {
               ))}
             </select>
           </label>
+          <button type="button" onClick={() => setUpload({ open: true, resume: null })}>
+            Upload your own
+          </button>
           <button type="button" className={`germs-toggle${glow ? " on" : ""}`} onClick={() => setGlow((g) => !g)} aria-pressed={glow}>
             See the Germs
           </button>
         </div>
       </header>
+
+      {upload.open ? (
+        <Upload
+          resumeClipId={upload.resume}
+          onClose={() => setUpload({ open: false, resume: null })}
+          onDone={(id) => {
+            setUpload({ open: false, resume: null });
+            void refreshClips().then(() => {
+              setClipId(null);
+              setClipId(id);
+            });
+          }}
+        />
+      ) : null}
 
       <main className={`main${drawerOpen ? " with-drawer" : ""}`}>
         <div className="stage-column">

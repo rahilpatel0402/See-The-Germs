@@ -121,23 +121,47 @@ app.put("/api/clips/:id/entities", wrap(async (req, res) => {
   res.json({ entities });
 }));
 
-// Runs SAM for every entity phrase that has no cached track yet. Idempotent.
+// Runs SAM for every entity phrase that has no cached track yet. Idempotent. With ?stream=1
+// the response is newline-delimited JSON, one object per class as it completes, then
+// { done: true }, so the upload flow can show progress.
 app.post("/api/segment", wrap(async (req, res) => {
   const clipId = String((req.body as { clipId?: unknown })?.clipId ?? "");
   const meta = await readMeta(clipId);
   const entities = await readEntities(meta.id);
   const phrases = [...new Set(entities.map((e) => e.samPhrase))];
-  const summary = [];
-  for (const phrase of phrases) {
-    const track = await segmentPhrase(meta.id, phrase, backend);
-    summary.push({
-      phrase,
-      frames: new Set(track.records.map((r) => r.frameIndex)).size,
-      objects: new Set(track.records.map((r) => r.objectId)).size,
-      billedFrames: track.usage.videoFramesProcessed ?? null,
-    });
+  const stream = req.query["stream"] === "1";
+  if (stream) {
+    res.status(200).type("application/x-ndjson");
+    res.setHeader("Cache-Control", "no-cache");
+    res.flushHeaders();
   }
-  res.json({ clipId: meta.id, tracks: summary });
+  const summary: Array<{ phrase: string; frames: number; objects: number; billedFrames: number | null; ms: number }> = [];
+  try {
+    for (const phrase of phrases) {
+      const started = Date.now();
+      const track = await segmentPhrase(meta.id, phrase, backend);
+      const line = {
+        phrase,
+        frames: new Set(track.records.map((r) => r.frameIndex)).size,
+        objects: new Set(track.records.map((r) => r.objectId)).size,
+        billedFrames: track.usage.videoFramesProcessed ?? null,
+        ms: Date.now() - started,
+      };
+      summary.push(line);
+      if (stream) res.write(`${JSON.stringify(line)}\n`);
+    }
+  } catch (err) {
+    if (!stream) throw err;
+    res.write(`${JSON.stringify({ error: (err as Error).message })}\n`);
+    res.end();
+    return;
+  }
+  if (stream) {
+    res.write(`${JSON.stringify({ done: true, clipId: meta.id })}\n`);
+    res.end();
+  } else {
+    res.json({ clipId: meta.id, tracks: summary });
+  }
 }));
 
 // Body: { clipId, pathogen?, sourceEntityId? }. Overrides apply to this run only; use PUT

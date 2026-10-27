@@ -494,3 +494,88 @@ button {
     grid-column: 1 / -1;
   }
 }
+
+.upload-panel {
+  margin: 12px 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px 14px;
+}
+
+.upload-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upload-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.steps {
+  margin: 10px 0;
+  padding-left: 22px;
+}
+
+.steps li {
+  margin: 6px 0;
+  color: var(--muted);
+}
+
+.steps li.current {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.steps li.current::marker {
+  color: var(--hot);
+}
+
+.steps li.done {
+  color: var(--ok);
+}
+
+.steps .small {
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.upload-pick {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.entities-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.entities-editor th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 4px 6px;
+}
+
+.entities-editor td {
+  padding: 3px 6px;
+}
+
+.entities-editor input,
+.entities-editor select {
+  width: 100%;
+  padding: 4px 6px;
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
