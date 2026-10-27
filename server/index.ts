@@ -1,7 +1,8 @@
 // Express API. Keys stay here; the client never talks to Meta directly.
 import "./env.ts";
 import { existsSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
+import path from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
 import { readScenario, runAnalysis, runCounterfactualFor, validateScenario, writeScenario } from "./analysis.ts";
@@ -18,9 +19,14 @@ import { MetaSamBackend, segmentPhrase } from "./sam.ts";
 import { MetaSparkBackend } from "./spark.ts";
 
 const PORT = Number(optionalEnv("PORT", "8787"));
-// Heuristic cap so a judge cannot burn the credit budget with one upload: 45 s of video.
+// Heuristic caps so a judge cannot burn the credit budget: 45 s per upload, a daily upload
+// count, and the adjudication cap in engine/config.ts.
 const MAX_UPLOAD_SECONDS = 45;
 const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
+const MAX_UPLOADS_PER_DAY = Number(optionalEnv("MAX_UPLOADS_PER_DAY", "20"));
+// Comma-separated clip ids that are precomputed and served offline from cache.
+const DEMO_CLIPS = optionalEnv("DEMO_CLIPS", "").split(",").map((s) => s.trim()).filter(Boolean);
+const CLIENT_DIST = path.join(process.cwd(), "client", "dist");
 
 await mkdir(TMP_DIR, { recursive: true });
 const app = express();
@@ -42,12 +48,39 @@ const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) 
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
+// Demo clips first, then everything else, so the picker opens on a cached clip.
 app.get("/api/clips", wrap(async (_req, res) => {
-  res.json({ clips: await listClipIds() });
+  const all = await listClipIds();
+  const demo = DEMO_CLIPS.filter((id) => all.includes(id));
+  res.json({ clips: [...demo, ...all.filter((id) => !demo.includes(id))], demo });
 }));
+
+app.get("/api/demo", wrap(async (_req, res) => {
+  const all = await listClipIds();
+  res.json({ demo: DEMO_CLIPS.filter((id) => all.includes(id) && existsSync(analysisPath(id))) });
+}));
+
+async function uploadsToday(): Promise<number> {
+  const today = new Date().toISOString().slice(0, 10);
+  let n = 0;
+  for (const id of await listClipIds()) {
+    if (!id.startsWith("c_")) continue;
+    try {
+      const meta = await readMeta(id);
+      if (meta.createdAt.startsWith(today)) n++;
+    } catch {
+      // unreadable clip folders do not count
+    }
+  }
+  return n;
+}
 
 app.post("/api/clips", upload.single("video"), wrap(async (req, res) => {
   if (!req.file) throw new HttpError(400, "send the video as multipart field 'video'");
+  if ((await uploadsToday()) >= MAX_UPLOADS_PER_DAY) {
+    await rm(req.file.path, { force: true });
+    throw new HttpError(429, `the daily upload limit of ${MAX_UPLOADS_PER_DAY} clips is reached; the demo clips still work`);
+  }
   const meta = await createClipFromUpload(req.file.path, req.file.originalname);
   if (meta.source.durationS > MAX_UPLOAD_SECONDS) {
     throw new HttpError(413, `clip is ${meta.source.durationS.toFixed(1)} s; the limit is ${MAX_UPLOAD_SECONDS} s`);
@@ -186,6 +219,15 @@ app.put("/api/clips/:id/scenario", wrap(async (req, res) => {
   await writeScenario(meta.id, scenario);
   res.json({ scenario });
 }));
+
+// In production the built client is served from the same process, so one deploy is enough.
+if (existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST));
+  app.get("/{*path}", (req, res, next) => {
+    if (req.path.startsWith("/api/")) return next();
+    res.sendFile(path.join(CLIENT_DIST, "index.html"));
+  });
+}
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   const status = err instanceof HttpError ? err.status : 500;
