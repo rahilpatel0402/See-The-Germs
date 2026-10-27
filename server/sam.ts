@@ -66,13 +66,28 @@ export async function ensureRemoteFile(clip: ClipMeta): Promise<string> {
   return uploaded.id;
 }
 
-// Removes the clip from the Meta Files API once every class is cached. A later new phrase
-// simply uploads again. Keeps footage on the API side only as long as segmentation needs it.
-export async function deleteRemoteFile(clip: ClipMeta): Promise<void> {
-  if (!clip.remoteFileId) return;
-  await metaClient().files.delete(clip.remoteFileId);
+async function forgetRemoteFile(clip: ClipMeta): Promise<ClipMeta> {
   const { remoteFileId: _dropped, ...rest } = clip;
   await writeMeta(rest);
+  return rest;
+}
+
+function isMissingFileError(err: unknown): boolean {
+  const e = err as { status?: number; message?: string };
+  return e?.status === 404 || /file[^.]{0,40}(not found|does not exist|expired|invalid)/i.test(e?.message ?? "");
+}
+
+// Removes the clip from the Meta Files API once every class is cached. A later new phrase
+// simply uploads again. Keeps footage on the API side only as long as segmentation needs it.
+// A 404 from the delete means it is already gone; the id is dropped either way.
+export async function deleteRemoteFile(clip: ClipMeta): Promise<void> {
+  if (!clip.remoteFileId) return;
+  try {
+    await metaClient().files.delete(clip.remoteFileId);
+  } catch (err) {
+    if (!isMissingFileError(err)) throw err;
+  }
+  await forgetRemoteFile(clip);
   console.log(`files   | ${clip.id} | deleted remote ${clip.remoteFileId} after segmentation`);
 }
 
@@ -92,7 +107,18 @@ export class MetaSamBackend implements SegmentationBackend {
   readonly name = "meta-model-api";
 
   async segmentVideo(clip: ClipMeta, phrase: string): Promise<SegmentationResult> {
-    const fileId = await ensureRemoteFile(clip);
+    try {
+      return await this.segmentWithFile(clip, phrase, await ensureRemoteFile(clip));
+    } catch (err) {
+      // A remembered file id can go stale (expired, or deleted out of band). Upload once more.
+      if (!clip.remoteFileId || !isMissingFileError(err)) throw err;
+      console.log(`files   | ${clip.id} | remote ${clip.remoteFileId} is gone, uploading again`);
+      const fresh = await forgetRemoteFile(clip);
+      return this.segmentWithFile(fresh, phrase, await ensureRemoteFile(fresh));
+    }
+  }
+
+  private async segmentWithFile(clip: ClipMeta, phrase: string, fileId: string): Promise<SegmentationResult> {
     const started = Date.now();
     const sink: { usage?: SegmentationUsage } = {};
     const stream = await metaClient().responses.create({

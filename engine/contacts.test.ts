@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CONTACT_CONFIG, dilationPx, scaledFloorPx } from "./config.ts";
-import { detectContacts } from "./contacts.ts";
+import { detectContacts, mergeHandClassContacts } from "./contacts.ts";
 import { fromPattern } from "./masks.ts";
 import type { Entity, FrameMask, Tracks } from "./types.ts";
 
@@ -155,6 +155,26 @@ test("output is deterministic and sorted by start frame", () => {
   const b = detectContacts(t, CONTACT_CONFIG);
   assert.deepEqual(a, b);
   assert.deepEqual(a.map((c) => c.entityId), ["pump", "rail"]);
+});
+
+test("overlapping contacts from the bare and gloved classes of one person merge into one gloved contact", () => {
+  const ev = (handId: string, entityId: string, startT: number, endT: number) => ({ handId, entityId, startT, endT, adjudicated: false });
+  const merged = mergeHandClassContacts(
+    [ev("h1", "rail", 11.1, 14.3), ev("h2", "rail", 11.2, 14.3), ev("h1", "rail", 20.0, 21.0), ev("h1", "pump", 11.5, 12.5)],
+    [hand, glove, rail, pump],
+  );
+  assert.deepEqual(merged, [
+    { handId: "h2", entityId: "rail", startT: 11.1, endT: 14.3, adjudicated: false },
+    { handId: "h1", entityId: "pump", startT: 11.5, endT: 12.5, adjudicated: false },
+    { handId: "h1", entityId: "rail", startT: 20.0, endT: 21.0, adjudicated: false },
+  ]);
+});
+
+test("contacts from different people are never merged", () => {
+  const p2: Entity = { id: "p2", label: "P2 bare", class: "bare_hand", zone: "healthcare_area", samPhrase: "bare hand", person: "P2" };
+  const ev = (handId: string, startT: number, endT: number) => ({ handId, entityId: "rail", startT, endT, adjudicated: false });
+  const merged = mergeHandClassContacts([ev("h1", 1, 2), ev("p2", 1.5, 2.5)], [hand, p2, rail]);
+  assert.equal(merged.length, 2);
 });
 
 test("rejects a non-positive fps", () => {

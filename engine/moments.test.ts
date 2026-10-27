@@ -58,6 +58,20 @@ test("Moment 2: an aseptic task without hygiene immediately before it", () => {
   assert.deepEqual(run(contacts, [rub(3)]), []);
 });
 
+test("an aseptic task the detector split into pieces is one Moment 2 miss", () => {
+  const contacts = [contact("bare_hand", "phone", 1, 2), contact("bare_hand", "glucometer", 4.0, 4.6), contact("bare_hand", "glucometer", 4.9, 5.5), contact("bare_hand", "glucometer", 5.8, 6.4)];
+  assert.deepEqual(run(contacts).map((m) => [m.moment, m.t]), [[2, 4]]);
+});
+
+test("leaving a patient zone after touching the resident is Moment 4 even via a same-zone object", () => {
+  // resident B, then blanket B, then the phone: one departure, the resident was touched, so Moment 4 at the blanket's end.
+  const contacts = [contact("bare_hand", "resident_B", 5, 6), contact("bare_hand", "blanket_B", 7, 8), contact("bare_hand", "phone", 10, 11)];
+  assert.deepEqual(run(contacts).map((m) => [m.moment, m.t]), [[4, 8]]);
+  // Without the resident it is Moment 5.
+  const surroundingsOnly = [contact("bare_hand", "blanket_B", 7, 8), contact("bare_hand", "phone", 10, 11)];
+  assert.deepEqual(run(surroundingsOnly).map((m) => [m.moment, m.t]), [[5, 8]]);
+});
+
 test("Moment 1 looks back past same-zone contacts to the last contact outside the zone", () => {
   // phone (healthcare) -> blanket B -> resident B: the blanket is inside zone B, so the miss is
   // still scored against the phone, and only once.

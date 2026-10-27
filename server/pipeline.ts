@@ -4,7 +4,7 @@
 // scenario, so they are cached in memory per clip and invalidated by file modification times.
 import { stat } from "node:fs/promises";
 import { CONTACT_CONFIG, GLOVE_CONFIG, HYGIENE_CONFIG, SCORE_WEIGHTS } from "../engine/config.ts";
-import { detectContacts } from "../engine/contacts.ts";
+import { detectContacts, mergeHandClassContacts } from "../engine/contacts.ts";
 import { detectGloveEvents } from "../engine/gloves.ts";
 import { splitHygiene } from "../engine/hygiene.ts";
 import { detectMomentMisses } from "../engine/moments.ts";
@@ -12,8 +12,8 @@ import { isPathogenId, PATHOGENS } from "../engine/pathogens.ts";
 import { propagate, type PropagationInput } from "../engine/propagation.ts";
 import { scoreExposure } from "../engine/score.ts";
 import type { Adjudication, Analysis, ContactCandidate, ContactEvent, Entity, GloveEvent, Scenario } from "../engine/types.ts";
-import { readAdjudications, readScenario, validateScenario } from "./analysis.ts";
 import { readEntities, type EntityConfig } from "./entities.ts";
+import { readAdjudications, readScenario, validateScenario } from "./scenario.ts";
 import { HttpError } from "./errors.ts";
 import { entitiesPath, metaPath, trackPath } from "./paths.ts";
 import { loadTracks } from "./tracks.ts";
@@ -111,7 +111,8 @@ export async function buildPipeline(clipId: string, override: ScenarioOverride =
   const profile = PATHOGENS[scenario.pathogen];
 
   const adjudications = await readAdjudications(clipId);
-  const contacts = contactsFromCandidates(perception.candidates, adjudications);
+  // One touch seen by both hand classes of one person is one contact.
+  const contacts = mergeHandClassContacts(contactsFromCandidates(perception.candidates, adjudications), perception.entities);
   const split = splitHygiene(contacts, perception.entities, profile, HYGIENE_CONFIG);
   const propInput: PropagationInput = {
     contacts: split.contacts,

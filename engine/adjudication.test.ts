@@ -36,6 +36,13 @@ test("cached verdicts are never re-asked and count against the cap", () => {
   assert.deepEqual(plan.skipped.map((c) => c.id), ["h:o:20"]);
 });
 
+test("verdicts on candidates that no longer exist do not count against the cap", () => {
+  const cands = [cand(1, "ambiguous", 10)];
+  const stale: Adjudication[] = [{ candidateId: "h:o:999", verdict: "touching", reasoning: "old" }];
+  const plan = planAdjudication(cands, stale, { capPerClip: 1 });
+  assert.deepEqual(plan.selected.map((c) => c.id), ["h:o:10"]);
+});
+
 test("beyond the cap, the lowest overlap candidates are chosen first", () => {
   const cands = [cand(1, "ambiguous", 300), cand(2, "ambiguous", 100), cand(3, "ambiguous", 200), cand(4, "ambiguous", 50)];
   const plan = planAdjudication(cands, [], { capPerClip: 2 });

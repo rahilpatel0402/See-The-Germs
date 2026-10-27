@@ -26,9 +26,12 @@ export function planAdjudication(
   existing: readonly Adjudication[],
   config: AdjudicationConfig,
 ): AdjudicationPlan {
-  const done = new Set(existing.map((a) => a.candidateId));
+  // Only verdicts on candidates that still exist count: a retune or a phrase change can leave
+  // stale ids behind, and those must not eat the cap forever.
+  const currentIds = new Set(candidates.map((c) => c.id));
+  const done = new Set(existing.filter((a) => currentIds.has(a.candidateId)).map((a) => a.candidateId));
   const eligible = candidates.filter((c) => c.confidence === "ambiguous" && !done.has(c.id));
-  // Existing verdicts count against the cap, so a clip never exceeds it across runs.
+  // Live verdicts count against the cap, so a clip never exceeds it across runs.
   const budget = Math.max(0, config.capPerClip - done.size);
   // Lowest overlap first: the thinnest contacts are the ones most worth a second look.
   const byOverlap = [...eligible].sort(

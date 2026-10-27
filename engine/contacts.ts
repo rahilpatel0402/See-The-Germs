@@ -3,8 +3,47 @@
 // that is the adjudication step's job, and the engine consumes its verdicts as input.
 
 import { dilationPx, scaledFloorPx, type ContactConfig } from "./config.ts";
+import { personOf } from "./gloves.ts";
 import { dilate, intersectArea } from "./masks.ts";
-import type { ContactCandidate, Entity, FrameMask, Tracks } from "./types.ts";
+import type { ContactCandidate, ContactEvent, Entity, FrameMask, Tracks } from "./types.ts";
+
+// One physical touch can be seen by both SAM hand classes of the same person (a transparent
+// glove, or the moment of a handover). Contacts from the bare and gloved classes of one person
+// on the same entity that overlap in time are merged into one. The merged contact is attributed
+// to the gloved class when either side was gloved, because that is the surface that touched.
+export function mergeHandClassContacts(contacts: readonly ContactEvent[], entities: readonly Entity[]): ContactEvent[] {
+  const byId = new Map(entities.map((e) => [e.id, e]));
+  const handEntity = (id: string): Entity => {
+    const e = byId.get(id);
+    if (e === undefined || (e.class !== "bare_hand" && e.class !== "gloved_hand")) throw new Error(`mergeHandClassContacts: ${id} is not a hand`);
+    return e;
+  };
+  const groups = new Map<string, ContactEvent[]>();
+  for (const c of contacts) {
+    const key = `${personOf(handEntity(c.handId))}|${c.entityId}`;
+    (groups.get(key) ?? groups.set(key, []).get(key)!).push(c);
+  }
+  const out: ContactEvent[] = [];
+  for (const list of groups.values()) {
+    const sorted = [...list].sort((a, b) => a.startT - b.startT || a.endT - b.endT);
+    let current: ContactEvent | null = null;
+    for (const c of sorted) {
+      if (current !== null && c.startT <= current.endT) {
+        const prev: ContactEvent = current;
+        const prevGloved: boolean = handEntity(prev.handId).class === "gloved_hand";
+        const thisGloved: boolean = handEntity(c.handId).class === "gloved_hand";
+        const handId: string = prevGloved ? prev.handId : thisGloved ? c.handId : prev.handId;
+        current = { handId, entityId: c.entityId, startT: prev.startT, endT: Math.max(prev.endT, c.endT), adjudicated: prev.adjudicated || c.adjudicated };
+      } else {
+        if (current !== null) out.push(current);
+        current = c;
+      }
+    }
+    if (current !== null) out.push(current);
+  }
+  out.sort((a, b) => a.startT - b.startT || a.entityId.localeCompare(b.entityId) || a.handId.localeCompare(b.handId));
+  return out;
+}
 
 interface OpenRun {
   startFrame: number;

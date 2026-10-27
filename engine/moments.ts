@@ -1,5 +1,12 @@
-// WHO Five Moments mapping from zones and contacts, rules exactly as PLAN.md 6.5. Moment 3 is
-// out of scope. Pure: the propagation rerun used for downstream impact is passed in.
+// WHO Five Moments mapping from zones and contacts, rules from PLAN.md 6.5 as confirmed by
+// Rahil on Oct 27. Moment 3 is out of scope. Pure: the propagation rerun used for downstream
+// impact is passed in.
+//
+// Zone episodes: consecutive contacts of one person inside one zone form an episode. Leaving a
+// patient zone without effective hygiene before the next contact is one missed moment: Moment 4
+// if the resident was touched during the episode, otherwise Moment 5 (WHO: after touching
+// patient surroundings without touching the patient). Moment 1 is charged once per unwashed
+// arrival at a resident, Moment 2 once per unwashed approach to an aseptic task.
 
 import { personOf } from "./gloves.ts";
 import type { ContactEvent, Entity, HygieneEvent, MomentMiss, PropagationResult } from "./types.ts";
@@ -46,16 +53,32 @@ export function detectMomentMisses(input: MomentsInput, base: PropagationResult,
   const found: Array<Omit<MomentMiss, "downstream">> = [];
   for (const [person, list] of perPerson) {
     const contacts = [...list].sort((a, b) => a.startT - b.startT || a.endT - b.endT);
-    // One Moment 1 miss per lapse: touching the same resident twice after one unwashed arrival
-    // is one missed moment, not two. Keyed by the outside contact that started the lapse.
     const chargedOutside = new Set<number>();
+    const chargedAseptic = new Set<number>();
+
+    let episodeZone: string | null = null;
+    let episodeTouchedResident = false;
+    let episodeLastEnd = 0;
+    let episodeHandId = "";
+
     for (let i = 0; i < contacts.length; i++) {
       const c = contacts[i] as ContactEvent;
       const e = entityOf(c.entityId);
-      const prev = i > 0 ? (contacts[i - 1] as ContactEvent) : undefined;
-      const next = i + 1 < contacts.length ? (contacts[i + 1] as ContactEvent) : undefined;
 
-      // Moment 1: before touching a patient. Look back to the last contact outside this patient zone.
+      // Leaving a patient zone: Moment 4 or Moment 5, once per departure.
+      if (episodeZone !== null && e.zone !== episodeZone) {
+        if (isPatientZone(episodeZone) && !hygieneBetween(person, episodeLastEnd, c.startT)) {
+          found.push({ moment: episodeTouchedResident ? 4 : 5, handId: episodeHandId, t: episodeLastEnd });
+        }
+        episodeTouchedResident = false;
+      }
+      episodeZone = e.zone;
+      if (e.class === "resident_zone") episodeTouchedResident = true;
+      episodeLastEnd = c.endT;
+      episodeHandId = c.handId;
+
+      // Moment 1: before touching a patient. Look back to the last contact outside this patient
+      // zone; charge that lapse once.
       if (e.class === "resident_zone") {
         let outside: ContactEvent | undefined;
         let outsideIndex = -1;
@@ -73,25 +96,20 @@ export function detectMomentMisses(input: MomentsInput, base: PropagationResult,
         }
       }
 
-      // Moment 2: before a clean or aseptic task.
-      if (e.aseptic === true && !hygieneBetween(person, prev?.endT ?? 0, c.startT)) {
-        found.push({ moment: 2, handId: c.handId, t: c.startT });
-      }
-
-      // Moment 4: after touching a patient, before the healthcare area or another patient zone.
-      if (e.class === "resident_zone" && next !== undefined) {
-        const nextZone = entityOf(next.entityId).zone;
-        if (nextZone !== e.zone && !hygieneBetween(person, c.endT, next.startT)) {
-          found.push({ moment: 4, handId: c.handId, t: c.endT });
+      // Moment 2: before a clean or aseptic task. Charged once per approach, keyed by the last
+      // non-aseptic contact, so a task the detector split into pieces is one miss.
+      if (e.aseptic === true) {
+        let prevIndex = -1;
+        for (let j = i - 1; j >= 0; j--) {
+          if (entityOf((contacts[j] as ContactEvent).entityId).aseptic !== true) {
+            prevIndex = j;
+            break;
+          }
         }
-      }
-
-      // Moment 5: after touching patient surroundings, before leaving that zone for anywhere
-      // else: the healthcare area or another patient zone (Rahil, Oct 27).
-      if (e.class === "object" && isPatientZone(e.zone) && next !== undefined) {
-        const nextZone = entityOf(next.entityId).zone;
-        if (nextZone !== e.zone && !hygieneBetween(person, c.endT, next.startT)) {
-          found.push({ moment: 5, handId: c.handId, t: c.endT });
+        const from = prevIndex >= 0 ? (contacts[prevIndex] as ContactEvent).endT : 0;
+        if (!chargedAseptic.has(prevIndex) && !hygieneBetween(person, from, c.startT)) {
+          chargedAseptic.add(prevIndex);
+          found.push({ moment: 2, handId: c.handId, t: c.startT });
         }
       }
     }

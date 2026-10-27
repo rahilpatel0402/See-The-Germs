@@ -38,7 +38,10 @@ export function Timeline({ analysis, duration, currentTime, onSeek, onHover }: P
       <div className="lane">
         <span className="lane-label">contacts</span>
         {analysis.contacts.map((c, i) => {
-          const candidate = analysis.candidates.find((k) => k.handId === c.handId && k.entityId === c.entityId && k.startT === c.startT);
+          // Contacts may be merged across hand classes, so match the reviewed candidate by overlap.
+          const candidate = analysis.candidates.find(
+            (k) => k.entityId === c.entityId && k.startT <= c.endT && k.endT >= c.startT && (!c.adjudicated || verdictFor.has(k.id)),
+          );
           const verdict = candidate ? verdictFor.get(candidate.id) : undefined;
           return (
             <span

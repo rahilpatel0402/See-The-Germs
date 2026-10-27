@@ -4,11 +4,11 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { planAdjudication, type AdjudicationPlan } from "../engine/adjudication.ts";
+import { framesFor, planAdjudication, type AdjudicationPlan } from "../engine/adjudication.ts";
 import { ADJUDICATION_CONFIG } from "../engine/config.ts";
 import type { Adjudication, ContactCandidate, MaskRecord, Verdict } from "../engine/types.ts";
-import { readAdjudications } from "./analysis.ts";
 import { passesConfidence, type EntityConfig } from "./entities.ts";
+import { readAdjudications } from "./scenario.ts";
 import { HttpError } from "./errors.ts";
 import { renderAnnotatedFrame, type Outline } from "./frames.ts";
 import { adjudicationsPath, clipDir } from "./paths.ts";
@@ -87,7 +87,7 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
     const hand = byId.get(candidate.handId);
     const object = byId.get(candidate.entityId);
     if (!hand || !object) throw new Error(`adjudicate: unknown entity on candidate ${candidate.id}`);
-    const frames = plan.frames[candidate.id] ?? { first: candidate.startFrame, middle: Math.floor((candidate.startFrame + candidate.endFrame) / 2) };
+    const frames = plan.frames[candidate.id] ?? framesFor(candidate);
     const images: Buffer[] = [];
     for (const [n, frameIndex] of [frames.first, frames.middle].entries()) {
       const outlines: Outline[] = [

@@ -48,7 +48,16 @@ Everything below is implemented as stated, with these decisions made while writi
 - Moment 5 fires on any zone change away from patient surroundings, including patient zone A to patient zone B. Implemented.
 - Gate 3 wording: his call was "best suitable". Rules stay as written (clip A flags 5 and 1); the clip A script is unchanged.
 
-## Proposed Tue Oct 27, round four: upload your own, awaiting a yes
+## Second review, Tue Oct 27 evening: ten more fixes, two of them rules
+
+For Rahil's eye:
+- **Moment 4 versus 5 is now decided per zone episode.** Consecutive contacts inside one zone form an episode. Leaving a patient zone without hygiene before the next contact is one missed moment: Moment 4 if the resident was touched anywhere in that episode, otherwise Moment 5. Before, only the immediately next contact after a resident touch could be Moment 4, so resident, then blanket, then phone was wrongly labeled Moment 5. This matches WHO's wording (Moment 5 is after touching surroundings without touching the patient) and PLAN.md 6.5's "after a resident zone contact". Clip A still yields 5 then 1.
+- **Moment 2 is charged once per approach**, keyed by the last non-aseptic contact, so a glucometer handling the detector split into pieces is one miss, matching how Moment 1 already worked.
+- **One touch seen by both hand classes is one contact.** With a transparent glove, "bare hand" fires through the glove, so every touch after the don was counted twice (two transfers, and two resident exposures if it had landed on a resident). Overlapping contacts from the bare and gloved classes of one person on the same entity are merged, attributed to the gloved class. The feasibility clip goes from 11 contacts to 7 with the same score.
+
+Other fixes: stale verdicts on candidates that no longer exist do not consume the adjudication cap; a stored scenario whose source was removed falls back to the default instead of failing every load; demo clips are read only and never segment live; the error handler respects already-sent headers (scrubbing the video no longer logs 500s) and maps an oversized upload to 413; a stale remote file id triggers one re-upload; the upload editor writes a default agent when a prop becomes a dispenser and never duplicates ids; finishing setup on the already-selected clip reloads it; the circular import between analysis and pipeline is gone (`server/scenario.ts`).
+
+## Round four, approved and written Tue Oct 27: upload your own
 
 ### client/src/Upload.tsx
 A panel reachable from the clip picker ("Upload your own"). Steps shown as a vertical checklist with the current one spinning: upload (multipart to `POST /api/clips`, 45 s cap and daily cap errors shown in plain words), name the props (a small table of the default entities with editable label and SAM phrase and a zone select, saved with `PUT /api/clips/:id/entities`; rows can be removed; hands and the source stay), segment (`POST /api/segment`, one line per class as it completes, with a note that this takes about a minute), review ambiguous moments (`POST /api/adjudicate`, shows how many were sent and how many came back), analyze (`POST /api/analyze`), then the clip opens in the normal page. Every step is idempotent and resumable because every server call is cached, so a refresh mid-way returns to the same step. No new server routes except one: `POST /api/segment` streams progress as newline-delimited JSON (one object per class) instead of waiting for all classes, so the UI can show lines as they land.

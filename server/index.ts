@@ -15,7 +15,7 @@ import { HttpError } from "./errors.ts";
 import { analysisPath, sampledPath, TMP_DIR } from "./paths.ts";
 import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
-import { deleteRemoteFile, MetaSamBackend, segmentPhrase } from "./sam.ts";
+import { deleteRemoteFile, MetaSamBackend, readTrack, segmentPhrase } from "./sam.ts";
 import { MetaSparkBackend } from "./spark.ts";
 
 const PORT = Number(optionalEnv("PORT", "8787"));
@@ -90,13 +90,19 @@ app.get("/api/clips/:id", wrap(async (req, res) => {
   res.json({ clip: meta, entities: await readEntities(meta.id) });
 }));
 
-// The resampled video the masks were computed on, with range requests for seeking.
+// The resampled video the masks were computed on, with range requests for seeking. A range
+// request the browser abandons while scrubbing is not an error once bytes have gone out.
 app.get("/api/clips/:id/video", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
   await new Promise<void>((resolve, reject) => {
-    res.sendFile(sampledPath(meta.id), { acceptRanges: true, cacheControl: false }, (err) => (err ? reject(err) : resolve()));
+    res.sendFile(sampledPath(meta.id), { acceptRanges: true, cacheControl: false }, (err) => (err && !res.headersSent ? reject(err) : resolve()));
   });
 }));
+
+const isDemo = (clipId: string): boolean => DEMO_CLIPS.includes(clipId);
+function assertEditable(clipId: string): void {
+  if (isDemo(clipId)) throw new HttpError(403, `${clipId} is a demo clip and is read only`);
+}
 
 app.get("/api/clips/:id/analysis", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
@@ -111,6 +117,7 @@ app.get("/api/clips/:id/tracks", wrap(async (req, res) => {
 
 app.put("/api/clips/:id/entities", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
+  assertEditable(meta.id);
   const entities: unknown = req.body;
   try {
     validateEntities(entities);
@@ -129,6 +136,10 @@ app.post("/api/segment", wrap(async (req, res) => {
   const meta = await readMeta(clipId);
   const entities = await readEntities(meta.id);
   const phrases = [...new Set(entities.map((e) => e.samPhrase))];
+  // Demo clips are served from cache and never spend credit.
+  if (isDemo(meta.id)) {
+    for (const phrase of phrases) if (!(await readTrack(meta.id, phrase))) throw new HttpError(403, `${meta.id} is a demo clip; "${phrase}" is not cached and will not be segmented live`);
+  }
   const stream = req.query["stream"] === "1";
   if (stream) {
     res.status(200).type("application/x-ndjson");
@@ -240,6 +251,7 @@ app.get("/api/clips/:id/scenario", wrap(async (req, res) => {
 
 app.put("/api/clips/:id/scenario", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
+  assertEditable(meta.id);
   const entities = await readEntities(meta.id);
   const scenario = validateScenario(req.body, new Set(entities.map((e) => e.id)));
   await writeScenario(meta.id, scenario);
@@ -256,8 +268,16 @@ if (existsSync(CLIENT_DIST)) {
 }
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err instanceof HttpError ? err.status : 500;
-  const message = err instanceof Error ? err.message : "unknown error";
+  if (res.headersSent) {
+    res.destroy();
+    return;
+  }
+  let status = err instanceof HttpError ? err.status : 500;
+  let message = err instanceof Error ? err.message : "unknown error";
+  if (err instanceof multer.MulterError) {
+    status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+    message = err.code === "LIMIT_FILE_SIZE" ? `the file is larger than ${Math.round(MAX_UPLOAD_BYTES / 1048576)} MB` : err.message;
+  }
   if (status === 500) console.error(err);
   res.status(status).json({ error: message });
 });

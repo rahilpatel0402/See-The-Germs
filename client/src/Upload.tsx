@@ -105,13 +105,27 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
   };
 
   const update = (i: number, patch: Partial<EntityConfig>) =>
-    setEntities((prev) => prev.map((e, j) => (j === i ? ({ ...e, ...patch } as EntityConfig) : e)));
+    setEntities((prev) =>
+      prev.map((e, j) => {
+        if (j !== i) return e;
+        const next = { ...e, ...patch } as EntityConfig;
+        // A dispenser needs an agent; a non-dispenser must not carry one.
+        if (next.class === "dispenser" && next.agent === undefined) return { ...next, agent: "alcohol_rub" };
+        if (next.class !== "dispenser" && next.agent !== undefined) {
+          const { agent: _dropped, ...rest } = next;
+          return rest as EntityConfig;
+        }
+        return next;
+      }),
+    );
   const remove = (i: number) => setEntities((prev) => prev.filter((_, j) => j !== i));
   const add = () =>
-    setEntities((prev) => [
-      ...prev,
-      { id: `prop_${prev.length + 1}`, label: "new prop", class: "object", zone: "healthcare_area", samPhrase: "" },
-    ]);
+    setEntities((prev) => {
+      const used = new Set(prev.map((e) => e.id));
+      let n = prev.length + 1;
+      while (used.has(`prop_${n}`)) n++;
+      return [...prev, { id: `prop_${n}`, label: "new prop", class: "object", zone: "healthcare_area", samPhrase: "" }];
+    });
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
 
@@ -214,7 +228,7 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
                     </td>
                     <td>
                       {e.class === "dispenser" ? (
-                        <select value={e.agent ?? "alcohol_rub"} onChange={(ev) => update(i, { agent: ev.target.value as DispenserAgent })}>
+                        <select value={e.agent} onChange={(ev) => update(i, { agent: ev.target.value as DispenserAgent })}>
                           {AGENTS.map((a) => (
                             <option key={a} value={a}>
                               {a.replace("_", " ")}
