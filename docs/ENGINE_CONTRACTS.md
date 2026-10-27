@@ -29,5 +29,33 @@ Why this shape: on the feasibility clip these exact rules reproduced every real 
 - `server/index.ts`: `GET /api/health`, `GET /api/clips`, `POST /api/clips` (multipart `video`, 45 s cap), `GET /api/clips/:id`, `PUT /api/clips/:id/entities`, `POST /api/segment { clipId }`, `POST /api/analyze { clipId }`. Keys only here.
 - `server/scripts/analyze.ts`: `npm run analyze -- <clipId>`: ensure, segment missing phrases, analyze, print the timeline.
 
-## gloves.ts, propagation.ts, moments.ts, score.ts (Wed Oct 28)
-To be stated Tuesday night after Gate 2.
+## accuracy.ts (written Mon Oct 26 evening)
+
+Input: `LabeledContact[]` and `DetectedContact[]`, both `{ handId, entityId, startT, endT }`, plus a tolerance in seconds. Output: `AccuracyReport { precision, recall, matched, matches, misses, falseAlarms }`. A label matches a detection when hand, entity, and start agree within the tolerance; greedy one-to-one in time order. Empty inputs score 1 so a clean run is not penalized. `npm run accuracy -- <clipId>` reads `labels.json` and `analysis.json`, prints the report, and writes `accuracy.json`.
+
+## Proposed for Wed Oct 28: awaiting a yes
+
+Two small additions to `Entity` first, both optional so existing clips keep working:
+- `person?: string` (default `"P1"`). The bare hand and gloved hand classes of the same person are the same physical hands. Contacts from either class apply to the hand state of that person. Hand state is keyed by person, not by SAM class.
+- `agent?: "alcohol_rub" | "soap_water" | "gloves"` on dispenser entities. Says what a dwell at that dispenser produces.
+
+### pathogens.ts
+Input: none; it is a table. Output: `PATHOGENS: Record<PathogenId, PathogenProfile>` with `PathogenId = "mrsa" | "c_auris" | "c_difficile" | "norovirus"` and `PathogenProfile { id, label, alcoholRubClearsHands: boolean, soapWaterClearsHands: boolean, surfacePersistenceS: number (effectively infinite within a clip), uiNote: string, citations: string[] }`. Values exactly as PLAN.md 6.3. Citations to CDC and WHO pages are filled in by Rahil, not invented.
+
+### hygiene.ts
+Input: `ContactEvent[]`, entities, `HygieneConfig { minDwellS: 1.0 }`, a `PathogenProfile`. Output: `{ hygieneEvents: HygieneEvent[], gloveDispenserTouches: { handId, t }[], contacts: ContactEvent[] without dispenser contacts }`. A contact with a dispenser whose dwell is at least `minDwellS` becomes a `HygieneEvent { handId, t: startT, agent, effective }` where `effective` comes from the pathogen profile for that agent. Dispenser contacts never count as contamination transfer.
+
+### gloves.ts
+Input: `Tracks` (hand entities only matter), `GloveConfig { openFrames: 3, closeFrames: 3, handoverWindowFrames: 10, maxHandoverDistanceFraction: 0.15 of frame width }`. Output: `GloveEvent[]` with `source: "detected"`. A don at frame f: the gloved class of person P becomes present for `openFrames` consecutive frames, and within the previous `handoverWindowFrames` the bare class of P was present with a bounding box center within the distance limit. A doff: the gloved class of P is absent for `closeFrames` frames after being present, and the bare class is present nearby within the window. `t` is the first gloved frame (don) or the first absent frame (doff). The fallback (glove box dwell for don, manual marker for doff) is a separate path behind a config flag and is only used if nitrile separation fails tomorrow.
+
+### propagation.ts
+Input: `{ contacts: ContactEvent[] (dispensers removed), hygieneEvents, gloveEvents, entities, scenario: { sourceEntityId, pathogen: PathogenId }, profile }`. All events are merged into one list sorted by time, ties broken by a fixed order (glove, hygiene, contact) then by ids, so the result is deterministic. Output: `PropagationResult { contaminated: Set<entityId> at end, transfers: TransferEdge[], residentExposures: { residentId, handId, t }[], changes: { t, entityId, contaminated: boolean, cause: "source" | "transfer" | "hygiene" | "glove_don" | "glove_doff" }[] }`. Rules exactly as PLAN.md 6.4: on a contact, if either side is contaminated both are, with a transfer edge only if the recipient was clean; a hygiene event cleans the hand only if effective for the pathogen, otherwise it is logged ineffective; a don sets the hand state clean and remembers the pre-glove state; a doff restores the pre-glove state; a contaminated hand touching a resident zone logs an exposure. Surfaces never decay inside a clip.
+
+### moments.ts
+Input: the same contacts, effective hygiene events, glove events, entities with zones, plus a function to rerun propagation with an inserted hygiene event (passed in, so moments.ts stays pure). Output: `MomentMiss[]` per PLAN.md 6.5: Moment 1 before a resident zone contact with no effective hygiene since the last contact outside that patient zone; Moment 2 before an entity tagged aseptic (scenario B glucometer) with no hygiene before it; Moment 4 after a resident zone contact when the hand next touches the healthcare area or another patient zone without hygiene; Moment 5 after patient zone objects when the hand leaves to the healthcare area without hygiene. `downstream` is the set of entities that stay clean when a hygiene event is inserted at that moment, computed with the rerun function.
+
+### score.ts
+Input: `PropagationResult`, `MomentMiss[]`, entities. Output: `ExposureScore { contaminatedSurfaces, chainLength (max hops from source over transfer edges), residentExposures: Record<residentId, number>, momentsMissed: Record<1|2|4|5, number>, score: 10 * exposures + 3 * surfaces + 2 * misses }`. Weights live in config.ts and are shown in the UI as a heuristic.
+
+### Analysis shape after Wednesday
+`Analysis` gains `scenario`, `pathogen`, `hygieneEvents`, `gloveEvents`, `propagation`, `momentMisses`, `score`. Once the client and the Spark prompt read it, it changes only with both in the same commit.
