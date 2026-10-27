@@ -48,7 +48,28 @@ Everything below is implemented as stated, with these decisions made while writi
 - Moment 5 fires on any zone change away from patient surroundings, including patient zone A to patient zone B. Implemented.
 - Gate 3 wording: his call was "best suitable". Rules stay as written (clip A flags 5 and 1); the clip A script is unchanged.
 
-## Proposed Tue Oct 27: the client (Thursday's glow), awaiting a yes
+## Proposed Tue Oct 27, round three: counterfactual, narrative, chain graph, awaiting a yes
+
+### engine/counterfactual.ts (pure)
+Input: the same `PropagationInput` the analysis used, the base `PropagationResult` and base `ExposureScore`, plus an inserted event `{ handId, t, agent: "alcohol_rub" | "soap_water" }` (effectiveness computed from the pathogen profile, so inserting an alcohol rub under C. diff correctly does nothing). Output: `Counterfactual { inserted: HygieneEvent; before: ExposureScore; after: ExposureScore; keptClean: string[] (entity ids contaminated before, clean after); propagation: PropagationResult (the rerun, for the overlay); momentMisses: MomentMiss[] (recomputed) }`. Pure rerun, instant, deterministic. Tests: clip A with a rub at 3 s under MRSA gives after score 0 and keptClean of five entities; the same under C. diff gives identical before and after.
+
+### server: `POST /api/counterfactual { clipId, t, handId?, agent? }`
+Defaults: the first hand entity of person P1 and `soap_water`. Reads the cached analysis inputs (tracks, adjudications, scenario), reruns, returns the `Counterfactual`. No model call, no cache needed.
+
+### client: counterfactual slider
+Below the timeline: a range input over the clip duration labeled "Insert hand hygiene at", an agent choice (alcohol rub or soap and water), before and after score cards, and the overlay switches to the counterfactual propagation while the slider is active so the glow recedes live. Debounced requests; the last response wins.
+
+### server/narrate.ts and `POST /api/narrate { clipId }`
+Input to Spark text: a trimmed `analysis.json` (entities with labels and zones, contacts, transfers, hygiene and glove events, moment misses with downstream labels, score, pathogen label and note, scenario). Never raw video, never masks. Prompt in `server/prompts/narrate.md` with the rules from PLAN.md 7: use only facts in the JSON, never invent contacts, never name entities outside the list, no verdict on competence, no patient-facing or clinical advice. Output schema: `{ coaching_note (120 to 180 words, second person, one concrete change), audit_summary (100 to 150 words, Five Moments by number, agent issue if any), top_fix (one sentence) }` through the same `SparkBackend.completeJson` with temperature 0. Validated: word counts within bounds, every entity label mentioned must be in the list, no disallowed phrases; on failure retry once, then the client shows structured panels only. Cached in `narrative.json` keyed by a hash of the trimmed input, so the same analysis never calls Spark twice. The counterfactual explanation is computed on request (two sentences) with the same guard, cached by inserted time.
+
+### client: narrative panels and chain graph
+Drawer gains "Coaching note" and "Audit summary" sections and the top fix sentence under the video. Chain graph: an SVG with nodes for the source, hands, objects, and residents in transfer order left to right, directed edges labeled with the time; hovering a node highlights that entity in the overlay and seeks on click. No library.
+
+## The client (Thursday's glow), approved and written Tue Oct 27
+
+Written as stated, with one addition: a deep link `?clip=<id>&t=<seconds>&glow=0|1` opens a clip at a moment with the toggle set, which also makes headless screenshots and the demo video reproducible.
+
+### Original proposal
 
 Layout rule from CLAUDE.md: the video is the page. Full width video with the timeline directly beneath it; chain graph, Five Moments, exposure score, and narrative live in a collapsible drawer. Synthetic footage badge always visible. No component library, one small CSS file.
 
