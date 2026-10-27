@@ -76,6 +76,9 @@ export interface Tracks {
   readonly frameCount: number;
   readonly entities: readonly Entity[];
   masksAt(frameIndex: number): ReadonlyMap<string, FrameMask>;
+  // Optional cheap path: the half-open bounding box per entity in a frame without decoding
+  // the mask. Glove handover only needs centers.
+  boundsAt?(frameIndex: number): ReadonlyMap<string, MaskBounds>;
 }
 
 export type CandidateConfidence = "confident" | "ambiguous";
@@ -107,6 +110,9 @@ export interface ContactEvent {
   readonly startT: number;
   readonly endT: number;
   readonly adjudicated: boolean;
+  // The candidate ids this contact came from (more than one after a hand-class merge), so the
+  // UI can find the verdicts without reconstructing the mapping.
+  readonly candidateIds?: readonly string[];
 }
 
 export interface TransferEdge {

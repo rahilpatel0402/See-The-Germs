@@ -37,10 +37,11 @@ export function Timeline({ clipId, analysis, duration, currentTime, onSeek, onHo
   }
 
   const verdictFor = new Map(analysis.adjudications.map((a) => [a.candidateId, a]));
-  const contactsSet = new Set(analysis.contacts.map((c) => `${c.handId}|${c.entityId}|${c.startT}`));
-  const unreviewed = analysis.candidates.filter(
-    (c) => c.confidence === "ambiguous" && !contactsSet.has(`${c.handId}|${c.entityId}|${c.startT}`),
-  );
+  const candidateById = new Map(analysis.candidates.map((c) => [c.id, c]));
+  // Candidates already represented by a contact (confident, or ambiguous with a touching or
+  // unclear verdict). Everything else ambiguous is drawn as not counted.
+  const covered = new Set(analysis.contacts.flatMap((c) => c.candidateIds ?? []));
+  const unreviewed = analysis.candidates.filter((c) => c.confidence === "ambiguous" && !covered.has(c.id));
   const frameUrl = (candidateId: string, n: 1 | 2): string =>
     `/api/clips/${encodeURIComponent(clipId ?? "")}/adjudication/${encodeURIComponent(candidateId.replace(/[^A-Za-z0-9_-]/g, "_"))}/${n}.png`;
 
@@ -60,11 +61,10 @@ export function Timeline({ clipId, analysis, duration, currentTime, onSeek, onHo
         <div className="lane">
           <span className="lane-label">contacts</span>
           {analysis.contacts.map((c, i) => {
-            // Contacts may be merged across hand classes, so match the reviewed candidate by overlap.
-            const candidate = analysis.candidates.find(
-              (k) => k.entityId === c.entityId && k.startT <= c.endT && k.endT >= c.startT && (!c.adjudicated || verdictFor.has(k.id)),
-            );
-            const verdict = candidate ? verdictFor.get(candidate.id) : undefined;
+            // The reviewed candidate behind this contact, if any (ids travel with the contact).
+            const reviewedId = (c.candidateIds ?? []).find((id) => verdictFor.has(id));
+            const candidate = reviewedId ? candidateById.get(reviewedId) : undefined;
+            const verdict = reviewedId ? verdictFor.get(reviewedId) : undefined;
             return (
               <span
                 key={`c${i}`}

@@ -4,7 +4,7 @@
 // Frames are decoded on demand with a small cache: a full-frame raster per entity per frame
 // for a whole clip would be gigabytes.
 import { fromRecord, union } from "../engine/masks.ts";
-import type { Entity, FrameMask, MaskRecord, Tracks } from "../engine/types.ts";
+import type { Entity, FrameMask, MaskBounds, MaskRecord, Tracks } from "../engine/types.ts";
 import { readMeta } from "./clips.ts";
 import { passesConfidence, readEntities, type EntityConfig } from "./entities.ts";
 import { readTrack } from "./sam.ts";
@@ -96,6 +96,24 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
     return result;
   };
 
-  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount: meta.sampled.frames, entities: plainEntities(entities), masksAt };
+  // Bounds without decoding: the union box of an entity's records in a frame.
+  const boundsAt = (frameIndex: number): ReadonlyMap<string, MaskBounds> => {
+    const out = new Map<string, MaskBounds>();
+    for (const [entityId, perFrame] of byEntity) {
+      const records = perFrame.get(frameIndex);
+      if (!records || records.length === 0) continue;
+      let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+      for (const r of records) {
+        left = Math.min(left, r.bounds.left);
+        top = Math.min(top, r.bounds.top);
+        right = Math.max(right, r.bounds.right);
+        bottom = Math.max(bottom, r.bounds.bottom);
+      }
+      out.set(entityId, { left, top, right, bottom });
+    }
+    return out;
+  };
+
+  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount: meta.sampled.frames, entities: plainEntities(entities), masksAt, boundsAt };
   return { tracks, entities, missingPhrases: missing };
 }

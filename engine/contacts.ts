@@ -33,7 +33,15 @@ export function mergeHandClassContacts(contacts: readonly ContactEvent[], entiti
         const prevGloved: boolean = handEntity(prev.handId).class === "gloved_hand";
         const thisGloved: boolean = handEntity(c.handId).class === "gloved_hand";
         const handId: string = prevGloved ? prev.handId : thisGloved ? c.handId : prev.handId;
-        current = { handId, entityId: c.entityId, startT: prev.startT, endT: Math.max(prev.endT, c.endT), adjudicated: prev.adjudicated || c.adjudicated };
+        const ids: string[] = [...(prev.candidateIds ?? []), ...(c.candidateIds ?? [])];
+        current = {
+          handId,
+          entityId: c.entityId,
+          startT: prev.startT,
+          endT: Math.max(prev.endT, c.endT),
+          adjudicated: prev.adjudicated || c.adjudicated,
+          ...(ids.length > 0 ? { candidateIds: ids } : {}),
+        };
       } else {
         if (current !== null) out.push(current);
         current = c;

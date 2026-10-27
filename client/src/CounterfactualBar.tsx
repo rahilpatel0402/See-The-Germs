@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Analysis, Counterfactual, HygieneAgent } from "../../engine/types.ts";
 import { api, type ScenarioOverride } from "./api.ts";
 
@@ -22,6 +22,18 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
   const [active, setActive] = useState(false);
   const [t, setT] = useState(0);
   const [agent, setAgent] = useState<HygieneAgent>(initialAgent);
+  // One hand entity per person; the slider cleans that person's hands.
+  const persons = useMemo(() => {
+    const seen = new Map<string, { id: string; label: string }>();
+    for (const e of analysis?.entities ?? []) {
+      if (e.class !== "bare_hand" && e.class !== "gloved_hand") continue;
+      const p = e.person ?? "P1";
+      if (!seen.has(p) || e.class === "bare_hand") seen.set(p, { id: e.id, label: p });
+    }
+    return [...seen.values()];
+  }, [analysis]);
+  const [handId, setHandId] = useState<string | undefined>(undefined);
+  const effectiveHand = handId ?? persons[0]?.id;
   const [result, setResult] = useState<Counterfactual | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
@@ -57,7 +69,7 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
     const id = ++requestId.current;
     const timer = window.setTimeout(() => {
       api
-        .counterfactual(clipId, t, agent, override)
+        .counterfactual(clipId, t, agent, effectiveHand, override)
         .then((cf) => {
           if (id !== requestId.current) return;
           setResult(cf);
@@ -70,7 +82,7 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
         });
     }, DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [active, analysis, clipId, t, agent, override, onResult]);
+  }, [active, analysis, clipId, t, agent, effectiveHand, override, onResult]);
 
   if (!analysis) return null;
   const labels = new Map(analysis.entities.map((e) => [e.id, e.label]));
@@ -96,6 +108,15 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
           <option value="alcohol_rub">alcohol rub</option>
           <option value="soap_water">soap and water</option>
         </select>
+        {persons.length > 1 ? (
+          <select value={effectiveHand ?? ""} disabled={!active} onChange={(e) => setHandId(e.target.value)} aria-label="whose hands">
+            {persons.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        ) : null}
       </div>
       {active && result ? (
         <div className="cf-cards">
@@ -134,7 +155,7 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
                   onClick={() => {
                     setExplaining(true);
                     api
-                      .explainCounterfactual(clipId, result.inserted.t, result.inserted.agent, override)
+                      .explainCounterfactual(clipId, result.inserted.t, result.inserted.agent, result.inserted.handId, override)
                       .then((r) => setExplanation(r.explanation))
                       .catch((e: Error) => setError(e.message))
                       .finally(() => setExplaining(false));

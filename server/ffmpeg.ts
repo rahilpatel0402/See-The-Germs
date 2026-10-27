@@ -40,9 +40,11 @@ function parseRate(rate: string | undefined): number {
   return n / d;
 }
 
-export async function probe(file: string): Promise<ProbeInfo> {
+// countFrames decodes the whole file to count frames exactly; only the resampled clip needs
+// that (the engine relies on its frame count). The source probe uses the container's metadata.
+export async function probe(file: string, options: { countFrames?: boolean } = {}): Promise<ProbeInfo> {
   const { stdout } = await run(bin("ffprobe"), [
-    "-v", "error", "-print_format", "json", "-show_streams", "-show_format", "-count_frames", file,
+    "-v", "error", "-print_format", "json", "-show_streams", "-show_format", ...(options.countFrames ? ["-count_frames"] : []), file,
   ], { maxBuffer: 16 * 1024 * 1024 });
   const parsed = JSON.parse(stdout) as { streams?: FfprobeStream[]; format?: { duration?: string } };
   const video = parsed.streams?.find((s) => s.codec_type === "video");

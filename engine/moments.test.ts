@@ -95,6 +95,15 @@ test("touching the same resident twice after one unwashed arrival is one Moment 
   assert.deepEqual(run(again).map((m) => [m.moment, m.t]), [[1, 5], [4, 9], [1, 14]]);
 });
 
+test("a zone episode ends when its longest contact ends", () => {
+  // Rail held 2 to 9 s while the blanket is brushed at 3 to 3.5 s; the departure is at 9 s, not 3.5 s.
+  const contacts = [contact("bare_hand", "rail_A", 2, 9), contact("bare_hand", "blanket_B", 3, 3.5), contact("bare_hand", "phone", 10, 11)];
+  const entities = CLIP_A_ENTITIES.map((e) => (e.id === "blanket_B" ? { ...e, zone: "patient_zone_A" as const } : e));
+  const input: PropagationInput = { contacts, hygieneEvents: [], gloveEvents: [], entities, scenario: { sourceEntityId: "rail_A", pathogen: "mrsa" }, profile: PATHOGENS.mrsa };
+  const misses = detectMomentMisses({ contacts, hygieneEvents: [], entities }, propagate(input), (ins) => propagate({ ...input, hygieneEvents: [ins] }));
+  assert.deepEqual(misses.map((m) => [m.moment, m.t]), [[5, 9]]);
+});
+
 test("moving inside one patient zone is not a miss, and a first contact is never a miss", () => {
   assert.deepEqual(run([contact("bare_hand", "rail_A", 1, 2)]), []);
   assert.deepEqual(run([contact("bare_hand", "blanket_B", 1, 2), contact("bare_hand", "resident_B", 3, 4)]), []);

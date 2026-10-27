@@ -146,10 +146,10 @@ export const api = {
   tracks: (clipId: string) => request<TracksPayload>(`/api/clips/${encodeURIComponent(clipId)}/tracks`),
   analysis: (clipId: string) => request<Analysis>(`/api/clips/${encodeURIComponent(clipId)}/analysis`),
   analyze: (clipId: string, override?: ScenarioOverride) => post<Analysis>("/api/analyze", { clipId, ...override }),
-  counterfactual: (clipId: string, t: number, agent: HygieneAgent, override?: ScenarioOverride) =>
-    post<Counterfactual>("/api/counterfactual", { clipId, t, agent, ...override }),
-  explainCounterfactual: (clipId: string, t: number, agent: HygieneAgent, override?: ScenarioOverride) =>
-    post<{ explanation: string }>("/api/counterfactual/explain", { clipId, t, agent, ...override }),
+  counterfactual: (clipId: string, t: number, agent: HygieneAgent, handId: string | undefined, override?: ScenarioOverride) =>
+    post<Counterfactual>("/api/counterfactual", { clipId, t, agent, ...(handId ? { handId } : {}), ...override }),
+  explainCounterfactual: (clipId: string, t: number, agent: HygieneAgent, handId: string | undefined, override?: ScenarioOverride) =>
+    post<{ explanation: string }>("/api/counterfactual/explain", { clipId, t, agent, ...(handId ? { handId } : {}), ...override }),
   narrative: (clipId: string, scenario?: ScenarioOverride) => {
     const q = new URLSearchParams();
     if (scenario?.pathogen) q.set("pathogen", scenario.pathogen);

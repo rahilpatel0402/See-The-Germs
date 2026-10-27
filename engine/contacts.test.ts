@@ -170,6 +170,18 @@ test("overlapping contacts from the bare and gloved classes of one person merge 
   ]);
 });
 
+test("merging unions the source candidate ids", () => {
+  const merged = mergeHandClassContacts(
+    [
+      { handId: "h1", entityId: "rail", startT: 1, endT: 2, adjudicated: false, candidateIds: ["h1:rail:10"] },
+      { handId: "h2", entityId: "rail", startT: 1.5, endT: 2.5, adjudicated: true, candidateIds: ["h2:rail:15"] },
+    ],
+    [hand, glove, rail],
+  );
+  assert.deepEqual(merged[0]!.candidateIds, ["h1:rail:10", "h2:rail:15"]);
+  assert.equal(merged[0]!.adjudicated, true);
+});
+
 test("contacts from different people are never merged", () => {
   const p2: Entity = { id: "p2", label: "P2 bare", class: "bare_hand", zone: "healthcare_area", samPhrase: "bare hand", person: "P2" };
   const ev = (handId: string, startT: number, endT: number) => ({ handId, entityId: "rail", startT, endT, adjudicated: false });

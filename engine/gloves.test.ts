@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { GLOVE_CONFIG } from "./config.ts";
 import { detectGloveEvents } from "./gloves.ts";
-import { fromPattern } from "./masks.ts";
+import { bbox, fromPattern } from "./masks.ts";
 import type { Entity, FrameMask, Tracks } from "./types.ts";
 
 // 20x10 frames at 10 fps. Handover distance limit is 15% of width = 3 px.
@@ -85,6 +85,40 @@ test("a gloved hand that leaves the frame without the bare hand reappearing is n
   for (let f = 15; f < 30; f++) frames.push([null, null]);
   const events = detectGloveEvents(tracks(frames), GLOVE_CONFIG);
   assert.deepEqual(events.map((e) => e.type), ["don"]);
+});
+
+test("a glove removed off camera is closed when a fresh handover happens elsewhere", () => {
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 5; f++) frames.push([near, null]);
+  for (let f = 5; f < 15; f++) frames.push([null, near]);
+  for (let f = 15; f < 20; f++) frames.push([null, null]);
+  for (let f = 20; f < 30; f++) frames.push([far, null]);
+  for (let f = 30; f < 40; f++) frames.push([null, far]);
+  const events = detectGloveEvents(tracks(frames), GLOVE_CONFIG);
+  assert.deepEqual(events.map((e) => [e.type, e.t]), [["don", 0.5], ["doff", 1.5], ["don", 3.0]]);
+});
+
+test("centers come from boundsAt when the source provides it", () => {
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 10; f++) frames.push([near, null]);
+  for (let f = 10; f < 20; f++) frames.push([null, near]);
+  const base = tracks(frames);
+  let used = 0;
+  const withBounds: Tracks = {
+    ...base,
+    boundsAt: (f) => {
+      used++;
+      const m = new Map<string, { left: number; top: number; right: number; bottom: number }>();
+      for (const [id, mask] of base.masksAt(f)) {
+        const b = bbox(mask);
+        if (b) m.set(id, b);
+      }
+      return m;
+    },
+  };
+  const events = detectGloveEvents(withBounds, GLOVE_CONFIG);
+  assert.deepEqual(events.map((e) => e.type), ["don"]);
+  assert.ok(used > 0);
 });
 
 test("a person with only one hand class produces nothing", () => {

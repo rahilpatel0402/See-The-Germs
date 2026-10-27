@@ -72,9 +72,11 @@ export function detectMomentMisses(input: MomentsInput, base: PropagationResult,
         }
         episodeTouchedResident = false;
       }
+      const sameEpisode = episodeZone === e.zone;
       episodeZone = e.zone;
       if (e.class === "resident_zone") episodeTouchedResident = true;
-      episodeLastEnd = c.endT;
+      // The episode ends when the last of its contacts ends, not when the latest one started.
+      episodeLastEnd = sameEpisode ? Math.max(episodeLastEnd, c.endT) : c.endT;
       episodeHandId = c.handId;
 
       // Moment 1: before touching a patient. Look back to the last contact outside this patient

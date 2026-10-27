@@ -37,8 +37,17 @@ const TOP_FIX_WORDS = 45;
 const NARRATIVE_MAX_OUTPUT = 8000;
 const EXPLAIN_MAX_OUTPUT = 4000;
 
-// Anything that reads as patient-facing or clinical advice fails validation.
-const DISALLOWED = /\b(diagnos\w*|prescri\w*|dosage|medication|antibiotic\w*|treat(ment)? plan|see a doctor|should be (treated|tested|isolated)|the (resident|patient) (should|needs|must))\b/i;
+// Anything that reads as patient-facing or clinical advice fails validation. Phrases, not bare
+// nouns: a prop can legitimately be labelled "medication cart", and labels are exempted below.
+const DISALLOWED = /\b(diagnos\w*|prescri\w*|(take|give|adjust|stop|start) (the |your |their )?(medication|medicine|antibiotic)s?|treat(ment)? plan|see a doctor|call (the|a) (doctor|physician)|should be (treated|tested|isolated|medicated)|the (resident|patient) (should|needs|must|requires))\b/i;
+
+// Finds disallowed language, ignoring the clip's own entity labels.
+export function findDisallowed(text: string, labels: readonly string[]): string | null {
+  let scrubbed = text;
+  for (const label of labels) if (label) scrubbed = scrubbed.split(label).join(" ");
+  const hit = DISALLOWED.exec(scrubbed);
+  return hit ? hit[0] : null;
+}
 
 export interface NarrativeFile {
   readonly hash: string;
@@ -107,7 +116,7 @@ export async function narrativeHash(analysis: Analysis): Promise<string> {
 
 const words = (s: string): number => s.trim().split(/\s+/).filter(Boolean).length;
 
-export function validateNarrative(json: unknown): { ok: true; narrative: Narrative } | { ok: false; reason: string } {
+export function validateNarrative(json: unknown, labels: readonly string[] = []): { ok: true; narrative: Narrative } | { ok: false; reason: string } {
   const v = json as Partial<Record<keyof Narrative, unknown>>;
   for (const key of ["coaching_note", "audit_summary", "top_fix"] as const) {
     if (typeof v?.[key] !== "string" || !(v[key] as string).trim()) return { ok: false, reason: `${key} missing` };
@@ -119,8 +128,8 @@ export function validateNarrative(json: unknown): { ok: true; narrative: Narrati
   if (aw < AUDIT_WORDS[0] || aw > AUDIT_WORDS[1]) return { ok: false, reason: `audit_summary is ${aw} words, needs ${AUDIT_WORDS[0]} to ${AUDIT_WORDS[1]}` };
   if (words(n.top_fix) > TOP_FIX_WORDS) return { ok: false, reason: `top_fix is longer than one sentence` };
   for (const key of ["coaching_note", "audit_summary", "top_fix"] as const) {
-    const hit = DISALLOWED.exec(n[key]);
-    if (hit) return { ok: false, reason: `${key} contains disallowed clinical language: "${hit[0]}"` };
+    const hit = findDisallowed(n[key], labels);
+    if (hit) return { ok: false, reason: `${key} contains disallowed clinical language: "${hit}"` };
   }
   return { ok: true, narrative: { coaching_note: n.coaching_note.trim(), audit_summary: n.audit_summary.trim(), top_fix: n.top_fix.trim() } };
 }
@@ -163,7 +172,7 @@ export async function narrateClip(clipId: string, analysis: Analysis, backend: S
       console.log(`spark   | ${clipId} | narrate attempt ${attempt + 1} failed: ${lastReason}`);
       continue;
     }
-    const checked = validateNarrative(result.json);
+    const checked = validateNarrative(result.json, analysis.entities.map((e) => e.label));
     console.log(
       `spark   | ${clipId} | narrate attempt ${attempt + 1} | ${checked.ok ? "valid" : `INVALID: ${checked.reason}`} | in=${result.usage.inputTokens} (cached ${result.usage.cachedTokens}) out=${result.usage.outputTokens} (reasoning ${result.usage.reasoningTokens}) | ${String(result.elapsedMs).padStart(5)} ms | $${estimateSparkCost(result.usage).toFixed(4)}`,
     );
@@ -195,7 +204,7 @@ export async function explainCounterfactual(analysis: Analysis, cf: Counterfactu
   if (cached) return cached;
   const result = await backend.completeJson({ instructions: prompt, text: JSON.stringify(input, null, 2), images: [], schemaName: "counterfactual_explanation", schema: EXPLAIN_SCHEMA, maxOutputTokens: EXPLAIN_MAX_OUTPUT });
   const text = (result.json as { counterfactual_explanation?: unknown })?.counterfactual_explanation;
-  if (typeof text !== "string" || !text.trim() || DISALLOWED.test(text)) throw new Error("counterfactual explanation failed validation");
+  if (typeof text !== "string" || !text.trim() || findDisallowed(text, analysis.entities.map((e) => e.label)) !== null) throw new Error("counterfactual explanation failed validation");
   console.log(`spark   | ${analysis.clipId} | explain counterfactual at ${cf.inserted.t}s | in=${result.usage.inputTokens} out=${result.usage.outputTokens} | $${estimateSparkCost(result.usage).toFixed(4)}`);
   const file: ExplanationFile = { hash, model: backend.model, backend: backend.name, createdAt: new Date().toISOString(), usage: result.usage, explanation: text.trim() };
   await writeJson(explanationPath(analysis.clipId, hash), file);

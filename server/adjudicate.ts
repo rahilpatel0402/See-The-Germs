@@ -54,11 +54,25 @@ function parseVerdict(json: unknown): Omit<Adjudication, "candidateId"> | null {
   return { verdict: v.verdict as Verdict, reasoning: v.reasoning.trim().slice(0, 400) };
 }
 
-// Records of one entity at one frame, with the same confidence rule as the engine input.
-async function recordsAt(clipId: string, entity: EntityConfig, frameIndex: number): Promise<MaskRecord[]> {
-  const track = await readTrack(clipId, entity.samPhrase);
-  if (!track) throw new HttpError(409, `clip ${clipId} has no track for "${entity.samPhrase}"`);
-  return track.records.filter((r) => r.frameIndex === frameIndex && passesConfidence(entity, r));
+// Records of one entity at one frame, with the same confidence rule as the engine input. Track
+// files are read once per run, not once per frame.
+type TrackReader = (entity: EntityConfig, frameIndex: number) => Promise<MaskRecord[]>;
+
+function trackReader(clipId: string): TrackReader {
+  const cache = new Map<string, Promise<Map<number, MaskRecord[]>>>();
+  return async (entity, frameIndex) => {
+    let indexed = cache.get(entity.samPhrase);
+    if (!indexed) {
+      indexed = readTrack(clipId, entity.samPhrase).then((track) => {
+        if (!track) throw new HttpError(409, `clip ${clipId} has no track for "${entity.samPhrase}"`);
+        const byFrame = new Map<number, MaskRecord[]>();
+        for (const r of track.records) (byFrame.get(r.frameIndex) ?? byFrame.set(r.frameIndex, []).get(r.frameIndex)!).push(r);
+        return byFrame;
+      });
+      cache.set(entity.samPhrase, indexed);
+    }
+    return ((await indexed).get(frameIndex) ?? []).filter((r) => passesConfidence(entity, r));
+  };
 }
 
 export async function adjudicateClip(clipId: string, backend: SparkBackend, options: { force?: readonly string[] } = {}): Promise<AdjudicationRun> {
@@ -76,6 +90,7 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
   const queue = [...plan.selected, ...forced];
 
   const byId = new Map(perception.entityConfigs.map((e) => [e.id, e]));
+  const recordsAt = trackReader(clipId);
   const prompt = await loadPrompt();
   const outDir = path.join(clipDir(clipId), "adjudication");
   await mkdir(outDir, { recursive: true });
@@ -91,8 +106,8 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
     const images: Buffer[] = [];
     for (const [n, frameIndex] of [frames.first, frames.middle].entries()) {
       const outlines: Outline[] = [
-        { records: await recordsAt(clipId, hand, frameIndex), color: HAND_COLOR },
-        { records: await recordsAt(clipId, object, frameIndex), color: OBJECT_COLOR },
+        { records: await recordsAt(hand, frameIndex), color: HAND_COLOR },
+        { records: await recordsAt(object, frameIndex), color: OBJECT_COLOR },
       ];
       const png = await renderAnnotatedFrame(clipId, frameIndex, outlines);
       await writeFile(path.join(outDir, `${candidate.id.replace(/[^A-Za-z0-9_-]/g, "_")}-${n + 1}.png`), png);

@@ -4,7 +4,7 @@
 
 import type { GloveConfig } from "./config.ts";
 import { bbox } from "./masks.ts";
-import type { Entity, FrameMask, GloveEvent, Tracks } from "./types.ts";
+import type { Entity, GloveEvent, MaskBounds, Tracks } from "./types.ts";
 
 interface Point {
   readonly x: number;
@@ -15,10 +15,8 @@ export function personOf(entity: Entity): string {
   return entity.person ?? "P1";
 }
 
-function center(mask: FrameMask | undefined): Point | undefined {
-  if (mask === undefined) return undefined;
-  const box = bbox(mask);
-  if (box === null) return undefined;
+function centerOfBounds(box: MaskBounds | null | undefined): Point | undefined {
+  if (!box) return undefined;
   return { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
 }
 
@@ -40,10 +38,15 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
   const maxFrame = tracks.frameCount - 1;
   const maxDistance = config.maxHandoverDistanceFraction * tracks.frameSize.w;
   const centers = new Map<string, Point | undefined>();
+  // Centers come from record bounds when the source offers them (no mask decoding), else from
+  // the decoded mask's bounding box.
   const centerOf = (entityId: string, f: number): Point | undefined => {
     if (f < 0 || f > maxFrame) return undefined;
     const key = `${entityId}@${f}`;
-    if (!centers.has(key)) centers.set(key, center(tracks.masksAt(f).get(entityId)));
+    if (!centers.has(key)) {
+      const box = tracks.boundsAt ? tracks.boundsAt(f).get(entityId) : bbox(tracks.masksAt(f).get(entityId) ?? { w: 0, h: 0, data: new Uint8Array(0) });
+      centers.set(key, centerOfBounds(box));
+    }
     return centers.get(key);
   };
   const bareNear = (bareId: string, from: number, to: number, target: Point): boolean => {
@@ -62,6 +65,8 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
     let runStart = -1;
     let runChecked = false;
     let absentRun = 0;
+    // First frame of the current absence of the gloved track while a glove is on, or null.
+    let absentStart: number | null = null;
     let lastGlovedCenter: Point | undefined;
 
     for (let f = 0; f <= maxFrame; f++) {
@@ -74,24 +79,33 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
           runStart = f;
           runChecked = false;
         }
-        if (!gloveOn && !runChecked && glovedRun >= config.openFrames) {
+        if (!runChecked && glovedRun >= config.openFrames) {
           runChecked = true;
           const startCenter = centerOf(gloved.id, runStart);
-          if (runStart > 0 && startCenter !== undefined && bareNear(bare.id, runStart - config.handoverWindowFrames, runStart - 1, startCenter)) {
-            events.push({ handId: bare.id, t: runStart / tracks.fps, type: "don", source: "detected" });
+          const handover = runStart > 0 && startCenter !== undefined && bareNear(bare.id, runStart - config.handoverWindowFrames, runStart - 1, startCenter);
+          if (handover) {
+            // A fresh bare-to-gloved handover while a glove was still "on" means the earlier
+            // glove came off out of view: close it at the start of that absence.
+            if (gloveOn && absentStart !== null) {
+              events.push({ handId: bare.id, t: absentStart / tracks.fps, type: "doff", source: "detected" });
+            }
+            if (!gloveOn || absentStart !== null) {
+              events.push({ handId: bare.id, t: runStart / tracks.fps, type: "don", source: "detected" });
+            }
             gloveOn = true;
+            absentStart = null;
           }
         }
       } else {
         glovedRun = 0;
         if (gloveOn && lastGlovedCenter !== undefined) {
           absentRun++;
-          if (absentRun === config.closeFrames) {
-            const absentStart = f - config.closeFrames + 1;
-            if (bareNear(bare.id, absentStart, absentStart + config.handoverWindowFrames - 1, lastGlovedCenter)) {
-              events.push({ handId: bare.id, t: absentStart / tracks.fps, type: "doff", source: "detected" });
-              gloveOn = false;
-            }
+          if (absentRun === config.closeFrames) absentStart = f - config.closeFrames + 1;
+          // Keep checking while absent: the bare hand may reappear nearby a little later.
+          if (absentStart !== null && f < absentStart + config.handoverWindowFrames && bareNear(bare.id, absentStart, absentStart + config.handoverWindowFrames - 1, lastGlovedCenter)) {
+            events.push({ handId: bare.id, t: absentStart / tracks.fps, type: "doff", source: "detected" });
+            gloveOn = false;
+            absentStart = null;
           }
         }
       }

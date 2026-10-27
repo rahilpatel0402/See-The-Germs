@@ -54,12 +54,12 @@ export function contactsFromCandidates(candidates: readonly ContactCandidate[], 
   const contacts: ContactEvent[] = [];
   for (const c of candidates) {
     if (c.confidence === "confident") {
-      contacts.push({ handId: c.handId, entityId: c.entityId, startT: c.startT, endT: c.endT, adjudicated: false });
+      contacts.push({ handId: c.handId, entityId: c.entityId, startT: c.startT, endT: c.endT, adjudicated: false, candidateIds: [c.id] });
       continue;
     }
     const verdict = verdictFor.get(c.id);
     if (verdict === "touching" || verdict === "unclear") {
-      contacts.push({ handId: c.handId, entityId: c.entityId, startT: c.startT, endT: c.endT, adjudicated: true });
+      contacts.push({ handId: c.handId, entityId: c.entityId, startT: c.startT, endT: c.endT, adjudicated: true, candidateIds: [c.id] });
     }
   }
   return contacts;
@@ -107,7 +107,7 @@ export async function perceptionFor(clipId: string): Promise<Perception> {
 export async function buildPipeline(clipId: string, override: ScenarioOverride = {}): Promise<Pipeline> {
   const perception = await perceptionFor(clipId);
   const stored = await readScenario(clipId);
-  const scenario = validateScenario({ ...stored, ...override }, new Set(perception.entities.map((e) => e.id)));
+  const scenario = validateScenario({ ...stored, ...override }, perception.entities);
   const profile = PATHOGENS[scenario.pathogen];
 
   const adjudications = await readAdjudications(clipId);

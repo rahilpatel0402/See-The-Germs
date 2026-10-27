@@ -56,7 +56,7 @@ export async function ensureClip(clipId: string): Promise<ClipMeta> {
   const sourcePath = path.join(clipDir(clipId), sourceFile);
   const source = await probe(sourcePath);
   await resample(sourcePath, sampledPath(clipId), SAMPLE_FPS);
-  const sampled = await probe(sampledPath(clipId));
+  const sampled = await probe(sampledPath(clipId), { countFrames: true });
   const meta: ClipMeta = {
     id: clipId,
     createdAt: new Date().toISOString(),

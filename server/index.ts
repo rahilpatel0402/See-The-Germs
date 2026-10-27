@@ -12,6 +12,7 @@ import { createClipFromUpload, ensureClip, listClipIds, readMeta } from "./clips
 import { optionalEnv } from "./env.ts";
 import { readEntities, validateEntities, writeEntities } from "./entities.ts";
 import { HttpError } from "./errors.ts";
+import { withClipLock } from "./locks.ts";
 import { analysisPath, clipDir, sampledPath, TMP_DIR } from "./paths.ts";
 import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
@@ -161,19 +162,22 @@ app.post("/api/segment", wrap(async (req, res) => {
   }
   const summary: Array<{ phrase: string; frames: number; objects: number; billedFrames: number | null; ms: number }> = [];
   try {
-    for (const phrase of phrases) {
-      const started = Date.now();
-      const track = await segmentPhrase(meta.id, phrase, backend);
-      const line = {
-        phrase,
-        frames: new Set(track.records.map((r) => r.frameIndex)).size,
-        objects: new Set(track.records.map((r) => r.objectId)).size,
-        billedFrames: track.usage.videoFramesProcessed ?? null,
-        ms: Date.now() - started,
-      };
-      summary.push(line);
-      if (stream) res.write(`${JSON.stringify(line)}\n`);
-    }
+    // One segmentation at a time per clip: a second request waits and then finds the cache.
+    await withClipLock(meta.id, async () => {
+      for (const phrase of phrases) {
+        const started = Date.now();
+        const track = await segmentPhrase(meta.id, phrase, backend);
+        const line = {
+          phrase,
+          frames: new Set(track.records.map((r) => r.frameIndex)).size,
+          objects: new Set(track.records.map((r) => r.objectId)).size,
+          billedFrames: track.usage.videoFramesProcessed ?? null,
+          ms: Date.now() - started,
+        };
+        summary.push(line);
+        if (stream) res.write(`${JSON.stringify(line)}\n`);
+      }
+    });
   } catch (err) {
     if (!stream) throw err;
     res.write(`${JSON.stringify({ error: (err as Error).message })}\n`);
@@ -252,7 +256,7 @@ app.post("/api/counterfactual/explain", wrap(async (req, res) => {
 app.post("/api/adjudicate", wrap(async (req, res) => {
   const clipId = String((req.body as { clipId?: unknown })?.clipId ?? "");
   await readMeta(clipId);
-  const run = await adjudicateClip(clipId, spark);
+  const run = await withClipLock(clipId, () => adjudicateClip(clipId, spark));
   const analysis = await runAnalysis(clipId);
   res.json({ added: run.added, failed: run.failed, skipped: run.plan.skipped.map((c) => c.id), adjudications: run.all, analysis });
 }));
@@ -266,7 +270,7 @@ app.put("/api/clips/:id/scenario", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
   assertEditable(meta.id);
   const entities = await readEntities(meta.id);
-  const scenario = validateScenario(req.body, new Set(entities.map((e) => e.id)));
+  const scenario = validateScenario(req.body, entities);
   await writeScenario(meta.id, scenario);
   res.json({ scenario });
 }));
