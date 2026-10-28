@@ -57,14 +57,18 @@ function isHand(e: Entity): boolean {
 }
 
 // State replay lives in the engine (tested there); the overlay only draws it.
-export { contaminatedAt as contaminationAt, recentlyContaminated as pulsingAt } from "../../engine/propagation.ts";
+export { contaminatedAt as contaminationAt, contaminatedDurationsAt, recentlyContaminated as pulsingAt } from "../../engine/propagation.ts";
 
 export type { Analysis, PropagationResult };
 
+export type OverlayMode = "off" | "glow" | "heat";
+
 export interface DrawOptions {
-  readonly glow: boolean;
+  readonly mode: OverlayMode;
   readonly contaminated: ReadonlySet<string>;
   readonly pulsing: ReadonlySet<string>;
+  // Heat mode: fraction of elapsed time each entity has been contaminated, 0 to 1.
+  readonly heat: ReadonlyMap<string, number>;
   readonly highlight: string | null;
   readonly entities: ReadonlyMap<string, Entity>;
 }
@@ -74,7 +78,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, shapes: readonly Shape[
   for (const shape of shapes) {
     const entity = options.entities.get(shape.entityId);
     const hand = entity !== undefined && isHand(entity);
-    const hot = options.glow && options.contaminated.has(shape.entityId);
+    const hot = options.mode !== "off" && options.contaminated.has(shape.entityId);
     const pulse = hot && options.pulsing.has(shape.entityId);
     const highlighted = options.highlight === shape.entityId;
     ctx.save();
@@ -84,7 +88,18 @@ export function drawFrame(ctx: CanvasRenderingContext2D, shapes: readonly Shape[
       ctx.setLineDash([6, 6]);
       ctx.globalAlpha = 0.6;
     }
-    if (hot) {
+    if (options.mode === "heat" && (hot || (options.heat.get(shape.entityId) ?? 0) > 0)) {
+      // Heat: how long this has been dirty relative to the clip so far. Cool amber to deep red.
+      const h = Math.min(1, options.heat.get(shape.entityId) ?? 0);
+      const r = 255;
+      const g = Math.round(170 - 150 * h);
+      const b = Math.round(60 - 50 * h);
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.25 + 0.55 * h})`;
+      ctx.fill(shape.path);
+      ctx.lineWidth = highlighted ? 4 : 1.5;
+      ctx.strokeStyle = `rgba(255, ${g}, ${b}, 0.95)`;
+      ctx.stroke(shape.path);
+    } else if (hot) {
       ctx.shadowColor = pulse ? "rgba(255, 200, 80, 1)" : "rgba(255, 130, 20, 0.95)";
       ctx.shadowBlur = pulse ? 46 : 24;
       ctx.fillStyle = pulse ? "rgba(255, 185, 60, 0.78)" : "rgba(255, 120, 10, 0.46)";

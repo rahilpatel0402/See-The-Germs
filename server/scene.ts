@@ -1,0 +1,191 @@
+// Scene setup: Muse Spark looks at three frames and proposes the prop table with SAM phrases;
+// SAM tests each phrase on a frame; anything SAM cannot find goes back to Spark once for new
+// phrases. The result is an entities.json a person can still edit. Spark proposes, SAM verifies.
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { GLOVE_MIN_CONFIDENCE } from "../engine/config.ts";
+import type { DispenserAgent, EntityClass, MaskRecord, ZoneTag } from "../engine/types.ts";
+import { readMeta } from "./clips.ts";
+import { type EntityConfig, validateEntities, writeEntities } from "./entities.ts";
+import { rawFramePath } from "./frames.ts";
+import { clipDir } from "./paths.ts";
+import { segmentImage } from "./sam.ts";
+import { estimateSparkCost, type SparkBackend } from "./spark.ts";
+
+const ZONES: ZoneTag[] = ["patient_zone_A", "patient_zone_B", "healthcare_area", "hygiene_station"];
+const KINDS: EntityClass[] = ["object", "resident_zone", "dispenser"];
+const AGENTS = ["alcohol_rub", "soap_water", "gloves", "none"] as const;
+// A phrase counts as verified when SAM finds one to three objects at this mean confidence.
+const MIN_PHRASE_CONFIDENCE = 0.5;
+const MAX_PROPS = 10;
+
+const SCENE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    entities: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          label: { type: "string" },
+          kind: { type: "string", enum: KINDS },
+          zone: { type: "string", enum: ZONES },
+          agent: { type: "string", enum: AGENTS },
+          aseptic: { type: "boolean" },
+          phrases: { type: "array", items: { type: "string" } },
+        },
+        required: ["label", "kind", "zone", "agent", "aseptic", "phrases"],
+      },
+    },
+  },
+  required: ["entities"],
+};
+
+const RETRY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: { phrases: { type: "array", items: { type: "string" } } },
+  required: ["phrases"],
+};
+
+interface Proposed {
+  label: string;
+  kind: EntityClass;
+  zone: ZoneTag;
+  agent: (typeof AGENTS)[number];
+  aseptic: boolean;
+  phrases: string[];
+}
+
+export interface PhraseTrial {
+  readonly phrase: string;
+  readonly objects: number;
+  readonly meanConfidence: number | null;
+}
+
+export interface SceneEntityReport {
+  readonly id: string;
+  readonly label: string;
+  readonly tried: readonly PhraseTrial[];
+  readonly chosen: string | null;
+  readonly verified: boolean;
+}
+
+export interface SceneResult {
+  readonly entities: readonly EntityConfig[];
+  readonly report: readonly SceneEntityReport[];
+  readonly frames: readonly number[];
+  readonly cost: number;
+}
+
+function slugId(label: string, used: Set<string>): string {
+  let base = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "prop";
+  if (/^[0-9]/.test(base)) base = `p_${base}`;
+  let id = base;
+  let n = 2;
+  while (used.has(id)) id = `${base}_${n++}`;
+  used.add(id);
+  return id;
+}
+
+function trial(phrase: string, records: readonly MaskRecord[]): PhraseTrial {
+  const objects = new Set(records.map((r) => r.objectId)).size;
+  const conf = records.map((r) => r.confidence).filter((c): c is number => c !== undefined);
+  return { phrase, objects, meanConfidence: conf.length ? conf.reduce((a, b) => a + b, 0) / conf.length : null };
+}
+
+function good(t: PhraseTrial): boolean {
+  return t.objects >= 1 && t.objects <= 3 && (t.meanConfidence ?? 0) >= MIN_PHRASE_CONFIDENCE;
+}
+
+async function loadPrompt(): Promise<string> {
+  return readFile(path.join(process.cwd(), "server", "prompts", "scene.md"), "utf8");
+}
+
+export async function proposeScene(clipId: string, spark: SparkBackend): Promise<SceneResult> {
+  const meta = await readMeta(clipId);
+  const last = Math.max(0, meta.sampled.frames - 1);
+  const frames = [...new Set([0, Math.floor(last / 2), last])];
+  const images: Buffer[] = [];
+  for (const f of frames) images.push(await readFile(await rawFramePath(clipId, f)));
+  const prompt = await loadPrompt();
+  let cost = 0;
+
+  const proposal = await spark.completeJson({
+    instructions: prompt,
+    text: `Three frames from a ${(meta.sampled.frames / meta.fps).toFixed(0)} second clip, in time order. List the props.`,
+    images,
+    schemaName: "scene",
+    schema: SCENE_SCHEMA,
+    maxOutputTokens: 8000,
+  });
+  cost += estimateSparkCost(proposal.usage);
+  console.log(`spark   | ${clipId} | scene proposal | in=${proposal.usage.inputTokens} out=${proposal.usage.outputTokens} (reasoning ${proposal.usage.reasoningTokens}) | ${proposal.elapsedMs} ms | $${estimateSparkCost(proposal.usage).toFixed(4)}`);
+  const raw = (proposal.json as { entities?: unknown })?.entities;
+  if (!Array.isArray(raw)) throw new Error("scene: Spark returned no entities");
+  const proposed: Proposed[] = raw
+    .filter((e): e is Proposed => typeof e?.label === "string" && KINDS.includes(e.kind) && ZONES.includes(e.zone) && Array.isArray(e.phrases))
+    .slice(0, MAX_PROPS)
+    .map((e) => ({ ...e, phrases: e.phrases.filter((p: unknown): p is string => typeof p === "string" && p.trim().length > 0).slice(0, 3) }));
+
+  // Verify phrases on the middle frame with the SAM image endpoint.
+  const testFrame = images[Math.min(1, images.length - 1)] as Buffer;
+  const used = new Set<string>(["bare_hand", "gloved_hand"]);
+  const entities: EntityConfig[] = [
+    { id: "bare_hand", label: "bare hand", class: "bare_hand", zone: "healthcare_area", samPhrase: "bare hand", person: "P1" },
+    { id: "gloved_hand", label: "gloved hand", class: "gloved_hand", zone: "healthcare_area", samPhrase: "gloved hand", person: "P1", minConfidence: GLOVE_MIN_CONFIDENCE },
+  ];
+  const report: SceneEntityReport[] = [];
+
+  for (const p of proposed) {
+    const id = slugId(p.label, used);
+    const tried: PhraseTrial[] = [];
+    let chosen: string | null = null;
+    const tryPhrases = async (phrases: readonly string[]): Promise<void> => {
+      for (const phrase of phrases) {
+        if (chosen) return;
+        const { records } = await segmentImage(testFrame, phrase);
+        cost += 0.0025;
+        const t = trial(phrase, records);
+        tried.push(t);
+        console.log(`phrase  | ${clipId} | ${p.label.padEnd(20)} | ${phrase.padEnd(32)} | objects=${t.objects} conf=${t.meanConfidence?.toFixed(2) ?? "?"}`);
+        if (good(t)) chosen = phrase;
+      }
+    };
+    await tryPhrases(p.phrases);
+    if (!chosen && p.phrases.length > 0) {
+      // One more round: tell Spark what failed and ask for plainer descriptions.
+      const retry = await spark.completeJson({
+        instructions: prompt,
+        text: `The prop "${p.label}" was not found by the segmentation model with these phrases: ${p.phrases.map((x) => `"${x}"`).join(", ")}. Look at the frames again and give three different, plainer phrases describing only its color, shape, and material.`,
+        images,
+        schemaName: "phrases",
+        schema: RETRY_SCHEMA,
+        maxOutputTokens: 4000,
+      });
+      cost += estimateSparkCost(retry.usage);
+      const more = ((retry.json as { phrases?: unknown })?.phrases as unknown[] | undefined)?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).slice(0, 3) ?? [];
+      await tryPhrases(more);
+    }
+    const entity: EntityConfig = {
+      id,
+      label: p.label,
+      class: p.kind,
+      zone: p.kind === "dispenser" ? "hygiene_station" : p.zone,
+      samPhrase: chosen ?? p.phrases[0] ?? p.label,
+      ...(p.kind === "dispenser" ? { agent: (p.agent === "none" ? "alcohol_rub" : p.agent) as DispenserAgent } : {}),
+      ...(p.aseptic && p.kind === "object" ? { aseptic: true } : {}),
+    };
+    entities.push(entity);
+    report.push({ id, label: p.label, tried, chosen, verified: chosen !== null });
+  }
+
+  validateEntities(entities);
+  await writeEntities(clipId, entities);
+  const result: SceneResult = { entities, report, frames, cost: Number(cost.toFixed(4)) };
+  await writeFile(path.join(clipDir(clipId), "scene.json"), JSON.stringify(result, null, 2));
+  console.log(`scene   | ${clipId} | ${entities.length - 2} props, ${report.filter((r) => r.verified).length} verified by SAM, about $${result.cost.toFixed(3)}`);
+  return result;
+}

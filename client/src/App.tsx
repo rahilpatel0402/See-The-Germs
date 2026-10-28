@@ -4,7 +4,7 @@ import type { Analysis, Counterfactual, Narrative, PathogenId } from "../../engi
 import { api, ApiError, type ScenarioOverride, type TracksPayload } from "./api.ts";
 import { CounterfactualBar } from "./CounterfactualBar.tsx";
 import { Drawer } from "./Drawer.tsx";
-import { buildOverlayIndex, type OverlayIndex } from "./overlay.ts";
+import { buildOverlayIndex, type OverlayIndex, type OverlayMode } from "./overlay.ts";
 import { Timeline } from "./Timeline.tsx";
 import { Upload } from "./Upload.tsx";
 import { VideoStage } from "./VideoStage.tsx";
@@ -15,7 +15,7 @@ const BADGE = "Staged synthetic footage. Staff training and audit aid. Not surve
 const params = new URLSearchParams(window.location.search);
 const initialClip = params.get("clip");
 const initialT = Number(params.get("t"));
-const initialGlow = params.get("glow") !== "0";
+const initialMode: OverlayMode = params.get("mode") === "heat" ? "heat" : params.get("glow") === "0" ? "off" : "glow";
 
 type NarrativeState = "idle" | "loading" | "error" | "ready";
 
@@ -33,7 +33,7 @@ export function App() {
   const [narrativeError, setNarrativeError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [glow, setGlow] = useState(initialGlow);
+  const [mode, setMode] = useState<OverlayMode>(initialMode);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -234,9 +234,17 @@ export function App() {
           <button type="button" onClick={() => setUpload({ open: true, resume: null })}>
             Upload your own
           </button>
-          <button type="button" className={`germs-toggle${glow ? " on" : ""}`} onClick={() => setGlow((g) => !g)} aria-pressed={glow}>
-            See the Germs
-          </button>
+          <div className="mode-switch" role="group" aria-label="overlay mode">
+            <button type="button" className={mode === "off" ? "on" : ""} onClick={() => setMode("off")} aria-pressed={mode === "off"}>
+              Off
+            </button>
+            <button type="button" className={`germs-toggle${mode === "glow" ? " on" : ""}`} onClick={() => setMode("glow")} aria-pressed={mode === "glow"}>
+              See the Germs
+            </button>
+            <button type="button" className={mode === "heat" ? "on heat" : ""} onClick={() => setMode("heat")} aria-pressed={mode === "heat"} title="How long each surface has been contaminated so far">
+              Heat
+            </button>
+          </div>
         </div>
       </header>
 
@@ -263,7 +271,7 @@ export function App() {
               analysis={analysis}
               propagation={counterfactual?.propagation ?? null}
               index={index}
-              glow={glow}
+              mode={mode}
               highlight={highlight}
               onTime={onTime}
               onDuration={onDuration}

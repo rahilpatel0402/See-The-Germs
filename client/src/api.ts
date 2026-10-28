@@ -133,8 +133,16 @@ export async function segmentStream(clipId: string, onLine: (line: SegmentLine) 
   }
 }
 
+export interface SceneResult {
+  readonly entities: EntityConfig[];
+  readonly report: Array<{ id: string; label: string; tried: Array<{ phrase: string; objects: number; meanConfidence: number | null }>; chosen: string | null; verified: boolean }>;
+  readonly frames: number[];
+  readonly cost: number;
+}
+
 export const api = {
   clips: () => request<{ clips: string[]; demo: string[] }>("/api/clips"),
+  scene: (clipId: string) => post<SceneResult>(`/api/clips/${encodeURIComponent(clipId)}/scene`, {}),
   clip: (clipId: string) => request<ClipInfo>(`/api/clips/${encodeURIComponent(clipId)}`),
   saveEntities: (clipId: string, entities: readonly EntityConfig[]) =>
     request<{ entities: EntityConfig[] }>(`/api/clips/${encodeURIComponent(clipId)}/entities`, {

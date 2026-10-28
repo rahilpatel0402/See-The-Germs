@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DispenserAgent, EntityClass, ZoneTag } from "../../engine/types.ts";
-import { api, ApiError, segmentStream, uploadClip, type EntityConfig, type SegmentLine } from "./api.ts";
+import { api, ApiError, segmentStream, uploadClip, type EntityConfig, type SceneResult, type SegmentLine } from "./api.ts";
 
 type Step = "pick" | "uploading" | "entities" | "segmenting" | "adjudicating" | "analyzing" | "done";
 
@@ -33,6 +33,29 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
   const [adjudicated, setAdjudicated] = useState<{ added: number; failed: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
+  const [proposing, setProposing] = useState(false);
+  const [scene, setScene] = useState<SceneResult | null>(null);
+
+  const propose = async () => {
+    if (!clipId) return;
+    setProposing(true);
+    setError(null);
+    try {
+      const result = await api.scene(clipId);
+      setScene(result);
+      setEntities(result.entities);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setProposing(false);
+    }
+  };
+  const verification = (id: string): string | null => {
+    const r = scene?.report.find((x) => x.id === id);
+    if (!r) return null;
+    const best = r.tried.find((t) => t.phrase === r.chosen) ?? r.tried.at(-1);
+    return r.verified ? `SAM found it: ${best?.objects} object${best?.objects === 1 ? "" : "s"}, confidence ${best?.meanConfidence?.toFixed(2) ?? "?"}` : `SAM did not find it with ${r.tried.length} phrase${r.tried.length === 1 ? "" : "s"}; edit the phrase`;
+  };
 
   useEffect(() => {
     if (!resumeClipId) return;
@@ -182,6 +205,18 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
             Name what is in the scene. The phrase is what SAM looks for: describe how the prop looks, not what it is for ("white rod" works, "bed rail" may not).
             Keep the two hands. Remove props that are not in the clip.
           </p>
+          <p>
+            <button type="button" disabled={proposing} onClick={() => void propose()}>
+              {proposing ? "Muse Spark is looking at three frames and SAM is checking each phrase..." : "Let Muse Spark propose the props"}
+            </button>{" "}
+            {scene ? (
+              <span className="muted">
+                {scene.report.length} props proposed, {scene.report.filter((r) => r.verified).length} verified by SAM, about ${scene.cost.toFixed(2)}.
+              </span>
+            ) : (
+              <span className="muted">Spark proposes, SAM verifies each phrase on a frame, anything unfound goes back to Spark once. A few cents.</span>
+            )}
+          </p>
           <table>
             <thead>
               <tr>
@@ -190,6 +225,7 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
                 <th>Kind</th>
                 <th>Zone</th>
                 <th>Agent</th>
+                <th>SAM check</th>
                 <th></th>
               </tr>
             </thead>
@@ -237,6 +273,7 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
                         </select>
                       ) : null}
                     </td>
+                    <td className="muted small">{hand ? "" : (verification(e.id) ?? "")}</td>
                     <td>{hand ? null : <button type="button" className="link" onClick={() => remove(i)}>remove</button>}</td>
                   </tr>
                 );

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CLIP_A_CONTACTS, CLIP_A_ENTITIES, contact } from "./fixtures.ts";
 import { PATHOGENS } from "./pathogens.ts";
-import { contaminatedAt, propagate, recentlyContaminated, type PropagationInput } from "./propagation.ts";
+import { contaminatedAt, contaminatedDurationsAt, propagate, recentlyContaminated, type PropagationInput } from "./propagation.ts";
 import type { GloveEvent, HygieneEvent } from "./types.ts";
 
 const base: PropagationInput = {
@@ -106,6 +106,18 @@ test("contaminatedAt replays the change list and agrees with the final state", (
   assert.deepEqual([...contaminatedAt(CLIP_A_ENTITIES, r, 1000)].sort(), [...r.contaminated].sort());
   assert.deepEqual([...recentlyContaminated(CLIP_A_ENTITIES, r, 4.2, 0.4)], ["iv_pole"]);
   assert.deepEqual([...recentlyContaminated(CLIP_A_ENTITIES, r, 4.6, 0.4)], []);
+});
+
+test("contaminatedDurationsAt accumulates time dirty, including across a clean-up", () => {
+  const r = propagate({ ...base, hygieneEvents: [rub(10, true)] });
+  const at8 = contaminatedDurationsAt(CLIP_A_ENTITIES, r, 8);
+  assert.equal(at8.get("rail_A"), 8);
+  assert.equal(at8.get("bare_hand"), 7);
+  assert.equal(at8.get("iv_pole"), 4);
+  const at20 = contaminatedDurationsAt(CLIP_A_ENTITIES, r, 20);
+  // Hands were dirty from 1 to 10, then cleaned, and stayed clean (no later re-contamination).
+  assert.equal(at20.get("bare_hand"), 9);
+  assert.equal(at20.get("rail_A"), 20);
 });
 
 test("same input, same output", () => {

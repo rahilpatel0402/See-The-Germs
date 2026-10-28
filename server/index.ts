@@ -19,6 +19,7 @@ import { analysisPath, clipDir, sampledPath, TMP_DIR } from "./paths.ts";
 import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
 import { deleteRemoteFile, MetaSamBackend, readTrack, segmentPhrase } from "./sam.ts";
+import { proposeScene } from "./scene.ts";
 import { MetaSparkBackend } from "./spark.ts";
 
 const PORT = Number(optionalEnv("PORT", "8787"));
@@ -129,6 +130,13 @@ app.get("/api/clips/:id/analysis", wrap(async (req, res) => {
 app.get("/api/clips/:id/tracks", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
   res.json(await tracksPayload(meta.id));
+}));
+
+// Spark proposes the prop table from three frames, SAM verifies every phrase. Writes entities.json.
+app.post("/api/clips/:id/scene", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  assertEditable(meta.id);
+  res.json(await withClipLock(meta.id, () => proposeScene(meta.id, spark)));
 }));
 
 app.put("/api/clips/:id/entities", wrap(async (req, res) => {

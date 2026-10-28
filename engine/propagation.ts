@@ -80,6 +80,28 @@ export function recentlyContaminated(entities: readonly Entity[], propagation: P
   return set;
 }
 
+// Seconds each entity has spent contaminated up to time t, replayed from the change list. The
+// heat view scales fill by this over elapsed time, so a surface that has been dirty since the
+// start reads hotter than one that just turned.
+export function contaminatedDurationsAt(entities: readonly Entity[], propagation: PropagationResult, t: number): Map<string, number> {
+  const groups = handGroups(entities);
+  const since = new Map<string, number>();
+  const total = new Map<string, number>();
+  for (const change of propagation.changes) {
+    if (change.t > t) break;
+    for (const id of groups.get(change.entityId) ?? [change.entityId]) {
+      if (change.contaminated) {
+        if (!since.has(id)) since.set(id, change.t);
+      } else if (since.has(id)) {
+        total.set(id, (total.get(id) ?? 0) + (change.t - (since.get(id) as number)));
+        since.delete(id);
+      }
+    }
+  }
+  for (const [id, start] of since) total.set(id, (total.get(id) ?? 0) + Math.max(0, t - start));
+  return total;
+}
+
 export function propagate(input: PropagationInput): PropagationResult {
   const byId = new Map(input.entities.map((e) => [e.id, e]));
   const entityOf = (id: string): Entity => {

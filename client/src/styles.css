@@ -737,3 +737,34 @@ body {
 .ok {
   color: var(--ok);
 }
+
+.mode-switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mode-switch button {
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--line);
+}
+
+.mode-switch button:last-child {
+  border-right: none;
+}
+
+.mode-switch button.on {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.mode-switch button.on.heat {
+  background: #7a1f0c;
+  color: #ffd9c7;
+}
+
+.entities-editor .small {
+  font-size: 11px;
+}
