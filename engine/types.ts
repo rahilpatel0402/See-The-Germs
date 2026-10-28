@@ -50,6 +50,9 @@ export interface MaskRecord {
   readonly objectId: string;
   readonly bounds: MaskBounds;
   readonly confidence?: number;
+  // True when this record was carried over from a neighbouring sighting because the object was
+  // occluded or not yet detected (engine/persistence.ts). Never set by SAM itself.
+  readonly inferred?: boolean;
   readonly mask: {
     readonly encoding: MaskEncoding;
     readonly width: number;
@@ -79,6 +82,9 @@ export interface Tracks {
   // Optional cheap path: the half-open bounding box per entity in a frame without decoding
   // the mask. Glove handover only needs centers.
   boundsAt?(frameIndex: number): ReadonlyMap<string, MaskBounds>;
+  // Optional: entity ids whose mask in this frame is inferred, not seen. A contact that rests on
+  // an inferred object mask is ambiguous and goes to vision review.
+  inferredAt?(frameIndex: number): ReadonlySet<string>;
 }
 
 export type CandidateConfidence = "confident" | "ambiguous";
@@ -94,6 +100,8 @@ export interface ContactCandidate {
   readonly confidence: CandidateConfidence;
   readonly peakIntersectionPx: number;
   readonly dwellFrames: number;
+  // True when any hit frame used an inferred object mask (occluded or not yet detected).
+  readonly inferredObject?: boolean;
 }
 
 export type Verdict = "touching" | "passing_in_front" | "unclear";

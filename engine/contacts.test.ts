@@ -157,6 +157,18 @@ test("output is deterministic and sorted by start frame", () => {
   assert.deepEqual(a.map((c) => c.entityId), ["pump", "rail"]);
 });
 
+test("a grip on an inferred object mask is a candidate but never confident", () => {
+  const hits = [false, false, true, true, true, true, true, true, true, true, false, false, false];
+  const t = tracks([hand, rail], seq(hits, handGrip));
+  const inferred: Tracks = { ...t, inferredAt: (f) => (f >= 4 && f <= 5 ? new Set(["rail"]) : new Set()) };
+  const out = detectContacts(inferred, CONTACT_CONFIG);
+  assert.equal(out.length, 1);
+  assert.equal(out[0]!.confidence, "ambiguous");
+  assert.equal(out[0]!.inferredObject, true);
+  // The same grip on a seen object is confident.
+  assert.equal(detectContacts(t, CONTACT_CONFIG)[0]!.confidence, "confident");
+});
+
 test("overlapping contacts from the bare and gloved classes of one person merge into one gloved contact", () => {
   const ev = (handId: string, entityId: string, startT: number, endT: number) => ({ handId, entityId, startT, endT, adjudicated: false });
   const merged = mergeHandClassContacts(

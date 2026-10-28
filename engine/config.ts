@@ -84,6 +84,29 @@ export interface AdjudicationConfig {
 
 export const ADJUDICATION_CONFIG: AdjudicationConfig = { capPerClip: 12 };
 
+export interface GapFillConfig {
+  readonly enabled: boolean;
+  // Heuristic: two sightings whose boxes overlap at least this much (IoU) are the same static
+  // placement, so the whole gap between them is filled with the earlier sighting.
+  readonly staticIoU: number;
+  // Heuristic: when the object moved between sightings, fill at most this many frames on each
+  // side of the gap (1 s at 10 fps), which covers the grasp and the release.
+  readonly maxMovingGapFrames: number;
+  // Heuristic: a staged, fixed-camera scene has every prop in place from the first frame, so an
+  // object first detected late is assumed to have been there since frame 0.
+  readonly backfillFromFirstSighting: boolean;
+  // Heuristic: likewise, an object last seen before the end is assumed to stay where it was.
+  readonly forwardFillToEnd: boolean;
+}
+
+export const GAP_FILL_CONFIG: GapFillConfig = {
+  enabled: true,
+  staticIoU: 0.5,
+  maxMovingGapFrames: 10,
+  backfillFromFirstSighting: true,
+  forwardFillToEnd: true,
+};
+
 export interface ScoreWeights {
   readonly residentExposure: number;
   readonly contaminatedSurface: number;

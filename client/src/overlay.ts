@@ -10,6 +10,8 @@ export interface Shape {
   readonly path: Path2D;
   readonly left: number;
   readonly top: number;
+  // The object was not seen here; its position is carried from a neighbouring sighting.
+  readonly inferred: boolean;
 }
 
 export interface OverlayIndex {
@@ -42,7 +44,7 @@ export function buildOverlayIndex(payload: TracksPayload): OverlayIndex {
       for (const { entityId, record } of byFrame.get(frameIndex) ?? []) {
         const d = decodeMaskToSVGPath(record.mask);
         if (d === "") continue;
-        shapes.push({ entityId, path: new Path2D(d), left: record.bounds.left, top: record.bounds.top });
+        shapes.push({ entityId, path: new Path2D(d), left: record.bounds.left, top: record.bounds.top, inferred: record.inferred === true });
       }
       cache.set(frameIndex, shapes);
       return shapes;
@@ -77,6 +79,11 @@ export function drawFrame(ctx: CanvasRenderingContext2D, shapes: readonly Shape[
     const highlighted = options.highlight === shape.entityId;
     ctx.save();
     ctx.translate(shape.left, shape.top);
+    // Inferred positions are drawn dashed and lighter: the camera did not see the object here.
+    if (shape.inferred) {
+      ctx.setLineDash([6, 6]);
+      ctx.globalAlpha = 0.6;
+    }
     if (hot) {
       ctx.shadowColor = pulse ? "rgba(255, 200, 80, 1)" : "rgba(255, 130, 20, 0.95)";
       ctx.shadowBlur = pulse ? 46 : 24;

@@ -58,12 +58,14 @@ interface OpenRun {
   lastHitFrame: number;
   hits: number;
   peak: number;
+  inferred: boolean;
 }
 
 interface PairState {
   pendingHits: number;
   pendingStart: number;
   pendingPeak: number;
+  pendingInferred: boolean;
   run: OpenRun | null;
   misses: number;
 }
@@ -73,11 +75,13 @@ function isHand(entity: Entity): boolean {
 }
 
 function newState(): PairState {
-  return { pendingHits: 0, pendingStart: 0, pendingPeak: 0, run: null, misses: 0 };
+  return { pendingHits: 0, pendingStart: 0, pendingPeak: 0, pendingInferred: false, run: null, misses: 0 };
 }
 
 function finish(run: OpenRun, handId: string, entityId: string, fps: number, config: ContactConfig, floor: number): ContactCandidate {
-  const confident = run.peak >= config.confidentIntersectionFactor * floor && run.hits >= config.confidentDwellFrames;
+  // A contact resting on an inferred object mask is never confident: the camera did not see
+  // the object there, so vision review decides.
+  const confident = !run.inferred && run.peak >= config.confidentIntersectionFactor * floor && run.hits >= config.confidentDwellFrames;
   return {
     id: `${handId}:${entityId}:${run.startFrame}`,
     handId,
@@ -89,6 +93,7 @@ function finish(run: OpenRun, handId: string, entityId: string, fps: number, con
     confidence: confident ? "confident" : "ambiguous",
     peakIntersectionPx: run.peak,
     dwellFrames: run.hits,
+    ...(run.inferred ? { inferredObject: true } : {}),
   };
 }
 
@@ -107,6 +112,7 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
 
   for (let f = 0; f < tracks.frameCount; f++) {
     const frame = tracks.masksAt(f);
+    const inferredHere = tracks.inferredAt?.(f);
     for (const hand of hands) {
       const handMask = frame.get(hand.id);
       const dilated: FrameMask | undefined = handMask === undefined ? undefined : dilate(handMask, k);
@@ -120,22 +126,26 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
         const targetMask = frame.get(target.id);
         const inter = dilated !== undefined && targetMask !== undefined ? intersectArea(dilated, targetMask) : 0;
         const hit = inter >= floor;
+        const inferred = hit && inferredHere !== undefined && inferredHere.has(target.id);
 
         if (hit) {
           if (state.run !== null) {
             state.run.lastHitFrame = f;
             state.run.hits++;
             if (inter > state.run.peak) state.run.peak = inter;
+            if (inferred) state.run.inferred = true;
             state.misses = 0;
           } else {
             if (state.pendingHits === 0) {
               state.pendingStart = f;
               state.pendingPeak = 0;
+              state.pendingInferred = false;
             }
             state.pendingHits++;
             if (inter > state.pendingPeak) state.pendingPeak = inter;
+            if (inferred) state.pendingInferred = true;
             if (state.pendingHits >= config.openFrames) {
-              state.run = { startFrame: state.pendingStart, lastHitFrame: f, hits: state.pendingHits, peak: state.pendingPeak };
+              state.run = { startFrame: state.pendingStart, lastHitFrame: f, hits: state.pendingHits, peak: state.pendingPeak, inferred: state.pendingInferred };
               state.pendingHits = 0;
               state.misses = 0;
             }
@@ -150,6 +160,7 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
         } else {
           state.pendingHits = 0;
           state.pendingPeak = 0;
+          state.pendingInferred = false;
         }
       }
     }

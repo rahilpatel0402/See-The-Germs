@@ -1,9 +1,12 @@
 // Turns cached SAM track files plus the entity table into the engine's Tracks input.
 // One entity per SAM class for now: all records of a phrase in a frame are unioned, which is
 // the PLAN.md 6.1 fallback ("hands of P1"). Per-hand entities come later if the clips need them.
-// Frames are decoded on demand with a small cache: a full-frame raster per entity per frame
-// for a whole clip would be gigabytes.
+// Objects persist across detection gaps (engine/persistence.ts); hands never do. Frames are
+// decoded on demand with a small cache: a full-frame raster per entity per frame for a whole
+// clip would be gigabytes.
+import { GAP_FILL_CONFIG } from "../engine/config.ts";
 import { fromRecord, union } from "../engine/masks.ts";
+import { fillObjectGaps } from "../engine/persistence.ts";
 import type { Entity, FrameMask, MaskBounds, MaskRecord, Tracks } from "../engine/types.ts";
 import { readMeta } from "./clips.ts";
 import { passesConfidence, readEntities, type EntityConfig } from "./entities.ts";
@@ -12,8 +15,18 @@ import { readTrack } from "./sam.ts";
 // Frames kept decoded at once. The engine walks forward and looks back at most ten frames.
 const FRAME_CACHE_SIZE = 24;
 
-// What the client needs to draw the overlay: raw records per entity, minConfidence applied,
-// payloads left encoded so the browser decodes lazily.
+function isHand(entity: EntityConfig): boolean {
+  return entity.class === "bare_hand" || entity.class === "gloved_hand";
+}
+
+// Records for one entity: confidence applied, and for objects, gaps filled and marked inferred.
+export function entityRecords(entity: EntityConfig, records: readonly MaskRecord[], frameCount: number): MaskRecord[] {
+  const kept = records.filter((r) => passesConfidence(entity, r));
+  return isHand(entity) ? kept : fillObjectGaps(kept, frameCount, GAP_FILL_CONFIG);
+}
+
+// What the client needs to draw the overlay: raw records per entity, the same records the
+// engine sees (inferred ones flagged), payloads left encoded so the browser decodes lazily.
 export interface TracksPayload {
   readonly frameSize: { readonly w: number; readonly h: number };
   readonly fps: number;
@@ -29,7 +42,7 @@ export async function tracksPayload(clipId: string): Promise<TracksPayload> {
   for (const entity of entities) {
     const track = await readTrack(clipId, entity.samPhrase);
     if (!track) continue;
-    tracks[entity.id] = track.records.filter((r) => passesConfidence(entity, r));
+    tracks[entity.id] = entityRecords(entity, track.records, meta.sampled.frames);
   }
   return { frameSize: { w: meta.sampled.width, h: meta.sampled.height }, fps: meta.fps, frames: meta.sampled.frames, entities: plainEntities(entities), tracks };
 }
@@ -54,15 +67,18 @@ export interface LoadedTracks {
 }
 
 const EMPTY_FRAME: ReadonlyMap<string, FrameMask> = new Map();
+const EMPTY_SET: ReadonlySet<string> = new Set();
 
 export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   const meta = await readMeta(clipId);
   const entities = await readEntities(clipId);
   const frameSize = { w: meta.sampled.width, h: meta.sampled.height };
+  const frameCount = meta.sampled.frames;
   const missing: string[] = [];
 
   // entity id -> frame index -> records (small: encoded payloads only).
   const byEntity = new Map<string, Map<number, MaskRecord[]>>();
+  const inferredByFrame = new Map<number, Set<string>>();
   for (const entity of entities) {
     const track = await readTrack(clipId, entity.samPhrase);
     if (!track) {
@@ -70,9 +86,9 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
       continue;
     }
     const perFrame = new Map<number, MaskRecord[]>();
-    for (const record of track.records) {
-      if (!passesConfidence(entity, record)) continue;
+    for (const record of entityRecords(entity, track.records, frameCount)) {
       (perFrame.get(record.frameIndex) ?? perFrame.set(record.frameIndex, []).get(record.frameIndex)!).push(record);
+      if (record.inferred) (inferredByFrame.get(record.frameIndex) ?? inferredByFrame.set(record.frameIndex, new Set()).get(record.frameIndex)!).add(entity.id);
     }
     byEntity.set(entity.id, perFrame);
   }
@@ -114,6 +130,8 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
     return out;
   };
 
-  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount: meta.sampled.frames, entities: plainEntities(entities), masksAt, boundsAt };
+  const inferredAt = (frameIndex: number): ReadonlySet<string> => inferredByFrame.get(frameIndex) ?? EMPTY_SET;
+
+  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount, entities: plainEntities(entities), masksAt, boundsAt, inferredAt };
   return { tracks, entities, missingPhrases: missing };
 }

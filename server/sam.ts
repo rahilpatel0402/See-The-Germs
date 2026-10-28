@@ -4,7 +4,7 @@
 import { createReadStream, existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import OpenAI, { toFile } from "openai";
-import { decodeMaskToRaster, frameIndexOf, parseVideoStream, recordsOfKind } from "@meta-sam/parser";
+import { decodeMaskToRaster, frameIndexOf, parseImageStream, parseVideoStream, recordsOfKind } from "@meta-sam/parser";
 import type { FrameSize, MaskRecord } from "../engine/types.ts";
 import { readMeta, writeMeta, type ClipMeta } from "./clips.ts";
 import { requireEnv } from "./env.ts";
@@ -168,6 +168,35 @@ export class MetaSamBackend implements SegmentationBackend {
       warnings: result.diagnostics.filter((d) => d.severity === "warning").map((d) => `${d.code}: ${d.message}`),
     };
   }
+}
+
+// One still frame, one phrase: for testing a candidate phrase before spending a clip run on it.
+export async function segmentImage(png: Buffer, phrase: string): Promise<{ records: MaskRecord[]; elapsedMs: number }> {
+  const started = Date.now();
+  const stream = await metaClient().responses.create({
+    model: SAM_MODEL,
+    stream: true,
+    metadata: { mask_encoding: "one_bit", include_confidence: "true" },
+    input: [
+      {
+        type: "message",
+        role: "user",
+        content: [
+          { type: "input_text", text: phrase },
+          { type: "input_image", image_url: `data:image/png;base64,${png.toString("base64")}` },
+        ],
+      },
+    ],
+  } as never);
+  const result = await parseImageStream(stream as unknown as AsyncIterable<{ type: string }>).finalResult;
+  const records: MaskRecord[] = recordsOfKind(result.records, "mask").map((m) => ({
+    frameIndex: 0,
+    objectId: m.objectId,
+    bounds: { left: m.bounds.left, top: m.bounds.top, right: m.bounds.right, bottom: m.bounds.bottom },
+    mask: { encoding: m.mask.encoding, width: m.mask.width, height: m.mask.height, payload: m.mask.payload },
+    ...(m.confidence === undefined ? {} : { confidence: m.confidence }),
+  }));
+  return { records, elapsedMs: Date.now() - started };
 }
 
 export async function readTrack(clipId: string, phrase: string): Promise<TrackFile | null> {

@@ -18,6 +18,7 @@
     "accuracy": "tsx server/scripts/accuracy.ts",
     "adjudicate": "tsx server/scripts/adjudicate.ts",
     "narrate": "tsx server/scripts/narrate.ts",
+    "phrase": "tsx server/scripts/phrase.ts",
     "build": "vite build client",
     "start": "tsx server/index.ts"
   },
