@@ -189,3 +189,11 @@ Input: `PropagationResult`, `MomentMiss[]`, entities. Output: `ExposureScore { c
 
 ### Analysis shape after Wednesday
 `Analysis` gains `scenario`, `pathogen`, `hygieneEvents`, `gloveEvents`, `propagation`, `momentMisses`, `score`. Once the client and the Spark prompt read it, it changes only with both in the same commit.
+
+## First-place plan, approved Tue Oct 27 night: items 1, 2, 4, 7 written
+
+- **Scene setup loop** (`server/scene.ts`, `server/prompts/scene.md`, `POST /api/clips/:id/scene`): Spark vision proposes up to ten props from three frames with kind, zone, agent, aseptic, and three appearance phrases; SAM verifies each phrase on the middle frame (one to three objects at 0.5 confidence or better); unfound props go back to Spark once for plainer phrases; the result is written to `entities.json` and `scene.json` with a per-prop report. The upload flow has a "Let Muse Spark propose the props" button and a SAM check column.
+- **Click to track** (`POST /api/clips/:id/track-box`, `MetaSamBackend.segmentVideoByBox`, `client/src/MarkObject.tsx`, mark mode in `VideoStage`): a box drawn on the paused frame becomes a SAM box prompt tracked both directions; the entity joins the table with `samPhrase: "box:<id>"` and the analysis reruns. Demo clips are excluded.
+- **Record in the browser** (`client/src/Record.tsx`): camera capture with MediaRecorder, 45 s cap, review, then the normal upload path; the server accepts webm and resamples it.
+- **Heat mode**: `contaminatedDurationsAt` in the engine (tested); the overlay's third mode fills each surface by the fraction of elapsed time it has been contaminated.
+- Items 3 (two caregivers via person masks), 5 (training loop and shift report), and 6 (Muse Spark Open backend) wait for Saturday's footage and the partner credits.
