@@ -58,6 +58,10 @@ interface OpenRun {
   lastHitFrame: number;
   hits: number;
   peak: number;
+  // Hits and peak counted over frames where the camera saw the object. Hits on a gap-filled
+  // (inferred) mask count toward timing but never toward confidence.
+  seenHits: number;
+  seenPeak: number;
   inferred: boolean;
 }
 
@@ -65,6 +69,8 @@ interface PairState {
   pendingHits: number;
   pendingStart: number;
   pendingPeak: number;
+  pendingSeenHits: number;
+  pendingSeenPeak: number;
   pendingInferred: boolean;
   run: OpenRun | null;
   misses: number;
@@ -75,13 +81,15 @@ function isHand(entity: Entity): boolean {
 }
 
 function newState(): PairState {
-  return { pendingHits: 0, pendingStart: 0, pendingPeak: 0, pendingInferred: false, run: null, misses: 0 };
+  return { pendingHits: 0, pendingStart: 0, pendingPeak: 0, pendingSeenHits: 0, pendingSeenPeak: 0, pendingInferred: false, run: null, misses: 0 };
 }
 
 function finish(run: OpenRun, handId: string, entityId: string, fps: number, config: ContactConfig, floor: number): ContactCandidate {
-  // A contact resting on an inferred object mask is never confident: the camera did not see
-  // the object there, so vision review decides.
-  const confident = !run.inferred && run.peak >= config.confidentIntersectionFactor * floor && run.hits >= config.confidentDwellFrames;
+  // Confidence rests only on frames where the camera saw the object. A contact that would not
+  // stand on seen frames alone, and leaned on gap-filled masks, is marked inferred so vision
+  // review decides. A long seen grip with a few filled frames inside it stays confident.
+  const confident = run.seenPeak >= config.confidentIntersectionFactor * floor && run.seenHits >= config.confidentDwellFrames;
+  const inferredObject = run.inferred && !confident;
   return {
     id: `${handId}:${entityId}:${run.startFrame}`,
     handId,
@@ -93,7 +101,7 @@ function finish(run: OpenRun, handId: string, entityId: string, fps: number, con
     confidence: confident ? "confident" : "ambiguous",
     peakIntersectionPx: run.peak,
     dwellFrames: run.hits,
-    ...(run.inferred ? { inferredObject: true } : {}),
+    ...(inferredObject ? { inferredObject: true } : {}),
   };
 }
 
@@ -134,18 +142,36 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
             state.run.hits++;
             if (inter > state.run.peak) state.run.peak = inter;
             if (inferred) state.run.inferred = true;
+            else {
+              state.run.seenHits++;
+              if (inter > state.run.seenPeak) state.run.seenPeak = inter;
+            }
             state.misses = 0;
           } else {
             if (state.pendingHits === 0) {
               state.pendingStart = f;
               state.pendingPeak = 0;
+              state.pendingSeenHits = 0;
+              state.pendingSeenPeak = 0;
               state.pendingInferred = false;
             }
             state.pendingHits++;
             if (inter > state.pendingPeak) state.pendingPeak = inter;
             if (inferred) state.pendingInferred = true;
+            else {
+              state.pendingSeenHits++;
+              if (inter > state.pendingSeenPeak) state.pendingSeenPeak = inter;
+            }
             if (state.pendingHits >= config.openFrames) {
-              state.run = { startFrame: state.pendingStart, lastHitFrame: f, hits: state.pendingHits, peak: state.pendingPeak, inferred: state.pendingInferred };
+              state.run = {
+                startFrame: state.pendingStart,
+                lastHitFrame: f,
+                hits: state.pendingHits,
+                peak: state.pendingPeak,
+                seenHits: state.pendingSeenHits,
+                seenPeak: state.pendingSeenPeak,
+                inferred: state.pendingInferred,
+              };
               state.pendingHits = 0;
               state.misses = 0;
             }
@@ -160,6 +186,8 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
         } else {
           state.pendingHits = 0;
           state.pendingPeak = 0;
+          state.pendingSeenHits = 0;
+          state.pendingSeenPeak = 0;
           state.pendingInferred = false;
         }
       }

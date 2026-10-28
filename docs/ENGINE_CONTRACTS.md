@@ -199,3 +199,12 @@ Input: `PropagationResult`, `MomentMiss[]`, entities. Output: `ExposureScore { c
 - **Item 6, Muse Spark Open backend** (`OpenAICompatSparkBackend`, `createSparkBackend`, `npm run spark-probe`, `npm run spark-compare`): written the night the keys arrived. Fireworks verified (2 of 2 adjudication agreement, valid narrative); Baseten wired, key returns 403 pending activation.
 - **Item 5, session report**: written. Item 3 (two caregivers via person masks) waits for Saturday's footage.
 - **Product round** (approved Oct 27 night): show-me on the top fix, Coach and Audit views, stage legend, delete my clip, clip cards with titles and stories, Spanish coaching note, rub countdown on the overlay, printable audit report, task presets at upload. All written.
+
+## Robustness test on outside footage, Tue Oct 27 night
+
+Rahil asked to check the program on a few YouTube clips (local test only, nothing enters the repo, the demo list, or the README). Two shorts ran through the real upload path, the scene loop, and SAM. Findings and the one engine change:
+
+- **Contact confidence now rests on seen frames only** (`engine/contacts.ts`). Before, any gap-filled frame inside a run made the whole contact ambiguous, so a 27 s gloved hold on a resident's forearm with one filled frame was never a contact until vision review. Now `seenHits` and `seenPeak` are tracked beside the totals; a candidate is confident when the seen hits alone meet the dwell and thickness bars, and `inferredObject` is set only when the contact would not stand without the filled frames. Timing still spans the whole run. Two tests cover both sides.
+- Cut-heavy footage splits every SAM track into many object ids (12 for one gloved hand over 34 s) and the hand classes swap at each cut, which the glove detector reads as don and doff pairs. The engine stays deterministic, but the clinical read is noise. The product needs one continuous shot, which the shoot script already requires.
+- A phrase can verify on a still through the image endpoint and return nothing on the video ("white pad with blue border", "turquoise fabric"). The segment stream reports zero frames; the upload UI should say so in words.
+- Spark's scene proposal can name the same prop three times (tray, basket, instruments for one perforated basket). Dedupe by verified phrase overlap is on the LATER list.
