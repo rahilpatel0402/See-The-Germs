@@ -14,15 +14,16 @@ Healthcare-associated infections in nursing homes spread through hands and high-
 
 ## What it does
 
-Upload a short clip of a care task, or open one of the staged demo clips.
+Record a short clip of a care task in the browser, upload one, or open a staged demo clip.
 
-1. SAM 3.1 on the Meta Model API detects, segments, and tracks hands and every touchable surface, one short noun phrase per class, with "bare hand" and "gloved hand" as separate classes.
-2. The engine turns mask overlap over time into contact events, with a confident band and an ambiguous band.
-3. Muse Spark vision adjudicates only the ambiguous candidates from two annotated frames: touching, passing in front, or unclear. Every vote is cached, capped per clip, and marked on the timeline.
-4. A pure propagation engine replays the contacts with pathogen rules (what alcohol rub does and does not clear), glove don and doff, and hygiene events, and maps the result onto the Five Moments.
-5. The page is the video. Flip "See the Germs" and the room lights up where the pathogen went, in sync with playback. The timeline underneath holds contacts, transfers, hygiene, gloves, and missed moments. A drawer holds the chain graph, the moments, the score, and the narrative.
-6. Drag "What if hands had been cleaned at" and the chain recedes live, with before and after numbers.
-7. Muse Spark text writes a coaching note for the caregiver and an audit summary for the infection preventionist from the structured record only. It explains; it never decides.
+1. **Scene setup by Muse Spark and SAM in a loop.** Spark vision looks at three frames and proposes the props: what each is, its zone, its role, and SAM-friendly phrases that describe appearance. SAM tests every phrase on a frame; anything it cannot find goes back to Spark for plainer phrases. The table stays editable, and anything still missing can be marked by drawing a box on a frame, which SAM tracks forward and backward through the clip as a box prompt.
+2. **Tracking.** SAM 3.1 on the Meta Model API segments and tracks hands and every prop, one phrase per class, with "bare hand" and "gloved hand" as separate classes. Objects persist across the moments a hand covers them; any contact that relies on an inferred position goes to vision review.
+3. **Contacts.** The engine turns mask overlap over time into contact events, confident or ambiguous. Muse Spark vision adjudicates only the ambiguous ones from two annotated frames: touching, passing in front, or unclear. Every vote is cached, capped per clip, and shown on the timeline with the frames it saw.
+4. **Propagation.** A pure, tested engine replays the contacts with pathogen rules, hygiene events judged by agent and by WHO rub duration, glove don and doff with glove-use rules, and maps the result onto the Five Moments as opportunities met or missed.
+5. **The page is the video.** "See the Germs" lights the room where the pathogen went, in sync with playback; "Heat" shows how long each surface has been contaminated. The timeline holds contacts, transfers, hygiene, gloves, and missed moments. The drawer holds the coaching note, compliance table, hygiene and glove events, score, chain graph, moments, the disinfection handoff, and the audit summary.
+6. **What if.** Drag "What if hands had been cleaned at" and the chain recedes live, with before and after numbers and a two-sentence explanation on request.
+7. **Narrative.** Muse Spark text writes the coaching note and the audit summary from the structured record only. It explains; it never decides.
+8. **Session report.** Several clips as one session: compliance by Moment and caregiver, surfaces that keep getting contaminated, glove issues, CSV export, and a before-and-after compare for the same caregiver after coaching.
 
 ## How the Meta models are used
 

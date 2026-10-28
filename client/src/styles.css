@@ -846,3 +846,76 @@ body {
     opacity: 0.2;
   }
 }
+
+.session-panel {
+  margin: 12px 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px 14px;
+}
+
+.session-panel h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+
+.session-pick {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.session-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.session-table th,
+.session-table td {
+  text-align: right;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.session-table th:first-child,
+.session-table td:first-child {
+  text-align: left;
+}
+
+.session-table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.session-table .total td {
+  font-weight: 600;
+}
+
+.session-table.compare td:first-child {
+  white-space: normal;
+}
+
+.session-columns {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+}
+
+@media (max-width: 700px) {
+  .session-columns {
+    grid-template-columns: 1fr;
+  }
+  .session-table {
+    display: block;
+    overflow-x: auto;
+  }
+}

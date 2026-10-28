@@ -149,8 +149,28 @@ export interface TrackBoxRequest {
   readonly agent?: string;
 }
 
+export interface SessionClip {
+  readonly clipId: string;
+  readonly pathogen: string;
+  readonly score: { score: number; contaminatedSurfaces: number; chainLength: number };
+  readonly compliance: { overall: { opportunities: number; met: number; rate: number | null }; byMoment: Record<"1" | "2" | "4" | "5", { opportunities: number; met: number; rate: number | null }> };
+  readonly momentMisses: Array<{ moment: number; t: number }>;
+  readonly gloveIssues: Array<{ type: string; t: number }>;
+  readonly hygiene: { events: number; adequate: number; effective: number };
+  readonly residentExposures: number;
+  readonly surfaces: string[];
+}
+
+export interface SessionReport {
+  readonly clips: SessionClip[];
+  readonly session: { overall: { opportunities: number; met: number; rate: number | null }; byMoment: Record<"1" | "2" | "4" | "5", { opportunities: number; met: number; rate: number | null }>; byPerson: Record<string, { opportunities: number; met: number; rate: number | null }> };
+  readonly surfaces: Array<{ label: string; clips: number; contacts: number }>;
+}
+
 export const api = {
   clips: () => request<{ clips: string[]; demo: string[] }>("/api/clips"),
+  session: (clipIds: readonly string[]) => request<SessionReport>(`/api/compliance?clips=${encodeURIComponent(clipIds.join(","))}`),
+  sessionCsvUrl: (clipIds: readonly string[]) => `/api/compliance.csv?clips=${encodeURIComponent(clipIds.join(","))}`,
   trackBox: (clipId: string, body: TrackBoxRequest) =>
     post<{ entity: EntityConfig; frames: number; objects: number; analysis: Analysis | null }>(`/api/clips/${encodeURIComponent(clipId)}/track-box`, body),
   scene: (clipId: string) => post<SceneResult>(`/api/clips/${encodeURIComponent(clipId)}/scene`, {}),

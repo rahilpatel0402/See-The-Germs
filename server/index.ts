@@ -299,9 +299,30 @@ app.get("/api/compliance", wrap(async (req, res) => {
     }
     return handId;
   };
+  // Surfaces contaminated across the session, by label, with contacts while contaminated summed.
+  const surfaces = new Map<string, { label: string; clips: number; contacts: number }>();
+  for (const s of session) {
+    for (const item of s.analysis.cleaning.items) {
+      const cur = surfaces.get(item.label) ?? { label: item.label, clips: 0, contacts: 0 };
+      cur.clips++;
+      cur.contacts += item.contactCount;
+      surfaces.set(item.label, cur);
+    }
+  }
   res.json({
-    clips: session.map((s) => ({ clipId: s.clipId, compliance: s.analysis.compliance, gloveIssues: s.analysis.gloveIssues.length, score: s.analysis.score.score })),
+    clips: session.map((s) => ({
+      clipId: s.clipId,
+      pathogen: s.analysis.pathogen.label,
+      score: s.analysis.score,
+      compliance: s.analysis.compliance,
+      momentMisses: s.analysis.momentMisses.map((m) => ({ moment: m.moment, t: m.t })),
+      gloveIssues: s.analysis.gloveIssues.map((g) => ({ type: g.type, t: g.t })),
+      hygiene: { events: s.analysis.hygieneEvents.length, adequate: s.analysis.hygieneEvents.filter((h) => h.adequate).length, effective: s.analysis.hygieneEvents.filter((h) => h.effective).length },
+      residentExposures: s.analysis.propagation.residentExposures.length,
+      surfaces: s.analysis.cleaning.items.map((i) => i.label),
+    })),
     session: complianceFrom(all, mapper),
+    surfaces: [...surfaces.values()].sort((a, b) => b.contacts - a.contacts || b.clips - a.clips),
   });
 }));
 

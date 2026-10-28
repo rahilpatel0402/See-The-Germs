@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PATHOGEN_IDS, PATHOGENS } from "../../engine/pathogens.ts";
 import type { Analysis, Counterfactual, MaskBounds, Narrative, PathogenId } from "../../engine/types.ts";
 import { MarkObject } from "./MarkObject.tsx";
+import { Session } from "./Session.tsx";
 import { api, ApiError, type ScenarioOverride, type TracksPayload } from "./api.ts";
 import { CounterfactualBar } from "./CounterfactualBar.tsx";
 import { Drawer } from "./Drawer.tsx";
@@ -40,6 +41,7 @@ export function App() {
   const [duration, setDuration] = useState(0);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [upload, setUpload] = useState<{ open: boolean; resume: string | null }>({ open: params.get("upload") === "1", resume: null });
+  const [sessionOpen, setSessionOpen] = useState(params.get("session") === "1");
   // Bumped to reload the current clip after its setup completes, since the id itself may not change.
   const [reload, setReload] = useState(0);
   const [demoClips, setDemoClips] = useState<string[]>([]);
@@ -239,6 +241,9 @@ export function App() {
           <button type="button" onClick={() => setUpload({ open: true, resume: null })}>
             Upload your own
           </button>
+          <button type="button" onClick={() => setSessionOpen((o) => !o)} aria-pressed={sessionOpen} title="Compliance across several clips, and before and after">
+            Session report
+          </button>
           {clipId && !demoClips.includes(clipId) && tracks ? (
             <button
               type="button"
@@ -266,6 +271,17 @@ export function App() {
           </div>
         </div>
       </header>
+
+      {sessionOpen ? (
+        <Session
+          clips={clips}
+          onClose={() => setSessionOpen(false)}
+          onOpenClip={(id) => {
+            setSessionOpen(false);
+            setClipId(id);
+          }}
+        />
+      ) : null}
 
       {upload.open ? (
         <Upload
