@@ -133,8 +133,10 @@ async function promptText(): Promise<string> {
   return promptCache;
 }
 
-export async function narrativeHash(analysis: Analysis, language: NarrativeLanguage = "en"): Promise<string> {
-  return hashInput({ prompt: await promptText(), language, input: trimForNarrative(analysis) });
+// The cache key covers the prompt, the language, and the model, so each backend keeps its own
+// narrative and the README comparison can show both.
+export async function narrativeHash(analysis: Analysis, language: NarrativeLanguage = "en", model = "muse-spark-1.3"): Promise<string> {
+  return hashInput({ prompt: await promptText(), language, model, input: trimForNarrative(analysis) });
 }
 
 const words = (s: string): number => s.trim().split(/\s+/).filter(Boolean).length;
@@ -172,13 +174,13 @@ async function writeJson(file: string, value: unknown): Promise<void> {
 }
 
 // The cached narrative for exactly this analysis, or null.
-export async function readNarrative(clipId: string, analysis: Analysis, language: NarrativeLanguage = "en"): Promise<NarrativeFile | null> {
-  return readJson<NarrativeFile>(narrativePath(clipId, await narrativeHash(analysis, language)));
+export async function readNarrative(clipId: string, analysis: Analysis, language: NarrativeLanguage = "en", model = "muse-spark-1.3"): Promise<NarrativeFile | null> {
+  return readJson<NarrativeFile>(narrativePath(clipId, await narrativeHash(analysis, language, model)));
 }
 
 export async function narrateClip(clipId: string, analysis: Analysis, backend: SparkBackend, language: NarrativeLanguage = "en"): Promise<NarrativeFile> {
   const input = trimForNarrative(analysis);
-  const hash = await narrativeHash(analysis, language);
+  const hash = await narrativeHash(analysis, language, backend.model);
   const cached = await readJson<NarrativeFile>(narrativePath(clipId, hash));
   if (cached) return cached;
 
@@ -222,7 +224,7 @@ export async function explainCounterfactual(analysis: Analysis, cf: Counterfactu
     kept_clean: cf.keptClean.map(name),
   };
   const prompt = `${await loadPrompt()}\n\nFor this request, write exactly two sentences explaining the before and after numbers for the inserted hand hygiene event. Plain language. If the agent is not effective against the pathogen, say that is why nothing changed.`;
-  const hash = hashInput({ prompt, input });
+  const hash = hashInput({ prompt, model: backend.model, input });
   const cached = await readJson<ExplanationFile>(explanationPath(analysis.clipId, hash));
   if (cached) return cached;
   const result = await backend.completeJson({ instructions: prompt, text: JSON.stringify(input, null, 2), images: [], schemaName: "counterfactual_explanation", schema: EXPLAIN_SCHEMA, maxOutputTokens: EXPLAIN_MAX_OUTPUT });

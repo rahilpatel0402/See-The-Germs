@@ -5,7 +5,7 @@
 import "../env.ts";
 import { adjudicateClip } from "../adjudicate.ts";
 import { runAnalysis } from "../analysis.ts";
-import { MetaSparkBackend } from "../spark.ts";
+import { createSparkBackend } from "../spark.ts";
 
 const args = process.argv.slice(2);
 const clipId = args[0];
@@ -16,7 +16,7 @@ if (!clipId || clipId.startsWith("--")) {
 const force: string[] = [];
 for (let i = 1; i < args.length; i++) if (args[i] === "--force" && args[i + 1]) force.push(args[++i] as string);
 
-const run = await adjudicateClip(clipId, new MetaSparkBackend(), { force });
+const run = await adjudicateClip(clipId, createSparkBackend(), { force });
 console.log(`plan: ${run.plan.selected.length} selected, ${run.plan.skipped.length} skipped beyond the cap, ${force.length} forced, ${run.added.length} new verdicts, ${run.failed.length} failed (not cached), ${run.all.length} cached in total`);
 for (const a of run.added) console.log(`  ${a.candidateId.padEnd(28)} ${a.verdict.padEnd(16)} ${a.reasoning}`);
 for (const f of run.failed) console.log(`  ${f.candidateId.padEnd(28)} FAILED           ${f.reason}`);

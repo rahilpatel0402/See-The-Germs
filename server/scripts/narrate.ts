@@ -3,7 +3,7 @@
 import "../env.ts";
 import { runAnalysis } from "../analysis.ts";
 import { narrateClip } from "../narrate.ts";
-import { MetaSparkBackend } from "../spark.ts";
+import { createSparkBackend } from "../spark.ts";
 
 const clipId = process.argv[2];
 if (!clipId) {
@@ -11,7 +11,7 @@ if (!clipId) {
   process.exit(2);
 }
 const analysis = await runAnalysis(clipId);
-const file = await narrateClip(clipId, analysis, new MetaSparkBackend());
+const file = await narrateClip(clipId, analysis, createSparkBackend());
 console.log(`\nhash ${file.hash} via ${file.backend} ${file.model} (${file.createdAt})\n`);
 console.log(`TOP FIX\n${file.narrative.top_fix}\n`);
 console.log(`COACHING NOTE\n${file.narrative.coaching_note}\n`);

@@ -32,9 +32,13 @@ Record a short clip of a care task in the browser, upload one, or open a staged 
 | SAM 3.1 (`sam-3.1`) | Meta Model API, Responses API, clip uploaded once through the Files API, one call per class | Detect, segment, and track hands, persons, and surfaces across the clip | Open vocabulary from a phrase, stable object identity across frames, no training data. Used as a contact and transmission sensor, which is not what it was built for. |
 | Muse Spark 1.3, vision | Meta Model API, Responses API, two annotated PNG frames, structured output | Adjudicate ambiguous contact candidates | Only sees perception edge cases the engine flagged. Verdicts are cached as engine input, capped at 12 per clip, and shown on the timeline. |
 | Muse Spark 1.3, text | Meta Model API, Responses API, structured output, temperature 0 | Coaching note, audit summary, top fix, counterfactual explanation from the analysis JSON | Validated against a schema, word counts, and a disallowed-language filter; retried once; the structured panels stand on their own if it fails. |
-| Muse Spark Open | Planned after the core is complete, through a partner inference API behind the same backend interface | Second backend for both Spark roles | Open-weight path and the on-premises story. Not built yet. |
+| Muse Spark Open | Fireworks partner inference (`accounts/fireworks/models/muse-spark-open`), OpenAI-compatible chat completions, selected by `SPARK_BACKEND=fireworks` | Second backend for both Spark roles: vision adjudication and narrative, same prompts, same schemas, same validation, same caches | Open-weight path and the on-premises story. On the feasibility clip it agreed with the hosted model on 2 of 2 adjudications and wrote a valid narrative with the same top fix; see `npm run spark-compare`. Baseten is wired and awaiting key activation. |
 
 The engine never calls a model. Same clip, same adjudications, same scenario, same pathogen, same output.
+
+### Open-weight backend
+
+Both Spark roles run end to end on Muse Spark Open through partner inference. `SPARK_BACKEND=fireworks npm run dev:server` serves narrative and adjudication from the open-weight model; `npm run spark-compare -- <clipId> meta fireworks` runs the same narrative and the same adjudication frames through both and writes the side by side to `data/clips/<id>/spark-compare.json`. On the feasibility clip the open-weight model matched the hosted model's verdicts 2 of 2 and reached the same top fix; it is slower (about 30 to 40 s per call versus 5 to 10) and spends more tokens reasoning, so its output cap is floored at 6,000 tokens. [Table for the demo clips after the shoot.]
 
 ## Architecture
 

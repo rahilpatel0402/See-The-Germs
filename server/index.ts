@@ -20,7 +20,7 @@ import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
 import { BOX_PREFIX, deleteRemoteFile, MetaSamBackend, readTrack, segmentBox, segmentPhrase } from "./sam.ts";
 import { proposeScene, slugId } from "./scene.ts";
-import { MetaSparkBackend } from "./spark.ts";
+import { createSparkBackend } from "./spark.ts";
 
 const PORT = Number(optionalEnv("PORT", "8787"));
 // Heuristic caps so a judge cannot burn the credit budget: 45 s per upload, a daily upload
@@ -36,7 +36,10 @@ await mkdir(TMP_DIR, { recursive: true });
 const app = express();
 const upload = multer({ dest: TMP_DIR, limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
 const backend = new MetaSamBackend();
-const spark = new MetaSparkBackend();
+// Narrative and adjudication go through SPARK_BACKEND: meta (default), baseten, or fireworks
+// (Muse Spark Open through partner inference). Same prompts, same schemas, same validation.
+const spark = createSparkBackend();
+console.log(`spark   | backend ${spark.name}, model ${spark.model}`);
 
 app.use(express.json({ limit: "1mb" }));
 app.use((_req, res, next) => {
@@ -384,7 +387,7 @@ app.get("/api/clips/:id/narrative", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
   const { analysis } = await buildPipeline(meta.id, parseScenarioOverride(req.query as { pathogen?: unknown; sourceEntityId?: unknown }));
   const language = req.query["language"] === "es" ? "es" : "en";
-  const file = await readNarrative(meta.id, analysis, language);
+  const file = await readNarrative(meta.id, analysis, language, spark.model);
   if (!file) throw new HttpError(404, `clip ${meta.id} has no narrative for this scenario yet`);
   res.json(file);
 }));

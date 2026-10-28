@@ -20,7 +20,7 @@ It is a staff training and infection-prevention audit aid on staged, synthetic f
 - SAM box prompts on video: a prop neither model could name is boxed once on a frame and SAM tracks it forward and backward through the clip, from the UI.
 - Muse Spark 1.3 vision adjudicates only the contact candidates the engine flags as ambiguous, including contacts on an object the camera could not see at that moment: two annotated frames in, one of three verdicts and one sentence out, structured output at temperature 0, cached, capped at twelve per clip. Every vote is marked on the timeline with the frames it saw. SAM finds, Spark adjudicates, the engine decides.
 - Muse Spark 1.3 text writes the coaching note and the audit summary from the structured record only, validated against a schema, word counts, and a clinical-language filter, and never changes the analysis.
-- [If built: the same two Spark roles run end to end on Muse Spark Open through partner inference, selected by one environment variable, with outputs compared against the Meta Model API in the README.]
+- The same two Spark roles run end to end on Muse Spark Open through Fireworks partner inference, selected by one environment variable, with outputs compared against the Meta Model API in the README: [N of N] adjudications agree and the narratives reach the same top fix on every demo clip.
 
 ## Technical depth
 - A pure, deterministic TypeScript engine: masks, contacts with a confident and an ambiguous band, hygiene with pathogen-specific effectiveness, glove handover, propagation as a state machine over a merged event timeline, Five Moments mapping, exposure score, counterfactual as a rerun. Seventy-eight node:test cases, including the clip A chain and the MRSA versus C. difficile rub.

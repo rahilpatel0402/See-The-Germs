@@ -19,6 +19,8 @@
     "adjudicate": "tsx server/scripts/adjudicate.ts",
     "narrate": "tsx server/scripts/narrate.ts",
     "phrase": "tsx server/scripts/phrase.ts",
+    "spark-probe": "tsx server/scripts/spark-probe.ts",
+    "spark-compare": "tsx server/scripts/spark-compare.ts",
     "build": "vite build client",
     "start": "tsx server/index.ts"
   },
