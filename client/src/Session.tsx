@@ -20,6 +20,11 @@ export function Session({ clips, onOpenClip, onClose }: Props) {
   const [before, setBefore] = useState<string>("");
   const [after, setAfter] = useState<string>("");
 
+  // The clip list can arrive after the panel opens (deep link); start with everything selected.
+  useEffect(() => {
+    setSelected((prev) => (prev.length === 0 ? [...clips] : prev));
+  }, [clips]);
+
   useEffect(() => {
     if (selected.length === 0) {
       setReport(null);
