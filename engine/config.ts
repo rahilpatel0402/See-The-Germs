@@ -46,9 +46,19 @@ export interface HygieneConfig {
   // Heuristic: a hand must dwell at a dispenser this long for it to count as a hygiene event
   // (PLAN.md 6.4). A brush past the bottle is not a rub.
   readonly minDwellS: number;
+  // Clinical rule, WHO "How to Handrub" and "How to Handwash": alcohol-based handrub takes 20 to
+  // 30 seconds, soap and water 40 to 60 seconds. The rub time is measured from reaching the
+  // dispenser to the next touch. Below the minimum the event is inadequate.
+  readonly minRubS: Readonly<Record<"alcohol_rub" | "soap_water", number>>;
+  // Clinical rule choice: an inadequate rub does not count as effective. Confirmed by Rahil Oct 27.
+  readonly inadequateIsIneffective: boolean;
 }
 
-export const HYGIENE_CONFIG: HygieneConfig = { minDwellS: 1.0 };
+export const HYGIENE_CONFIG: HygieneConfig = {
+  minDwellS: 1.0,
+  minRubS: { alcohol_rub: 20, soap_water: 40 },
+  inadequateIsIneffective: true,
+};
 
 export interface GloveConfig {
   // Heuristic: consecutive frames the gloved class must be present to count as a glove on.

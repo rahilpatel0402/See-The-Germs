@@ -3,6 +3,8 @@
 
 import type { ScoreWeights } from "./config.ts";
 import { detectMomentMisses } from "./moments.ts";
+// detectMomentMisses stays the entry point here: the counterfactual reports misses, and the
+// compliance view is recomputed by the caller when it needs opportunities.
 import { agentClearsHands } from "./pathogens.ts";
 import { propagate, type PropagationInput } from "./propagation.ts";
 import { scoreExposure } from "./score.ts";
@@ -28,10 +30,13 @@ export function runCounterfactual(
   weights: ScoreWeights,
 ): Counterfactual {
   if (!(insert.t >= 0)) throw new Error(`runCounterfactual: t must be non-negative, got ${insert.t}`);
+  // The inserted event is a proper rub by definition; only the agent's effectiveness is in question.
   const inserted: HygieneEvent = {
     handId: insert.handId,
     t: insert.t,
     agent: insert.agent,
+    durationS: Number.POSITIVE_INFINITY,
+    adequate: true,
     effective: agentClearsHands(input.profile, insert.agent),
   };
   const hygieneEvents = [...input.hygieneEvents, inserted].sort(byT);

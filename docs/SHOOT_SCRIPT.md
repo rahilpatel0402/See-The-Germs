@@ -37,26 +37,31 @@ Pathogen MRSA. Source rail A. No hygiene at all. Proves transitive spread to a s
 6. Hands out of frame. Stop.
 Expected: chain rail A to hand to IV pole to phone to blanket B to resident B. Moment 5 at the rail, Moment 1 at resident B. Score 23.
 
-## Clip B: wrong agent (30 to 40 s)
-Pathogen C. difficile in the UI. Source rail A. Hygiene happens and does not help.
+Rub duration matters now: the engine measures the time from reaching the dispenser to the next touch and applies the WHO duration (20 seconds for alcohol rub, 40 for soap and water). A shorter rub is logged as "too short" and does not count. So every real rub in clips B and C is a full 20 seconds of rubbing with both hands, well inside the frame, touching nothing. Count it out loud. It makes the clips longer and that is fine.
+
+## Clip B: wrong agent (about 45 s)
+Pathogen C. difficile in the UI. Source rail A. Hygiene happens, is done properly, and still does not help, because the agent is wrong.
 1. Grip rail A, hold one second.
-2. Walk to the pump bottle. Press it and rub hands for a full two seconds, hands near the bottle the whole time (the dwell is what the engine sees).
+2. Walk to the pump bottle. Press it once (one second at the bottle), then rub both hands for a full 20 seconds, touching nothing.
 3. Pick up the glucometer box, hold one second, put it down.
 4. Touch resident B, hold one second.
 5. Hands out of frame. Stop.
-Expected under C. diff: the rub is logged ineffective, Moment 2 before the glucometer and Moment 1 before resident B are missed, resident B exposed. Toggle to MRSA: the same clip goes clean after the rub. The clinical nuance.
+Expected under C. diff: the rub is logged as 20 seconds, adequate, and ineffective for this pathogen; Moment 2 before the glucometer and Moment 1 before resident B are missed; resident B exposed. Toggle to MRSA: the same clip goes clean after the rub. The clinical nuance.
 
-## Clip C: clean run (35 to 45 s)
-Pathogen MRSA. Source rail A. Nothing lights up except the source. Also exercises glove detection and adjudication on the final footage.
+## Clip C: clean run (about 70 s)
+Pathogen MRSA. Source rail A. Nothing lights up except the source. Also exercises glove detection, glove rules, and adjudication on the final footage.
 1. Grip rail A, hold one second.
-2. Pump bottle, rub for two seconds.
+2. Pump bottle, one second, then rub for a full 20 seconds touching nothing.
 3. Reach into the tissue box and put a glove on one hand, on camera, slowly.
 4. One deliberate pass of the bare hand in front of rail A, between camera and rail, a few inches away, no contact.
-5. Gloved hand: touch blanket B, then resident B, one second each.
+5. Gloved hand: touch blanket B, then resident B, one second each. Do not touch the phone while gloved.
 6. Pull the glove off, on camera, slowly, and drop it out of frame.
-7. Pump bottle again, rub for two seconds.
+7. Pump bottle again, one second, then rub for a full 20 seconds.
 8. Hands out of frame. Stop.
-Expected: glove don and doff detected, the pass in front flagged ambiguous and adjudicated passing in front, only rail A glowing at the end. Score 0.
+Expected: glove don and doff detected, no glove-use issues, two adequate effective rubs, the pass in front flagged ambiguous and adjudicated passing in front, only rail A glowing at the end, hand hygiene compliance 100 percent. Score 0.
+
+## Optional clip C2: the short rub (about 40 s)
+Same as clip C but the first rub lasts five seconds. Expected: the rub shows as "too short" and does not count, Moment 5 after the rail is missed, and the glove goes on without counted hygiene. One clip that demonstrates the duration rule and a glove issue together.
 
 ## Fourth clip (live path test, never shown)
 Any 20 to 30 s task with three or four of the same props. Used only on Sunday to prove the hosted upload path works on a clip the pipeline has never seen.

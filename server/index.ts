@@ -5,6 +5,8 @@ import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
+import { complianceFrom } from "../engine/compliance.ts";
+import type { Analysis } from "../engine/types.ts";
 import { readScenario, runAnalysis, runCounterfactualFor, validateScenario, writeScenario } from "./analysis.ts";
 import { explainCounterfactual, narrateClip, readNarrative } from "./narrate.ts";
 import { buildPipeline, parseScenarioOverride } from "./pipeline.ts";
@@ -214,6 +216,46 @@ app.post("/api/counterfactual", wrap(async (req, res) => {
     ...(typeof body.agent === "string" ? { agent: body.agent } : {}),
   };
   res.json(await runCounterfactualFor(clipId, insert, parseScenarioOverride(body)));
+}));
+
+// Hand hygiene compliance across several analyzed clips (a session), as JSON or CSV rows of
+// every opportunity. ?clips=A,B,C
+async function sessionOpportunities(clipsParam: unknown): Promise<Array<{ clipId: string; analysis: Analysis }>> {
+  const ids = String(clipsParam ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (ids.length === 0) throw new HttpError(400, "clips is required, comma separated");
+  const out: Array<{ clipId: string; analysis: Analysis }> = [];
+  for (const id of ids) {
+    const meta = await readMeta(id);
+    if (!existsSync(analysisPath(meta.id))) throw new HttpError(409, `clip ${meta.id} has not been analyzed yet`);
+    out.push({ clipId: meta.id, analysis: JSON.parse(await readFile(analysisPath(meta.id), "utf8")) as Analysis });
+  }
+  return out;
+}
+
+app.get("/api/compliance", wrap(async (req, res) => {
+  const session = await sessionOpportunities(req.query["clips"]);
+  const all = session.flatMap((s) => s.analysis.opportunities);
+  const mapper = (handId: string): string => {
+    for (const s of session) {
+      const e = s.analysis.entities.find((x) => x.id === handId);
+      if (e) return e.person ?? "P1";
+    }
+    return handId;
+  };
+  res.json({
+    clips: session.map((s) => ({ clipId: s.clipId, compliance: s.analysis.compliance, gloveIssues: s.analysis.gloveIssues.length, score: s.analysis.score.score })),
+    session: complianceFrom(all, mapper),
+  });
+}));
+
+app.get("/api/compliance.csv", wrap(async (req, res) => {
+  const session = await sessionOpportunities(req.query["clips"]);
+  const rows = ["clip,person,moment,time_s,met,pathogen"];
+  for (const s of session) {
+    const person = (handId: string): string => s.analysis.entities.find((x) => x.id === handId)?.person ?? "P1";
+    for (const o of s.analysis.opportunities) rows.push(`${s.clipId},${person(o.handId)},${o.moment},${o.t.toFixed(1)},${o.met ? "yes" : "no"},${s.analysis.pathogen.label}`);
+  }
+  res.type("text/csv").setHeader("Content-Disposition", "attachment; filename=hand-hygiene-opportunities.csv").send(rows.join("\n"));
 }));
 
 // The cached narrative for the clip's current analysis (query pathogen and sourceEntityId

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CLIP_A_CONTACTS, CLIP_A_ENTITIES, contact } from "./fixtures.ts";
-import { detectMomentMisses } from "./moments.ts";
+import { detectMomentMisses, detectMomentOpportunities } from "./moments.ts";
 import { PATHOGENS } from "./pathogens.ts";
 import { propagate, type PropagationInput } from "./propagation.ts";
 import type { ContactEvent, HygieneEvent } from "./types.ts";
@@ -21,7 +21,7 @@ function run(contacts: readonly ContactEvent[], hygieneEvents: readonly HygieneE
   );
 }
 
-const rub = (t: number): HygieneEvent => ({ handId: "bare_hand", t, agent: "alcohol_rub", effective: true });
+const rub = (t: number): HygieneEvent => ({ handId: "bare_hand", t, agent: "alcohol_rub", durationS: 25, adequate: true, effective: true });
 
 test("clip A misses Moment 5 leaving rail A and Moment 1 before resident B, with downstream impact", () => {
   const misses = run(CLIP_A_CONTACTS);
@@ -42,8 +42,17 @@ test("hygiene after the rail and again before resident B clears every miss", () 
 });
 
 test("ineffective hygiene does not count", () => {
-  const misses = run(CLIP_A_CONTACTS, [{ handId: "bare_hand", t: 3, agent: "alcohol_rub", effective: false }]);
+  const misses = run(CLIP_A_CONTACTS, [{ handId: "bare_hand", t: 3, agent: "alcohol_rub", durationS: 5, adequate: false, effective: false }]);
   assert.deepEqual(misses.map((m) => m.moment), [5, 1]);
+});
+
+test("opportunities count met moments too, once per lapse", () => {
+  const input = { contacts: CLIP_A_CONTACTS, hygieneEvents: [rub(3), rub(14)], entities: CLIP_A_ENTITIES };
+  const opportunities = detectMomentOpportunities(input);
+  assert.deepEqual(opportunities.map((o) => [o.moment, o.t, o.met]), [[5, 2, true], [1, 15, true]]);
+  // Touching resident B twice after one washed arrival is still one met opportunity.
+  const twice = { ...input, contacts: [...CLIP_A_CONTACTS, contact("bare_hand", "resident_B", 17, 18)] };
+  assert.equal(detectMomentOpportunities(twice).filter((o) => o.moment === 1).length, 1);
 });
 
 test("Moment 4: after touching a resident, the next healthcare area contact without hygiene", () => {

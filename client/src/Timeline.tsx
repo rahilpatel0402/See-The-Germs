@@ -101,11 +101,25 @@ export function Timeline({ clipId, analysis, duration, currentTime, onSeek, onHo
         <div className="lane">
           <span className="lane-label">hygiene, gloves</span>
           {analysis.hygieneEvents.map((h, i) => (
-            <span key={`h${i}`} className={`tick hygiene ${h.effective ? "effective" : "ineffective"}`} style={{ left: pct(h.t) }} title={`${fmt(h.t)}: ${h.agent.replace("_", " ")}, ${h.effective ? "effective" : `not effective against ${analysis.pathogen.label}`}`} />
+            <span
+              key={`h${i}`}
+              className={`tick hygiene ${h.effective ? "effective" : "ineffective"}`}
+              style={{ left: pct(h.t) }}
+              title={`${fmt(h.t)}: ${h.agent.replace("_", " ")}, ${Number.isFinite(h.durationS) ? `${h.durationS.toFixed(0)} s` : "to the end"}. ${
+                h.effective ? "Counted." : !h.adequate ? `Too short for WHO (${h.agent === "alcohol_rub" ? "20 to 30" : "40 to 60"} s).` : `Not effective against ${analysis.pathogen.label}.`
+              }`}
+            >
+              {!h.adequate ? "short" : ""}
+            </span>
           ))}
           {analysis.gloveEvents.map((g, i) => (
             <span key={`g${i}`} className={`tick glove ${g.type}`} style={{ left: pct(g.t) }} title={`${fmt(g.t)}: glove ${g.type === "don" ? "on" : "off"} (${g.source})`}>
               {g.type === "don" ? "on" : "off"}
+            </span>
+          ))}
+          {analysis.gloveIssues.map((x, i) => (
+            <span key={`gi${i}`} className="tick glove-issue" style={{ left: pct(x.t) }} title={`${fmt(x.t)}: glove use issue, ${x.type.replace(/_/g, " ")}: ${x.entityIds.map(name).join(", ")}`}>
+              !
             </span>
           ))}
         </div>

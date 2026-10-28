@@ -133,7 +133,59 @@ export interface HygieneEvent {
   readonly handId: string;
   readonly t: number;
   readonly agent: HygieneAgent;
+  // Seconds from reaching the dispenser to the next touch: the time available to rub.
+  readonly durationS: number;
+  // Met the WHO duration for the agent (engine/config.ts HYGIENE_CONFIG.minRubS).
+  readonly adequate: boolean;
+  // Clears the hand under the pathogen rules and the duration rule together.
   readonly effective: boolean;
+}
+
+export type GloveIssueType = "no_hygiene_before_don" | "no_hygiene_after_doff" | "glove_across_residents" | "gloved_healthcare_area_contact";
+
+// A glove-use rule broken (WHO glove use information leaflet, CDC hand hygiene guidance).
+export interface GloveIssue {
+  readonly type: GloveIssueType;
+  readonly handId: string;
+  readonly t: number;
+  readonly entityIds: readonly string[];
+}
+
+// Every point where a Five Moments rule applied, whether it was met or missed.
+export interface MomentOpportunity {
+  readonly moment: 1 | 2 | 4 | 5;
+  readonly handId: string;
+  readonly t: number;
+  readonly met: boolean;
+}
+
+export interface ComplianceCell {
+  readonly opportunities: number;
+  readonly met: number;
+  // met / opportunities, or null when there were no opportunities.
+  readonly rate: number | null;
+}
+
+export interface Compliance {
+  readonly overall: ComplianceCell;
+  readonly byMoment: Readonly<Record<"1" | "2" | "4" | "5", ComplianceCell>>;
+  readonly byPerson: Readonly<Record<string, ComplianceCell>>;
+}
+
+// A surface to disinfect before its next use, ranked for housekeeping.
+export interface CleaningItem {
+  readonly entityId: string;
+  readonly label: string;
+  readonly zone: ZoneTag;
+  readonly isSource: boolean;
+  readonly firstContaminatedT: number;
+  // Contacts by a contaminated hand from first contamination on.
+  readonly contactCount: number;
+}
+
+export interface CleaningList {
+  readonly items: readonly CleaningItem[];
+  readonly disinfectantNote: string;
 }
 
 export interface GloveEvent {
@@ -161,6 +213,8 @@ export interface PathogenProfile {
   // exists so the model is honest about having the field.
   readonly surfacePersistenceS: number;
   readonly uiNote: string;
+  // Which EPA registered disinfectant list applies to this organism, for the cleaning handoff.
+  readonly disinfectantNote: string;
   // CDC and WHO sources, supplied by Rahil, cited in the README.
   readonly citations: readonly string[];
 }
@@ -248,7 +302,11 @@ export interface Analysis {
   readonly hygieneEvents: readonly HygieneEvent[];
   readonly gloveBoxTouches: readonly GloveBoxTouch[];
   readonly gloveEvents: readonly GloveEvent[];
+  readonly gloveIssues: readonly GloveIssue[];
   readonly propagation: PropagationResult;
+  readonly opportunities: readonly MomentOpportunity[];
   readonly momentMisses: readonly MomentMiss[];
+  readonly compliance: Compliance;
+  readonly cleaning: CleaningList;
   readonly score: ExposureScore;
 }

@@ -3,19 +3,23 @@
 // Candidates and glove events depend only on the tracks and the entity table, never on the
 // scenario, so they are cached in memory per clip and invalidated by file modification times.
 import { stat } from "node:fs/promises";
+import { cleaningList } from "../engine/cleaning.ts";
+import { complianceFrom, personMapper } from "../engine/compliance.ts";
 import { CONTACT_CONFIG, GLOVE_CONFIG, HYGIENE_CONFIG, SCORE_WEIGHTS } from "../engine/config.ts";
 import { detectContacts, mergeHandClassContacts } from "../engine/contacts.ts";
 import { detectGloveEvents } from "../engine/gloves.ts";
+import { detectGloveIssues } from "../engine/gloverules.ts";
 import { splitHygiene } from "../engine/hygiene.ts";
-import { detectMomentMisses } from "../engine/moments.ts";
+import { detectMoments } from "../engine/moments.ts";
 import { isPathogenId, PATHOGENS } from "../engine/pathogens.ts";
 import { propagate, type PropagationInput } from "../engine/propagation.ts";
 import { scoreExposure } from "../engine/score.ts";
 import type { Adjudication, Analysis, ContactCandidate, ContactEvent, Entity, GloveEvent, Scenario } from "../engine/types.ts";
+import { readMeta } from "./clips.ts";
 import { readEntities, type EntityConfig } from "./entities.ts";
-import { readAdjudications, readScenario, validateScenario } from "./scenario.ts";
 import { HttpError } from "./errors.ts";
 import { entitiesPath, metaPath, trackPath } from "./paths.ts";
+import { readAdjudications, readScenario, validateScenario } from "./scenario.ts";
 import { loadTracks } from "./tracks.ts";
 
 export interface Pipeline {
@@ -28,6 +32,7 @@ export interface Perception {
   readonly entityConfigs: readonly EntityConfig[];
   readonly candidates: readonly ContactCandidate[];
   readonly gloveEvents: readonly GloveEvent[];
+  readonly clipDurationS: number;
 }
 
 export type ScenarioOverride = { pathogen?: Scenario["pathogen"]; sourceEntityId?: string };
@@ -88,6 +93,7 @@ export async function perceptionFor(clipId: string): Promise<Perception> {
   const cached = perceptionCache.get(clipId);
   if (cached && cached.key === key) return cached.value;
 
+  const meta = await readMeta(clipId);
   const { tracks, missingPhrases } = await loadTracks(clipId);
   if (missingPhrases.length > 0) {
     throw new HttpError(409, `clip ${clipId} is not segmented for: ${missingPhrases.join(", ")}. Run segmentation first.`);
@@ -98,6 +104,7 @@ export async function perceptionFor(clipId: string): Promise<Perception> {
     entityConfigs,
     candidates: detectContacts(tracks, CONTACT_CONFIG),
     gloveEvents: detectGloveEvents(tracks, GLOVE_CONFIG),
+    clipDurationS: meta.sampled.frames / meta.fps,
   };
   console.log(`engine  | ${clipId} | contacts and gloves over ${tracks.frameCount} frames in ${Date.now() - started} ms (cached until tracks change)`);
   perceptionCache.set(clipId, { key, value });
@@ -113,7 +120,7 @@ export async function buildPipeline(clipId: string, override: ScenarioOverride =
   const adjudications = await readAdjudications(clipId);
   // One touch seen by both hand classes of one person is one contact.
   const contacts = mergeHandClassContacts(contactsFromCandidates(perception.candidates, adjudications), perception.entities);
-  const split = splitHygiene(contacts, perception.entities, profile, HYGIENE_CONFIG);
+  const split = splitHygiene(contacts, perception.entities, profile, HYGIENE_CONFIG, perception.clipDurationS);
   const propInput: PropagationInput = {
     contacts: split.contacts,
     hygieneEvents: split.hygieneEvents,
@@ -123,12 +130,21 @@ export async function buildPipeline(clipId: string, override: ScenarioOverride =
     profile,
   };
   const propagation = propagate(propInput);
-  const momentMisses = detectMomentMisses(
+  const moments = detectMoments(
     { contacts: split.contacts, hygieneEvents: split.hygieneEvents, entities: perception.entities },
     propagation,
     (inserted) => propagate({ ...propInput, hygieneEvents: [...split.hygieneEvents, inserted] }),
   );
-  const score = scoreExposure(propagation, momentMisses, perception.entities, scenario.sourceEntityId, SCORE_WEIGHTS);
+  const gloveIssues = detectGloveIssues({
+    contacts: split.contacts,
+    hygieneEvents: split.hygieneEvents,
+    gloveEvents: perception.gloveEvents,
+    entities: perception.entities,
+    clipDurationS: perception.clipDurationS,
+  });
+  const compliance = complianceFrom(moments.opportunities, personMapper(perception.entities));
+  const cleaning = cleaningList(propagation, split.contacts, perception.entities, scenario, profile);
+  const score = scoreExposure(propagation, moments.misses, perception.entities, scenario.sourceEntityId, SCORE_WEIGHTS);
 
   const analysis: Analysis = {
     clipId,
@@ -141,8 +157,12 @@ export async function buildPipeline(clipId: string, override: ScenarioOverride =
     hygieneEvents: split.hygieneEvents,
     gloveBoxTouches: split.gloveBoxTouches,
     gloveEvents: perception.gloveEvents,
+    gloveIssues,
     propagation,
-    momentMisses,
+    opportunities: moments.opportunities,
+    momentMisses: moments.misses,
+    compliance,
+    cleaning,
     score,
   };
   return { analysis, propInput };

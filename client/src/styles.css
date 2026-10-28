@@ -694,3 +694,46 @@ body {
     min-width: 100px;
   }
 }
+
+.tick.glove-issue {
+  background: var(--bad);
+  font-weight: 700;
+  top: 1px;
+}
+
+.tick.hygiene {
+  text-indent: 4px;
+  font-size: 9px;
+}
+
+.compliance {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.compliance th,
+.compliance td {
+  text-align: right;
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.compliance th:first-child,
+.compliance td:first-child {
+  text-align: left;
+}
+
+.compliance th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.compliance .total td {
+  font-weight: 600;
+  border-bottom: none;
+}
+
+.ok {
+  color: var(--ok);
+}

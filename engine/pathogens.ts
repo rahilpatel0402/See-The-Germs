@@ -16,6 +16,7 @@ export const PATHOGENS: Readonly<Record<PathogenId, PathogenProfile>> = {
     soapWaterClearsHands: true,
     surfacePersistenceS: EFFECTIVELY_FOREVER_S,
     uiNote: "Alcohol rub is effective.",
+    disinfectantNote: "Use an EPA List H registered disinfectant (effective against MRSA).",
     citations: [],
   },
   c_auris: {
@@ -25,6 +26,7 @@ export const PATHOGENS: Readonly<Record<PathogenId, PathogenProfile>> = {
     soapWaterClearsHands: true,
     surfacePersistenceS: EFFECTIVELY_FOREVER_S,
     uiNote: "Persists on surfaces for weeks; alcohol rub effective; a major NY nursing home concern.",
+    disinfectantNote: "Use an EPA List P registered disinfectant (effective against Candida auris); routine quaternary ammonium products are not reliable.",
     citations: [],
   },
   c_difficile: {
@@ -34,6 +36,7 @@ export const PATHOGENS: Readonly<Record<PathogenId, PathogenProfile>> = {
     soapWaterClearsHands: true,
     surfacePersistenceS: EFFECTIVELY_FOREVER_S,
     uiNote: "Spores are not killed by alcohol rub. Soap and water required. Contact precautions.",
+    disinfectantNote: "Use an EPA List K sporicidal disinfectant (effective against C. difficile spores); standard disinfectants do not kill spores.",
     citations: [],
   },
   norovirus: {
@@ -43,6 +46,7 @@ export const PATHOGENS: Readonly<Record<PathogenId, PathogenProfile>> = {
     soapWaterClearsHands: true,
     surfacePersistenceS: EFFECTIVELY_FOREVER_S,
     uiNote: "Alcohol rub is largely ineffective. Soap and water required.",
+    disinfectantNote: "Use an EPA List G registered disinfectant (effective against norovirus).",
     citations: [],
   },
 };

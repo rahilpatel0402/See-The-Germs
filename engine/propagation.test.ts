@@ -14,7 +14,7 @@ const base: PropagationInput = {
   profile: PATHOGENS.mrsa,
 };
 
-const rub = (t: number, effective: boolean): HygieneEvent => ({ handId: "bare_hand", t, agent: "alcohol_rub", effective });
+const rub = (t: number, effective: boolean): HygieneEvent => ({ handId: "bare_hand", t, agent: "alcohol_rub", durationS: 25, adequate: true, effective });
 const glove = (t: number, type: "don" | "doff"): GloveEvent => ({ handId: "bare_hand", t, type, source: "detected" });
 
 test("clip A: the chain runs rail -> hand -> IV pole -> phone -> blanket B -> resident B", () => {

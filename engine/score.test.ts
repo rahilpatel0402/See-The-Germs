@@ -28,7 +28,7 @@ test("clip A scores 3 surfaces, chain length 5, one exposure, two misses, score 
 });
 
 test("a clean run scores zero: only the source is contaminated", () => {
-  const propagation = propagate({ ...input, hygieneEvents: [{ handId: "bare_hand", t: 3, agent: "alcohol_rub", effective: true }] });
+  const propagation = propagate({ ...input, hygieneEvents: [{ handId: "bare_hand", t: 3, agent: "alcohol_rub", durationS: 25, adequate: true, effective: true }] });
   const s = scoreExposure(propagation, [], input.entities, "rail_A", SCORE_WEIGHTS);
   assert.deepEqual(s, { contaminatedSurfaces: 0, chainLength: 1, residentExposures: {}, momentsMissed: { "1": 0, "2": 0, "4": 0, "5": 0 }, score: 0 });
 });

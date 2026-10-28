@@ -48,6 +48,24 @@ Everything below is implemented as stated, with these decisions made while writi
 - Moment 5 fires on any zone change away from patient surroundings, including patient zone A to patient zone B. Implemented.
 - Gate 3 wording: his call was "best suitable". Rules stay as written (clip A flags 5 and 1); the clip A script is unchanged.
 
+## Clinical depth, approved Tue Oct 27 evening and written
+
+Rahil's direction: detail oriented and useful in real clinical life. Four additions, each tied to a published standard, each tested.
+
+### hygiene.ts: duration and adequacy
+`HygieneEvent` gains `durationS` (from reaching the dispenser to the person's next touch, bounded by the clip end) and `adequate` (meets `HYGIENE_CONFIG.minRubS`: 20 s alcohol rub, 40 s soap and water, from the WHO "How to Handrub" and "How to Handwash" guidance). `effective` now requires the agent to clear the pathogen and the rub to be adequate (`inadequateIsIneffective`, default true). `splitHygiene` takes the clip duration. Short rubs show as "short" on the timeline and "too short" in the drawer.
+
+### gloverules.ts
+`detectGloveIssues({ contacts, hygieneEvents, gloveEvents, entities, clipDurationS }): GloveIssue[]` with four rules from the WHO glove use leaflet and CDC hand hygiene guidance: no hygiene before donning, no hygiene after doffing, one pair across two residents, gloved contact with a healthcare-area object. Each issue carries a time and the entities involved. Shown as "!" ticks and in a Glove use section; fed to the narrative.
+
+### moments.ts: opportunities, and compliance.ts
+`detectMomentOpportunities` records every point a Moment rule applied, met or missed, with the same once-per-lapse dedup for both outcomes; `detectMoments` returns opportunities plus misses with downstream impact; `detectMomentMisses` stays as the wrapper. `complianceFrom(opportunities, personOfHand)` gives met over opportunities overall, per Moment, and per person (the WHO observation form figure). Per clip in `Analysis.compliance`; across clips via `GET /api/compliance?clips=A,B,C` (JSON) and `GET /api/compliance.csv` (one row per opportunity).
+
+### cleaning.ts
+`cleaningList(propagation, contacts, entities, scenario, profile)`: every contaminated surface and resident zone at the end of the clip, ranked by contacts while contaminated, source flagged, with the pathogen's `disinfectantNote` (EPA List H for MRSA, List P for C. auris, List K sporicidal for C. difficile, List G for norovirus; in `engine/pathogens.ts`, to be cited alongside the other rows). A "Copy list for housekeeping" button puts it on the clipboard.
+
+`Analysis` gains `gloveIssues`, `opportunities`, `compliance`, `cleaning`; the narrative input and prompt, and the client, were updated in the same commit. Clinical facts to confirm: the four EPA list assignments and the two WHO durations.
+
 ## Polish round, Tue Oct 27 evening
 
 - `contaminatedAt` and `recentlyContaminated` moved from the client into `engine/propagation.ts` with tests that pin them to `propagate`'s final state, since the overlay and the counterfactual glow depend on them.
