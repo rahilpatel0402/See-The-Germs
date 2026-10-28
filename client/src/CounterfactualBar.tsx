@@ -8,6 +8,8 @@ interface Props {
   readonly duration: number;
   readonly override: ScenarioOverride;
   readonly onResult: (cf: Counterfactual | null) => void;
+  // "Show me": the parent asks for the counterfactual at a time; a new object activates it.
+  readonly request: { t: number; agent?: HygieneAgent } | null;
 }
 
 const DEBOUNCE_MS = 200;
@@ -18,7 +20,13 @@ const initialCf = Number(params.get("cf"));
 const initialAgent: HygieneAgent = params.get("agent") === "soap_water" ? "soap_water" : "alcohol_rub";
 let deepLinkUsed = false;
 
-export function CounterfactualBar({ clipId, analysis, duration, override, onResult }: Props) {
+export function CounterfactualBar({ clipId, analysis, duration, override, onResult, request }: Props) {
+  useEffect(() => {
+    if (!request) return;
+    setT(Number(request.t.toFixed(1)));
+    if (request.agent) setAgent(request.agent);
+    setActive(true);
+  }, [request]);
   const [active, setActive] = useState(false);
   const [t, setT] = useState(0);
   const [agent, setAgent] = useState<HygieneAgent>(initialAgent);

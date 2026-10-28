@@ -1,18 +1,26 @@
 import { useState } from "react";
 import type { Analysis, Narrative } from "../../engine/types.ts";
 import { SCORE_WEIGHTS } from "../../engine/config.ts";
+import type { NarrativeLanguage } from "./api.ts";
 import { ChainGraph } from "./ChainGraph.tsx";
+
+export type View = "coach" | "audit";
 
 interface Props {
   readonly analysis: Analysis | null;
   readonly narrative: Narrative | null;
   readonly narrativeState: "idle" | "loading" | "error" | "ready";
   readonly narrativeError: string | null;
+  readonly language: NarrativeLanguage;
+  readonly onLanguage: (language: NarrativeLanguage) => void;
   readonly onNarrate: () => void;
+  readonly view: View;
+  readonly onView: (view: View) => void;
   readonly open: boolean;
   readonly onToggle: () => void;
   readonly onSeek: (t: number) => void;
   readonly onHover: (entityId: string | null) => void;
+  readonly onShowMe: (t: number) => void;
 }
 
 const fmt = (t: number): string => `${t.toFixed(1)} s`;
@@ -25,7 +33,14 @@ const GLOVE_ISSUE_TEXT: Record<string, string> = {
   gloved_healthcare_area_contact: "gloved hand touched a healthcare-area object",
 };
 
-export function Drawer({ analysis, narrative, narrativeState, narrativeError, onNarrate, open, onToggle, onSeek, onHover }: Props) {
+const MOMENT_TEXT: Record<1 | 2 | 4 | 5, string> = {
+  1: "before touching a resident",
+  2: "before a clean or aseptic task",
+  4: "after touching a resident",
+  5: "after touching the resident's surroundings",
+};
+
+export function Drawer({ analysis, narrative, narrativeState, narrativeError, language, onLanguage, onNarrate, view, onView, open, onToggle, onSeek, onHover, onShowMe }: Props) {
   const [copied, setCopied] = useState(false);
   const labels = new Map((analysis?.entities ?? []).map((e) => [e.id, e.label]));
   const name = (id: string): string => labels.get(id) ?? id;
@@ -40,28 +55,132 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, on
     return lines.join("\n");
   };
 
+  const coachingSection = analysis ? (
+    <section>
+      <div className="section-head">
+        <h2>{language === "es" ? "Nota de apoyo" : "Coaching note"}</h2>
+        <span className="lang-switch" role="group" aria-label="language">
+          <button type="button" className={language === "en" ? "on" : ""} onClick={() => onLanguage("en")}>
+            English
+          </button>
+          <button type="button" className={language === "es" ? "on" : ""} onClick={() => onLanguage("es")}>
+            Español
+          </button>
+        </span>
+      </div>
+      {narrative ? (
+        <p className="prose">{narrative.coaching_note}</p>
+      ) : narrativeState === "loading" ? (
+        <p className="muted">{language === "es" ? "Escribiendo..." : "Writing..."}</p>
+      ) : (
+        <p className="muted">
+          {narrativeState === "error" ? `Narrative unavailable: ${narrativeError ?? "unknown error"}. The structured panels are the analysis.` : "Not written yet."}{" "}
+          <button type="button" className="link" onClick={onNarrate}>
+            {narrativeState === "error" ? "Try again" : language === "es" ? "Escribirla" : "Write it"}
+          </button>
+        </p>
+      )}
+    </section>
+  ) : null;
+
+  const momentsSection = analysis ? (
+    <section>
+      <h2>Five Moments</h2>
+      {analysis.momentMisses.length === 0 ? (
+        <p className="muted">No missed moments detected in this clip.</p>
+      ) : (
+        <ul className="plain">
+          {analysis.momentMisses.map((m, i) => (
+            <li key={i}>
+              <button type="button" className="link" onClick={() => onSeek(m.t)}>
+                {fmt(m.t)}
+              </button>{" "}
+              Moment {m.moment}: {MOMENT_TEXT[m.moment]} ({name(m.handId)}).{" "}
+              <button type="button" className="link" onClick={() => onShowMe(m.t)}>
+                Show me
+              </button>
+              {m.downstream.length > 0 ? <span className="muted"> Hygiene here would have kept clean: {m.downstream.map(name).join(", ")}.</span> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+      {view === "audit" ? <p className="muted">Moment 3 (after body fluid exposure) is out of scope for this version.</p> : null}
+    </section>
+  ) : null;
+
   return (
-    <aside className={`drawer${open ? " open" : ""}`}>
-      <button type="button" className="drawer-toggle" onClick={onToggle} aria-expanded={open}>
-        {open ? "Hide details" : "Details"}
-      </button>
-      {open && analysis ? (
+    <aside className={`drawer${open ? " open" : ""} ${view}`}>
+      <div className="drawer-controls">
+        <button type="button" className="drawer-toggle" onClick={onToggle} aria-expanded={open}>
+          {open ? "Hide details" : "Details"}
+        </button>
+        {open ? (
+          <span className="view-switch" role="group" aria-label="view">
+            <button type="button" className={view === "coach" ? "on" : ""} onClick={() => onView("coach")} title="What the caregiver needs: the one change, the proof, the note">
+              Coach
+            </button>
+            <button type="button" className={view === "audit" ? "on" : ""} onClick={() => onView("audit")} title="What the infection preventionist needs: everything, with numbers">
+              Audit
+            </button>
+          </span>
+        ) : null}
+        {open && view === "audit" ? (
+          <button type="button" className="link" onClick={() => window.print()} title="One-page audit report">
+            Print report
+          </button>
+        ) : null}
+      </div>
+
+      {open && analysis && view === "coach" ? (
         <div className="drawer-body">
-          <section>
-            <h2>Coaching note</h2>
-            {narrative ? (
-              <p className="prose">{narrative.coaching_note}</p>
-            ) : narrativeState === "loading" ? (
-              <p className="muted">Writing...</p>
-            ) : (
-              <p className="muted">
-                {narrativeState === "error" ? `Narrative unavailable: ${narrativeError ?? "unknown error"}. The structured panels below are the analysis.` : "Not written yet."}{" "}
-                <button type="button" className="link" onClick={onNarrate}>
-                  {narrativeState === "error" ? "Try again" : "Write it"}
-                </button>
-              </p>
-            )}
-          </section>
+          {coachingSection}
+          {momentsSection}
+          {analysis.gloveIssues.length > 0 ? (
+            <section>
+              <h2>Gloves</h2>
+              <ul className="plain">
+                {analysis.gloveIssues.map((x, i) => (
+                  <li key={i}>
+                    <button type="button" className="link" onClick={() => onSeek(x.t)}>
+                      {fmt(x.t)}
+                    </button>{" "}
+                    {GLOVE_ISSUE_TEXT[x.type] ?? x.type}.
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          {analysis.hygieneEvents.some((h) => !h.adequate) ? (
+            <section>
+              <h2>Rub time</h2>
+              <ul className="plain">
+                {analysis.hygieneEvents
+                  .filter((h) => !h.adequate)
+                  .map((h, i) => (
+                    <li key={i}>
+                      <button type="button" className="link" onClick={() => onSeek(h.t)}>
+                        {fmt(h.t)}
+                      </button>{" "}
+                      {h.durationS.toFixed(0)} s. Rub for the full {h.agent === "alcohol_rub" ? "20" : "40"} seconds before touching anything.
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          ) : null}
+          <p className="muted">Switch to Audit for compliance, the chain, the score, and the disinfection list.</p>
+        </div>
+      ) : null}
+
+      {open && analysis && view === "audit" ? (
+        <div className="drawer-body print-report">
+          <div className="print-only">
+            <h1>See the Germs audit, clip {analysis.clipId}</h1>
+            <p>
+              {analysis.pathogen.label}, source {name(analysis.scenario.sourceEntityId)}. Staged synthetic footage. Staff training and audit aid. Not surveillance. Not medical advice.
+            </p>
+          </div>
+
+          {coachingSection}
 
           <section>
             <h2>Hand hygiene compliance</h2>
@@ -163,13 +282,9 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, on
             </p>
           </section>
 
-          <section>
+          <section className="no-print">
             <h2>Chain</h2>
-            {analysis.propagation.transfers.length === 0 ? (
-              <p className="muted">Nothing spread beyond the source.</p>
-            ) : (
-              <ChainGraph analysis={analysis} onSeek={onSeek} onHover={onHover} />
-            )}
+            {analysis.propagation.transfers.length === 0 ? <p className="muted">Nothing spread beyond the source.</p> : <ChainGraph analysis={analysis} onSeek={onSeek} onHover={onHover} />}
             {analysis.propagation.residentExposures.length > 0 ? (
               <p>
                 Resident exposures:{" "}
@@ -183,24 +298,18 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, on
             ) : null}
           </section>
 
-          <section>
-            <h2>Five Moments</h2>
-            {analysis.momentMisses.length === 0 ? (
-              <p className="muted">No missed moments detected in this clip.</p>
-            ) : (
-              <ul className="plain">
-                {analysis.momentMisses.map((m, i) => (
-                  <li key={i}>
-                    <button type="button" className="link" onClick={() => onSeek(m.t)}>
-                      {fmt(m.t)}
-                    </button>{" "}
-                    Moment {m.moment}: {MOMENT_TEXT[m.moment]} ({name(m.handId)}).
-                    {m.downstream.length > 0 ? <span className="muted"> Hygiene here would have kept clean: {m.downstream.map(name).join(", ")}.</span> : null}
-                  </li>
-                ))}
-              </ul>
-            )}
+          <section className="print-only">
+            <h2>Chain</h2>
+            <ol>
+              {analysis.propagation.transfers.map((e, i) => (
+                <li key={i}>
+                  {fmt(e.t)}: {name(e.fromId)} to {name(e.toId)}
+                </li>
+              ))}
+            </ol>
           </section>
+
+          {momentsSection}
 
           <section>
             <h2>Disinfect before next use</h2>
@@ -219,7 +328,7 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, on
             <p className="muted">{analysis.cleaning.disinfectantNote}</p>
             <button
               type="button"
-              className="link"
+              className="link no-print"
               onClick={() => {
                 void navigator.clipboard?.writeText(cleaningText()).then(() => {
                   setCopied(true);
@@ -272,10 +381,3 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, on
     </aside>
   );
 }
-
-const MOMENT_TEXT: Record<1 | 2 | 4 | 5, string> = {
-  1: "before touching a resident",
-  2: "before a clean or aseptic task",
-  4: "after touching a resident",
-  5: "after touching the resident's surroundings",
-};

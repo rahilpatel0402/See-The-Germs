@@ -39,7 +39,15 @@ const EXPLAIN_MAX_OUTPUT = 4000;
 
 // Anything that reads as patient-facing or clinical advice fails validation. Phrases, not bare
 // nouns: a prop can legitimately be labelled "medication cart", and labels are exempted below.
-const DISALLOWED = /\b(diagnos\w*|prescri\w*|(take|give|adjust|stop|start) (the |your |their )?(medication|medicine|antibiotic)s?|treat(ment)? plan|see a doctor|call (the|a) (doctor|physician)|should be (treated|tested|isolated|medicated)|the (resident|patient) (should|needs|must|requires))\b/i;
+// English and Spanish forms.
+const DISALLOWED = /\b(diagnos\w*|diagn[oó]s\w*|prescri\w*|recet\w+|(take|give|adjust|stop|start) (the |your |their )?(medication|medicine|antibiotic)s?|(tom\w+|d[eé]|ajust\w+|suspend\w+) (el |la |los |las |su |sus )?(medicament\w+|medicin\w+|antibi[oó]tic\w+)|treat(ment)? plan|plan de tratamiento|see a doctor|consult\w+ (a|al) (m[eé]dico|doctor)|call (the|a) (doctor|physician)|should be (treated|tested|isolated|medicated)|debe(r[ií]a)? ser (tratad|aislad|medicad)\w*|the (resident|patient) (should|needs|must|requires)|(el|la) (residente|paciente) (debe|necesita|requiere))\b/i;
+
+export type NarrativeLanguage = "en" | "es";
+
+const LANGUAGE_NOTE: Record<NarrativeLanguage, string> = {
+  en: "",
+  es: "\n\nWrite the coaching_note in plain Spanish as spoken by nursing assistants in the United States (second person, usted), keeping the same length rules. Keep the entity labels exactly as given, in English, since they are the names on screen. Write the audit_summary and top_fix in English.",
+};
 
 // Finds disallowed language, ignoring the clip's own entity labels.
 export function findDisallowed(text: string, labels: readonly string[]): string | null {
@@ -51,6 +59,7 @@ export function findDisallowed(text: string, labels: readonly string[]): string 
 
 export interface NarrativeFile {
   readonly hash: string;
+  readonly language?: NarrativeLanguage;
   readonly model: string;
   readonly backend: string;
   readonly createdAt: string;
@@ -124,8 +133,8 @@ async function promptText(): Promise<string> {
   return promptCache;
 }
 
-export async function narrativeHash(analysis: Analysis): Promise<string> {
-  return hashInput({ prompt: await promptText(), input: trimForNarrative(analysis) });
+export async function narrativeHash(analysis: Analysis, language: NarrativeLanguage = "en"): Promise<string> {
+  return hashInput({ prompt: await promptText(), language, input: trimForNarrative(analysis) });
 }
 
 const words = (s: string): number => s.trim().split(/\s+/).filter(Boolean).length;
@@ -163,17 +172,17 @@ async function writeJson(file: string, value: unknown): Promise<void> {
 }
 
 // The cached narrative for exactly this analysis, or null.
-export async function readNarrative(clipId: string, analysis: Analysis): Promise<NarrativeFile | null> {
-  return readJson<NarrativeFile>(narrativePath(clipId, await narrativeHash(analysis)));
+export async function readNarrative(clipId: string, analysis: Analysis, language: NarrativeLanguage = "en"): Promise<NarrativeFile | null> {
+  return readJson<NarrativeFile>(narrativePath(clipId, await narrativeHash(analysis, language)));
 }
 
-export async function narrateClip(clipId: string, analysis: Analysis, backend: SparkBackend): Promise<NarrativeFile> {
+export async function narrateClip(clipId: string, analysis: Analysis, backend: SparkBackend, language: NarrativeLanguage = "en"): Promise<NarrativeFile> {
   const input = trimForNarrative(analysis);
-  const hash = await narrativeHash(analysis);
+  const hash = await narrativeHash(analysis, language);
   const cached = await readJson<NarrativeFile>(narrativePath(clipId, hash));
   if (cached) return cached;
 
-  const prompt = await loadPrompt();
+  const prompt = (await loadPrompt()) + LANGUAGE_NOTE[language];
   const baseText = `Analysis record:\n${JSON.stringify(input, null, 2)}`;
   let lastReason = "";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -188,10 +197,10 @@ export async function narrateClip(clipId: string, analysis: Analysis, backend: S
     }
     const checked = validateNarrative(result.json, analysis.entities.map((e) => e.label));
     console.log(
-      `spark   | ${clipId} | narrate attempt ${attempt + 1} | ${checked.ok ? "valid" : `INVALID: ${checked.reason}`} | in=${result.usage.inputTokens} (cached ${result.usage.cachedTokens}) out=${result.usage.outputTokens} (reasoning ${result.usage.reasoningTokens}) | ${String(result.elapsedMs).padStart(5)} ms | $${estimateSparkCost(result.usage).toFixed(4)}`,
+      `spark   | ${clipId} | narrate ${language} attempt ${attempt + 1} | ${checked.ok ? "valid" : `INVALID: ${checked.reason}`} | in=${result.usage.inputTokens} (cached ${result.usage.cachedTokens}) out=${result.usage.outputTokens} (reasoning ${result.usage.reasoningTokens}) | ${String(result.elapsedMs).padStart(5)} ms | $${estimateSparkCost(result.usage).toFixed(4)}`,
     );
     if (checked.ok) {
-      const file: NarrativeFile = { hash, model: backend.model, backend: backend.name, createdAt: new Date().toISOString(), usage: result.usage, narrative: checked.narrative };
+      const file: NarrativeFile = { hash, language, model: backend.model, backend: backend.name, createdAt: new Date().toISOString(), usage: result.usage, narrative: checked.narrative };
       await writeJson(narrativePath(clipId, hash), file);
       return file;
     }

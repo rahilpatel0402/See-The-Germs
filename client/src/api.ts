@@ -167,8 +167,23 @@ export interface SessionReport {
   readonly surfaces: Array<{ label: string; clips: number; contacts: number }>;
 }
 
+export interface ClipDetail {
+  readonly id: string;
+  readonly title: string;
+  readonly story: string;
+  readonly demo: boolean;
+  readonly analyzed: boolean;
+  readonly durationS: number;
+  readonly createdAt: string;
+}
+
+export type NarrativeLanguage = "en" | "es";
+
 export const api = {
-  clips: () => request<{ clips: string[]; demo: string[] }>("/api/clips"),
+  clips: () => request<{ clips: string[]; demo: string[]; details: ClipDetail[] }>("/api/clips"),
+  updateInfo: (clipId: string, info: { title?: string; story?: string }) =>
+    request<{ clip: unknown }>(`/api/clips/${encodeURIComponent(clipId)}/info`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(info) }),
+  deleteClip: (clipId: string) => request<{ deleted: string }>(`/api/clips/${encodeURIComponent(clipId)}`, { method: "DELETE" }),
   session: (clipIds: readonly string[]) => request<SessionReport>(`/api/compliance?clips=${encodeURIComponent(clipIds.join(","))}`),
   sessionCsvUrl: (clipIds: readonly string[]) => `/api/compliance.csv?clips=${encodeURIComponent(clipIds.join(","))}`,
   trackBox: (clipId: string, body: TrackBoxRequest) =>
@@ -189,14 +204,15 @@ export const api = {
     post<Counterfactual>("/api/counterfactual", { clipId, t, agent, ...(handId ? { handId } : {}), ...override }),
   explainCounterfactual: (clipId: string, t: number, agent: HygieneAgent, handId: string | undefined, override?: ScenarioOverride) =>
     post<{ explanation: string }>("/api/counterfactual/explain", { clipId, t, agent, ...(handId ? { handId } : {}), ...override }),
-  narrative: (clipId: string, scenario?: ScenarioOverride) => {
+  narrative: (clipId: string, scenario?: ScenarioOverride, language: NarrativeLanguage = "en") => {
     const q = new URLSearchParams();
     if (scenario?.pathogen) q.set("pathogen", scenario.pathogen);
     if (scenario?.sourceEntityId) q.set("sourceEntityId", scenario.sourceEntityId);
+    if (language !== "en") q.set("language", language);
     const qs = q.toString();
     return request<NarrativeFile>(`/api/clips/${encodeURIComponent(clipId)}/narrative${qs ? `?${qs}` : ""}`);
   },
-  narrate: (clipId: string, override?: ScenarioOverride) => post<NarrativeFile>("/api/narrate", { clipId, ...override }),
+  narrate: (clipId: string, override?: ScenarioOverride, language: NarrativeLanguage = "en") => post<NarrativeFile>("/api/narrate", { clipId, language, ...override }),
   videoUrl: (clipId: string) => `/api/clips/${encodeURIComponent(clipId)}/video`,
 };
 

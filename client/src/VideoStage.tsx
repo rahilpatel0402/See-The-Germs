@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from "react";
 import type { Analysis, MaskBounds, PropagationResult } from "../../engine/types.ts";
-import { contaminatedDurationsAt, contaminationAt, drawFrame, pulsingAt, type OverlayIndex, type OverlayMode } from "./overlay.ts";
+import { HYGIENE_CONFIG } from "../../engine/config.ts";
+import { contaminatedDurationsAt, contaminationAt, drawFrame, drawRubTimer, pulsingAt, type OverlayIndex, type OverlayMode } from "./overlay.ts";
 
 const PULSE_WINDOW_S = 0.4;
 
@@ -76,6 +77,19 @@ export function VideoStage({ videoRef, src, analysis, propagation, index, mode, 
           highlight,
           entities,
         });
+        // Rub countdown during a hygiene event, for the whole required duration or until the
+        // rub ended early (next touch), shown in red for a moment after an early end.
+        if (analysis) {
+          for (const h of analysis.hygieneEvents) {
+            const required = HYGIENE_CONFIG.minRubS[h.agent];
+            const shownUntil = h.adequate ? h.t + required : Math.min(h.t + required, h.t + h.durationS + 1.5);
+            if (t >= h.t && t < shownUntil) {
+              const handIds = new Set(list.filter((e) => (e.person ?? "P1") === (list.find((x) => x.id === h.handId)?.person ?? "P1") && (e.class === "bare_hand" || e.class === "gloved_hand")).map((e) => e.id));
+              drawRubTimer(ctx, shapes, handIds, Math.min(t - h.t, h.durationS), required, !h.adequate && t - h.t >= h.durationS);
+              break;
+            }
+          }
+        }
         if (d) {
           ctx.save();
           ctx.setLineDash([8, 6]);

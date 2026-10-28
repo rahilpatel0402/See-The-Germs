@@ -10,7 +10,7 @@ import type { Analysis } from "../engine/types.ts";
 import { readScenario, runAnalysis, runCounterfactualFor, validateScenario, writeScenario } from "./analysis.ts";
 import { explainCounterfactual, narrateClip, readNarrative } from "./narrate.ts";
 import { buildPipeline, parseScenarioOverride } from "./pipeline.ts";
-import { createClipFromUpload, ensureClip, listClipIds, readMeta } from "./clips.ts";
+import { createClipFromUpload, deleteClip, ensureClip, listClipIds, readMeta, updateClipInfo } from "./clips.ts";
 import { optionalEnv } from "./env.ts";
 import { readEntities, validateEntities, writeEntities } from "./entities.ts";
 import { HttpError } from "./errors.ts";
@@ -46,17 +46,63 @@ app.use((_req, res, next) => {
   next();
 });
 app.options("/{*path}", (_req, res) => res.sendStatus(204));
+app.use((_req, res, next) => {
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  next();
+});
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// Demo clips first, then everything else, so the picker opens on a cached clip.
+// Demo clips first, then everything else, so the picker opens on a cached clip. details carries
+// what the clip cards show.
 app.get("/api/clips", wrap(async (_req, res) => {
   const all = await listClipIds();
   const demo = DEMO_CLIPS.filter((id) => all.includes(id));
-  res.json({ clips: [...demo, ...all.filter((id) => !demo.includes(id))], demo });
+  const ordered = [...demo, ...all.filter((id) => !demo.includes(id))];
+  const details = [];
+  for (const id of ordered) {
+    try {
+      const meta = await readMeta(id);
+      details.push({
+        id,
+        title: meta.title ?? id,
+        story: meta.story ?? "",
+        demo: demo.includes(id),
+        analyzed: existsSync(analysisPath(id)),
+        durationS: meta.sampled.frames / meta.fps,
+        createdAt: meta.createdAt,
+      });
+    } catch {
+      details.push({ id, title: id, story: "", demo: demo.includes(id), analyzed: false, durationS: 0, createdAt: "" });
+    }
+  }
+  res.json({ clips: ordered, demo, details });
+}));
+
+// Title and story for the clip card. Allowed on demo clips too: it is presentation, not data.
+app.put("/api/clips/:id/info", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  const body = (req.body ?? {}) as { title?: unknown; story?: unknown };
+  const info = {
+    ...(typeof body.title === "string" ? { title: body.title } : {}),
+    ...(typeof body.story === "string" ? { story: body.story } : {}),
+  };
+  res.json({ clip: await updateClipInfo(meta.id, info) });
+}));
+
+// A caregiver's footage must be deletable on request. Demo clips are not deletable here.
+app.delete("/api/clips/:id", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  assertEditable(meta.id);
+  await withClipLock(meta.id, async () => {
+    await deleteRemoteFile(meta).catch((err: Error) => console.log(`files   | ${meta.id} | remote delete failed: ${err.message}`));
+    await deleteClip(meta.id);
+  });
+  console.log(`clips   | ${meta.id} | deleted on request`);
+  res.json({ deleted: meta.id });
 }));
 
 app.get("/api/demo", wrap(async (_req, res) => {
@@ -337,18 +383,20 @@ app.get("/api/compliance.csv", wrap(async (req, res) => {
 app.get("/api/clips/:id/narrative", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
   const { analysis } = await buildPipeline(meta.id, parseScenarioOverride(req.query as { pathogen?: unknown; sourceEntityId?: unknown }));
-  const file = await readNarrative(meta.id, analysis);
+  const language = req.query["language"] === "es" ? "es" : "en";
+  const file = await readNarrative(meta.id, analysis, language);
   if (!file) throw new HttpError(404, `clip ${meta.id} has no narrative for this scenario yet`);
   res.json(file);
 }));
 
-// Generates the narrative for the clip's current analysis (cached by input hash).
+// Generates the narrative for the clip's current analysis (cached by input hash and language).
 app.post("/api/narrate", wrap(async (req, res) => {
-  const body = (req.body ?? {}) as { clipId?: unknown; pathogen?: unknown; sourceEntityId?: unknown };
+  const body = (req.body ?? {}) as { clipId?: unknown; pathogen?: unknown; sourceEntityId?: unknown; language?: unknown };
   const clipId = String(body.clipId ?? "");
   await readMeta(clipId);
+  const language = body.language === "es" ? "es" : "en";
   const analysis = await runAnalysis(clipId, parseScenarioOverride(body));
-  res.json(await narrateClip(clipId, analysis, spark));
+  res.json(await narrateClip(clipId, analysis, spark, language));
 }));
 
 // Two sentences on one counterfactual, cached per clip, scenario, time, and agent.

@@ -20,6 +20,26 @@ export interface ClipMeta {
   readonly fps: number;
   // Files API id of the uploaded sampled clip, kept so every class call reuses one upload.
   readonly remoteFileId?: string;
+  // Shown on the clip card: a short title and one sentence on what the clip demonstrates.
+  readonly title?: string;
+  readonly story?: string;
+}
+
+export async function updateClipInfo(clipId: string, info: { title?: string; story?: string }): Promise<ClipMeta> {
+  const meta = await readMeta(clipId);
+  const next: ClipMeta = {
+    ...meta,
+    ...(info.title !== undefined ? { title: info.title.trim().slice(0, 80) } : {}),
+    ...(info.story !== undefined ? { story: info.story.trim().slice(0, 300) } : {}),
+  };
+  await writeMeta(next);
+  return next;
+}
+
+// Removes a clip and everything derived from it. The caller has already removed the remote upload.
+export async function deleteClip(clipId: string): Promise<void> {
+  if (!isValidClipId(clipId)) throw new HttpError(400, "invalid clip id");
+  await rm(clipDir(clipId), { recursive: true, force: true });
 }
 
 // webm comes from in-browser recording; ffmpeg turns it into the H.264 MP4 that SAM needs.

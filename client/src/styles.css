@@ -919,3 +919,269 @@ body {
     overflow-x: auto;
   }
 }
+
+.stage-wrap {
+  position: relative;
+}
+
+.legend {
+  position: absolute;
+  left: 10px;
+  bottom: 56px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+  max-width: calc(100% - 20px);
+}
+
+.legend .sw {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+
+.legend .sw.hot {
+  background: rgba(255, 120, 10, 0.75);
+  box-shadow: 0 0 6px rgba(255, 130, 20, 0.9);
+}
+
+.legend .sw.heat {
+  background: linear-gradient(90deg, rgba(255, 170, 60, 0.6), rgba(255, 20, 10, 0.9));
+}
+
+.legend .sw.clean {
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+
+.legend .sw.inferred {
+  border: 1.5px dashed rgba(255, 255, 255, 0.8);
+}
+
+.legend .sw.eye {
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--hot);
+}
+
+.legend .sw.tick-ok {
+  width: 3px;
+  background: var(--ok);
+}
+
+.legend .sw.tick-bad {
+  width: 3px;
+  background: var(--bad);
+}
+
+.topfix.hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  margin: 12px 2px 6px;
+}
+
+.show-me {
+  border-color: var(--ok);
+  color: #0a1a10;
+  background: var(--ok);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.drawer-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.drawer-controls .drawer-toggle {
+  width: auto;
+  flex: 1;
+}
+
+.view-switch,
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.view-switch button,
+.lang-switch button {
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--line);
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.view-switch button:last-child,
+.lang-switch button:last-child {
+  border-right: none;
+}
+
+.view-switch button.on,
+.lang-switch button.on {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-head h2 {
+  margin: 0;
+}
+
+.view-coach .drawer-body section {
+  border-top-color: transparent;
+}
+
+.cards-panel {
+  margin: 12px 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px 14px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.card {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.card.current {
+  border-color: var(--hot);
+}
+
+.card h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.card-meta {
+  margin: 6px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.chip.ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.chip.warn {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.card-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-edit input,
+.card-edit textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.link.warn {
+  color: var(--bad);
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .topbar,
+  .stage-column,
+  .badge,
+  .drawer-controls,
+  .no-print,
+  .lang-switch,
+  .link {
+    display: none !important;
+  }
+  .main.with-drawer {
+    display: block;
+  }
+  .drawer {
+    max-height: none;
+    border: none;
+    background: #fff;
+    color: #000;
+    padding: 0;
+  }
+  .drawer-body section {
+    border-top: 1px solid #ccc;
+    break-inside: avoid;
+  }
+  .drawer-body h2,
+  .muted,
+  .score {
+    color: #000;
+  }
+  .print-only {
+    display: block;
+  }
+  .print-only h1 {
+    font-size: 18px;
+    margin: 0 0 4px;
+  }
+  .warn {
+    color: #b00;
+  }
+  .ok {
+    color: #060;
+  }
+}

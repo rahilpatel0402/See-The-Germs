@@ -10,6 +10,8 @@ export interface Shape {
   readonly path: Path2D;
   readonly left: number;
   readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
   // The object was not seen here; its position is carried from a neighbouring sighting.
   readonly inferred: boolean;
 }
@@ -44,7 +46,7 @@ export function buildOverlayIndex(payload: TracksPayload): OverlayIndex {
       for (const { entityId, record } of byFrame.get(frameIndex) ?? []) {
         const d = decodeMaskToSVGPath(record.mask);
         if (d === "") continue;
-        shapes.push({ entityId, path: new Path2D(d), left: record.bounds.left, top: record.bounds.top, inferred: record.inferred === true });
+        shapes.push({ entityId, path: new Path2D(d), left: record.bounds.left, top: record.bounds.top, right: record.bounds.right, bottom: record.bounds.bottom, inferred: record.inferred === true });
       }
       cache.set(frameIndex, shapes);
       return shapes;
@@ -71,6 +73,36 @@ export interface DrawOptions {
   readonly heat: ReadonlyMap<string, number>;
   readonly highlight: string | null;
   readonly entities: ReadonlyMap<string, Entity>;
+}
+
+// The rub countdown drawn near the hand during a hygiene event: seconds rubbed over the WHO
+// minimum, green once met, red if the next touch came early.
+export function drawRubTimer(
+  ctx: CanvasRenderingContext2D,
+  shapes: readonly Shape[],
+  handIds: ReadonlySet<string>,
+  elapsedS: number,
+  requiredS: number,
+  endedEarly: boolean,
+): void {
+  const hand = shapes.find((s) => handIds.has(s.entityId));
+  const x = hand ? (hand.left + hand.right) / 2 : ctx.canvas.width / 2;
+  const y = hand ? Math.max(40, hand.top - 16) : 60;
+  const done = elapsedS >= requiredS;
+  const label = `${Math.min(elapsedS, requiredS).toFixed(0)} / ${requiredS} s rub`;
+  ctx.save();
+  ctx.font = `bold ${Math.round(ctx.canvas.width / 32)}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const w = ctx.measureText(label).width + 28;
+  const h = Math.round(ctx.canvas.width / 20);
+  ctx.fillStyle = endedEarly ? "rgba(180, 30, 30, 0.9)" : done ? "rgba(20, 140, 70, 0.9)" : "rgba(20, 20, 20, 0.8)";
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - h / 2, w, h, 8);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.fillText(endedEarly ? `${label}, touched early` : label, x, y);
+  ctx.restore();
 }
 
 export function drawFrame(ctx: CanvasRenderingContext2D, shapes: readonly Shape[], options: DrawOptions): void {

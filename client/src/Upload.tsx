@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { DispenserAgent, EntityClass, ZoneTag } from "../../engine/types.ts";
 import { api, ApiError, segmentStream, uploadClip, type EntityConfig, type SceneResult, type SegmentLine } from "./api.ts";
+import { TASK_PRESETS } from "./presets.ts";
 import { Record } from "./Record.tsx";
 
 type Step = "pick" | "uploading" | "entities" | "segmenting" | "adjudicating" | "analyzing" | "done";
@@ -223,6 +224,26 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
             {duration !== null ? `${duration.toFixed(1)} s clip. ` : ""}
             Name what is in the scene. The phrase is what SAM looks for: describe how the prop looks, not what it is for ("white rod" works, "bed rail" may not).
             Keep the two hands. Remove props that are not in the clip.
+          </p>
+          <p className="mark-row">
+            <label>
+              Which task is this?{" "}
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  const preset = TASK_PRESETS.find((p) => p.id === e.target.value);
+                  if (preset) setEntities(preset.entities.map((x) => ({ ...x })));
+                }}
+              >
+                <option value="">choose a preset...</option>
+                {TASK_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="muted">Loads the usual props and zones for that task; edit or let Spark refine them.</span>
           </p>
           <p>
             <button type="button" disabled={proposing} onClick={() => void propose()}>
