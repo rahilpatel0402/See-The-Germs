@@ -6,10 +6,10 @@ import path from "node:path";
 import { GLOVE_MIN_CONFIDENCE } from "../engine/config.ts";
 import type { DispenserAgent, EntityClass, MaskRecord, ZoneTag } from "../engine/types.ts";
 import { readMeta } from "./clips.ts";
-import { type EntityConfig, validateEntities, writeEntities } from "./entities.ts";
+import { type EntityConfig, readEntities, validateEntities, writeEntities } from "./entities.ts";
 import { rawFramePath } from "./frames.ts";
 import { clipDir } from "./paths.ts";
-import { segmentImage } from "./sam.ts";
+import { isBoxPhrase, segmentImage } from "./sam.ts";
 import { estimateSparkCost, type SparkBackend } from "./spark.ts";
 
 const ZONES: ZoneTag[] = ["patient_zone_A", "patient_zone_B", "healthcare_area", "hygiene_station"];
@@ -80,7 +80,8 @@ export interface SceneResult {
   readonly cost: number;
 }
 
-function slugId(label: string, used: Set<string>): string {
+// The one id rule for props created from a label, shared by the scene loop and the box tool.
+export function slugId(label: string, used: Set<string>): string {
   let base = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "prop";
   if (/^[0-9]/.test(base)) base = `p_${base}`;
   let id = base;
@@ -126,17 +127,26 @@ export async function proposeScene(clipId: string, spark: SparkBackend): Promise
   const raw = (proposal.json as { entities?: unknown })?.entities;
   if (!Array.isArray(raw)) throw new Error("scene: Spark returned no entities");
   const proposed: Proposed[] = raw
-    .filter((e): e is Proposed => typeof e?.label === "string" && KINDS.includes(e.kind) && ZONES.includes(e.zone) && Array.isArray(e.phrases))
+    .filter((e): e is Proposed => typeof e?.label === "string" && e.label.trim().length > 0 && KINDS.includes(e.kind) && ZONES.includes(e.zone) && Array.isArray(e.phrases))
     .slice(0, MAX_PROPS)
-    .map((e) => ({ ...e, phrases: e.phrases.filter((p: unknown): p is string => typeof p === "string" && p.trim().length > 0).slice(0, 3) }));
+    .map((e) => ({ ...e, label: e.label.trim(), phrases: e.phrases.filter((p: unknown): p is string => typeof p === "string" && p.trim().length > 0).map((p) => p.trim()).slice(0, 3) }));
+
+  // Keep what a person or the box tool already set up: hands (any person) and box-tracked
+  // props, whose paid tracks must not be orphaned. Phrase-based props are replaced by the proposal.
+  let existing: EntityConfig[] = [];
+  try {
+    existing = await readEntities(clipId);
+  } catch {
+    // no table yet
+  }
+  const kept = existing.filter((e) => e.class === "bare_hand" || e.class === "gloved_hand" || isBoxPhrase(e.samPhrase));
+  if (!kept.some((e) => e.class === "bare_hand")) kept.unshift({ id: "bare_hand", label: "bare hand", class: "bare_hand", zone: "healthcare_area", samPhrase: "bare hand", person: "P1" });
+  if (!kept.some((e) => e.class === "gloved_hand")) kept.splice(1, 0, { id: "gloved_hand", label: "gloved hand", class: "gloved_hand", zone: "healthcare_area", samPhrase: "gloved hand", person: "P1", minConfidence: GLOVE_MIN_CONFIDENCE });
 
   // Verify phrases on the middle frame with the SAM image endpoint.
   const testFrame = images[Math.min(1, images.length - 1)] as Buffer;
-  const used = new Set<string>(["bare_hand", "gloved_hand"]);
-  const entities: EntityConfig[] = [
-    { id: "bare_hand", label: "bare hand", class: "bare_hand", zone: "healthcare_area", samPhrase: "bare hand", person: "P1" },
-    { id: "gloved_hand", label: "gloved hand", class: "gloved_hand", zone: "healthcare_area", samPhrase: "gloved hand", person: "P1", minConfidence: GLOVE_MIN_CONFIDENCE },
-  ];
+  const used = new Set<string>(kept.map((e) => e.id));
+  const entities: EntityConfig[] = [...kept];
   const report: SceneEntityReport[] = [];
 
   for (const p of proposed) {
@@ -186,6 +196,6 @@ export async function proposeScene(clipId: string, spark: SparkBackend): Promise
   await writeEntities(clipId, entities);
   const result: SceneResult = { entities, report, frames, cost: Number(cost.toFixed(4)) };
   await writeFile(path.join(clipDir(clipId), "scene.json"), JSON.stringify(result, null, 2));
-  console.log(`scene   | ${clipId} | ${entities.length - 2} props, ${report.filter((r) => r.verified).length} verified by SAM, about $${result.cost.toFixed(3)}`);
+  console.log(`scene   | ${clipId} | ${report.length} props proposed, ${report.filter((r) => r.verified).length} verified by SAM, ${kept.length} kept from before, about $${result.cost.toFixed(3)}`);
   return result;
 }

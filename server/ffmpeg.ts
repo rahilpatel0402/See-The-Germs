@@ -51,13 +51,19 @@ export async function probe(file: string, options: { countFrames?: boolean } = {
   if (!video || !video.width || !video.height) throw new Error(`ffprobe: no video stream in ${file}`);
   const rotation = Math.abs(video.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? Number(video.tags?.rotate ?? 0));
   const swap = rotation % 180 === 90;
+  const fps = parseRate(video.r_frame_rate);
+  const frames = Number(video.nb_read_frames ?? video.nb_frames ?? 0);
+  let durationS = Number(parsed.format?.duration ?? (video as { duration?: string }).duration ?? 0);
+  // A browser-recorded webm often has no duration in its header. Count frames once and derive it.
+  if (!(durationS > 0) && !options.countFrames) return probe(file, { countFrames: true });
+  if (!(durationS > 0) && frames > 0 && fps > 0) durationS = frames / fps;
   return {
     width: swap ? video.height : video.width,
     height: swap ? video.width : video.height,
     codec: video.codec_name ?? "unknown",
-    fps: parseRate(video.r_frame_rate),
-    frames: Number(video.nb_read_frames ?? video.nb_frames ?? 0),
-    durationS: Number(parsed.format?.duration ?? 0),
+    fps,
+    frames,
+    durationS,
   };
 }
 

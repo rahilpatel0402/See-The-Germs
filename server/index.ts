@@ -5,7 +5,7 @@ import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
-import { complianceFrom } from "../engine/compliance.ts";
+import { complianceFrom, personMapper } from "../engine/compliance.ts";
 import type { Analysis } from "../engine/types.ts";
 import { readScenario, runAnalysis, runCounterfactualFor, validateScenario, writeScenario } from "./analysis.ts";
 import { explainCounterfactual, narrateClip, readNarrative } from "./narrate.ts";
@@ -19,7 +19,7 @@ import { analysisPath, clipDir, sampledPath, TMP_DIR } from "./paths.ts";
 import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
 import { BOX_PREFIX, deleteRemoteFile, MetaSamBackend, readTrack, segmentBox, segmentPhrase } from "./sam.ts";
-import { proposeScene } from "./scene.ts";
+import { proposeScene, slugId } from "./scene.ts";
 import { MetaSparkBackend } from "./spark.ts";
 
 const PORT = Number(optionalEnv("PORT", "8787"));
@@ -150,12 +150,7 @@ app.post("/api/clips/:id/track-box", wrap(async (req, res) => {
   if (!label) throw new HttpError(400, "label is required");
   const entities = await readEntities(meta.id);
   const used = new Set(entities.map((e) => e.id));
-  let entityId = typeof body.entityId === "string" && used.has(body.entityId) ? body.entityId : "";
-  if (!entityId) {
-    const base = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "prop";
-    entityId = base;
-    for (let n = 2; used.has(entityId); n++) entityId = `${base}_${n}`;
-  }
+  const entityId = typeof body.entityId === "string" && used.has(body.entityId) ? body.entityId : slugId(label, used);
   const draft = {
     id: entityId,
     label,
@@ -172,11 +167,13 @@ app.post("/api/clips/:id/track-box", wrap(async (req, res) => {
   }
   const track = await withClipLock(meta.id, async () => {
     const t = await segmentBox(meta.id, entityId, { frameIndex, box, direction: "both" }, backend);
-    await writeEntities(meta.id, next);
+    // The box call re-uploads the clip; it does not need to stay on the Meta side.
+    await deleteRemoteFile(await readMeta(meta.id)).catch((err: Error) => console.log(`files   | ${meta.id} | remote delete failed: ${err.message}`));
+    if (t) await writeEntities(meta.id, next);
     return t;
   });
+  if (!track) throw new HttpError(422, "SAM could not track anything from that box; try a tighter box on a clearer frame");
   const frames = new Set(track.records.map((r) => r.frameIndex)).size;
-  if (frames === 0) throw new HttpError(422, "SAM could not track anything from that box; try a tighter box on a clearer frame");
   const analysis = existsSync(analysisPath(meta.id)) ? await runAnalysis(meta.id) : null;
   res.json({ entity: next.find((e) => e.id === entityId), frames, objects: new Set(track.records.map((r) => r.objectId)).size, analysis });
 }));
@@ -284,7 +281,12 @@ async function sessionOpportunities(clipsParam: unknown): Promise<Array<{ clipId
   for (const id of ids) {
     const meta = await readMeta(id);
     if (!existsSync(analysisPath(meta.id))) throw new HttpError(409, `clip ${meta.id} has not been analyzed yet`);
-    out.push({ clipId: meta.id, analysis: JSON.parse(await readFile(analysisPath(meta.id), "utf8")) as Analysis });
+    const analysis = JSON.parse(await readFile(analysisPath(meta.id), "utf8")) as Partial<Analysis>;
+    // An analysis written before the compliance fields existed must be rerun, not guessed at.
+    if (!Array.isArray(analysis.opportunities) || !analysis.compliance || !analysis.cleaning || !Array.isArray(analysis.gloveIssues)) {
+      throw new HttpError(409, `clip ${meta.id} was analyzed by an older version; run the analysis again`);
+    }
+    out.push({ clipId: meta.id, analysis: analysis as Analysis });
   }
   return out;
 }
@@ -292,13 +294,7 @@ async function sessionOpportunities(clipsParam: unknown): Promise<Array<{ clipId
 app.get("/api/compliance", wrap(async (req, res) => {
   const session = await sessionOpportunities(req.query["clips"]);
   const all = session.flatMap((s) => s.analysis.opportunities);
-  const mapper = (handId: string): string => {
-    for (const s of session) {
-      const e = s.analysis.entities.find((x) => x.id === handId);
-      if (e) return e.person ?? "P1";
-    }
-    return handId;
-  };
+  const mapper = personMapper(session.flatMap((s) => s.analysis.entities));
   // Surfaces contaminated across the session, by label, with contacts while contaminated summed.
   const surfaces = new Map<string, { label: string; clips: number; contacts: number }>();
   for (const s of session) {
@@ -330,7 +326,7 @@ app.get("/api/compliance.csv", wrap(async (req, res) => {
   const session = await sessionOpportunities(req.query["clips"]);
   const rows = ["clip,person,moment,time_s,met,pathogen"];
   for (const s of session) {
-    const person = (handId: string): string => s.analysis.entities.find((x) => x.id === handId)?.person ?? "P1";
+    const person = personMapper(s.analysis.entities);
     for (const o of s.analysis.opportunities) rows.push(`${s.clipId},${person(o.handId)},${o.moment},${o.t.toFixed(1)},${o.met ? "yes" : "no"},${s.analysis.pathogen.label}`);
   }
   res.type("text/csv").setHeader("Content-Disposition", "attachment; filename=hand-hygiene-opportunities.csv").send(rows.join("\n"));

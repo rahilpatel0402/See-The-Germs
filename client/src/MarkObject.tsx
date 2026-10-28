@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DispenserAgent, EntityClass, MaskBounds, ZoneTag } from "../../engine/types.ts";
 import { api } from "./api.ts";
 
@@ -23,9 +23,13 @@ export function MarkObject({ clipId, box, frameIndex, fps, onDone, onCancel }: P
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ frames: number; objects: number } | null>(null);
+  const doneTimer = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (doneTimer.current !== null) window.clearTimeout(doneTimer.current);
+  }, []);
 
   const submit = async () => {
-    if (!label.trim()) return;
+    if (!label.trim() || busy || result) return;
     setBusy(true);
     setError(null);
     try {
@@ -37,11 +41,11 @@ export function MarkObject({ clipId, box, frameIndex, fps, onDone, onCancel }: P
         zone,
         ...(kind === "dispenser" ? { agent } : {}),
       });
+      // Stay disabled after success: one box, one paid call, one reload.
       setResult({ frames: r.frames, objects: r.objects });
-      window.setTimeout(onDone, 900);
+      doneTimer.current = window.setTimeout(onDone, 900);
     } catch (e) {
       setError((e as Error).message);
-    } finally {
       setBusy(false);
     }
   };

@@ -46,13 +46,15 @@ export function Record({ maxSeconds, onFile, onCancel }: Props) {
     };
   }, []);
 
+  // Stop a second before the server's cap so the file never lands just over it.
   useEffect(() => {
     if (state !== "recording") return;
     const started = Date.now();
+    const limit = Math.max(5, maxSeconds - 1);
     const timer = window.setInterval(() => {
       const s = (Date.now() - started) / 1000;
       setSeconds(s);
-      if (s >= maxSeconds) stop();
+      if (s >= limit) stop();
     }, 200);
     return () => window.clearInterval(timer);
   }, [state, maxSeconds]);
@@ -103,7 +105,7 @@ export function Record({ maxSeconds, onFile, onCancel }: Props) {
         {state === "starting" ? <span className="muted">Starting the camera...</span> : null}
         {state === "ready" ? (
           <button type="button" onClick={start}>
-            Start recording (up to {maxSeconds} s)
+            Start recording (up to {maxSeconds - 1} s)
           </button>
         ) : null}
         {state === "recording" ? (

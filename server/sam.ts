@@ -215,6 +215,9 @@ export async function segmentImage(png: Buffer, phrase: string): Promise<{ recor
     ],
   } as never);
   const result = await parseImageStream(stream as unknown as AsyncIterable<{ type: string }>).finalResult;
+  if (result.outcome.status !== "completed") throw new Error(`SAM image "${phrase}": response ${result.outcome.status} (${result.outcome.reason})`);
+  const errors = result.diagnostics.filter((d) => d.severity === "error");
+  if (errors.length > 0) throw new Error(`SAM image "${phrase}": parser rejected ${errors.length} lines, first: ${errors[0]?.message}`);
   const records: MaskRecord[] = recordsOfKind(result.records, "mask").map((m) => ({
     frameIndex: 0,
     objectId: m.objectId,
@@ -259,9 +262,15 @@ export async function segmentPhrase(clipId: string, phrase: string, backend: Seg
   return cacheTrack(clipId, clip, phrase, await backend.segmentVideo(clip, phrase));
 }
 
-// Tracks an object from a box on one frame and caches it under the entity's box key.
-export async function segmentBox(clipId: string, entityId: string, prompt: BoxPrompt, backend: MetaSamBackend): Promise<TrackFile> {
+// Tracks an object from a box on one frame and caches it under the entity's box key. Nothing is
+// cached when SAM returns no frames, so a failed box leaves no trace.
+export async function segmentBox(clipId: string, entityId: string, prompt: BoxPrompt, backend: MetaSamBackend): Promise<TrackFile | null> {
   const clip = await readMeta(clipId);
   const key = `${BOX_PREFIX}${entityId}`;
-  return cacheTrack(clipId, clip, key, await backend.segmentVideoByBox(clip, key, prompt));
+  const result = await backend.segmentVideoByBox(clip, key, prompt);
+  if (result.records.length === 0) {
+    console.log(`sam     | ${clipId} | ${key} | box tracked nothing, not cached`);
+    return null;
+  }
+  return cacheTrack(clipId, clip, key, result);
 }
