@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { DispenserAgent, EntityClass, ZoneTag } from "../../engine/types.ts";
 import { api, ApiError, segmentStream, uploadClip, type EntityConfig, type SceneResult, type SegmentLine } from "./api.ts";
+import { Record } from "./Record.tsx";
 
 type Step = "pick" | "uploading" | "entities" | "segmenting" | "adjudicating" | "analyzing" | "done";
 
@@ -70,13 +71,16 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
 
   const fail = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
 
-  const startUpload = async () => {
-    if (!file) return;
+  const [recording, setRecording] = useState(false);
+
+  const startUpload = async (chosen?: File) => {
+    const f = chosen ?? file;
+    if (!f) return;
     setError(null);
     setStep("uploading");
     setProgress(0);
     try {
-      const info = await uploadClip(file, setProgress);
+      const info = await uploadClip(f, setProgress);
       setClipId(info.clip.id);
       setEntities(info.entities);
       setDuration(info.clip.source.durationS);
@@ -189,13 +193,28 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
         ))}
       </ol>
 
-      {step === "pick" ? (
+      {step === "pick" && !recording ? (
         <div className="upload-pick">
-          <input type="file" accept="video/mp4,video/quicktime,.mp4,.mov" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <input type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           <button type="button" disabled={!file} onClick={() => void startUpload()}>
             Upload
           </button>
+          <span className="muted">or</span>
+          <button type="button" onClick={() => setRecording(true)}>
+            Record with the camera
+          </button>
         </div>
+      ) : null}
+      {step === "pick" && recording ? (
+        <Record
+          maxSeconds={45}
+          onCancel={() => setRecording(false)}
+          onFile={(f) => {
+            setRecording(false);
+            setFile(f);
+            void startUpload(f);
+          }}
+        />
       ) : null}
 
       {step === "entities" ? (

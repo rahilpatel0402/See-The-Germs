@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PATHOGEN_IDS, PATHOGENS } from "../../engine/pathogens.ts";
-import type { Analysis, Counterfactual, Narrative, PathogenId } from "../../engine/types.ts";
+import type { Analysis, Counterfactual, MaskBounds, Narrative, PathogenId } from "../../engine/types.ts";
+import { MarkObject } from "./MarkObject.tsx";
 import { api, ApiError, type ScenarioOverride, type TracksPayload } from "./api.ts";
 import { CounterfactualBar } from "./CounterfactualBar.tsx";
 import { Drawer } from "./Drawer.tsx";
@@ -41,13 +42,17 @@ export function App() {
   const [upload, setUpload] = useState<{ open: boolean; resume: string | null }>({ open: params.get("upload") === "1", resume: null });
   // Bumped to reload the current clip after its setup completes, since the id itself may not change.
   const [reload, setReload] = useState(0);
+  const [demoClips, setDemoClips] = useState<string[]>([]);
+  const [marking, setMarking] = useState(false);
+  const [pendingBox, setPendingBox] = useState<{ box: MaskBounds; frameIndex: number } | null>(null);
 
   const refreshClips = useCallback(
     () =>
       api
         .clips()
-        .then(({ clips }) => {
+        .then(({ clips, demo }) => {
           setClips(clips);
+          setDemoClips(demo);
           setClipId((current) => current ?? clips[0] ?? null);
         })
         .catch((e: Error) => setError(e.message)),
@@ -234,6 +239,20 @@ export function App() {
           <button type="button" onClick={() => setUpload({ open: true, resume: null })}>
             Upload your own
           </button>
+          {clipId && !demoClips.includes(clipId) && tracks ? (
+            <button
+              type="button"
+              className={marking ? "on" : ""}
+              onClick={() => {
+                setPendingBox(null);
+                setMarking((m) => !m);
+              }}
+              aria-pressed={marking}
+              title="Draw a box around an object SAM missed; it is tracked through the clip"
+            >
+              {marking ? "Cancel marking" : "Mark an object"}
+            </button>
+          ) : null}
           <div className="mode-switch" role="group" aria-label="overlay mode">
             <button type="button" className={mode === "off" ? "on" : ""} onClick={() => setMode("off")} aria-pressed={mode === "off"}>
               Off
@@ -273,12 +292,28 @@ export function App() {
               index={index}
               mode={mode}
               highlight={highlight}
+              marking={marking && !pendingBox}
+              onBox={(box, frameIndex) => setPendingBox({ box, frameIndex })}
               onTime={onTime}
               onDuration={onDuration}
             />
           ) : (
             <div className="stage placeholder">No clips yet. Upload one through the API or drop a folder under data/clips.</div>
           )}
+          {clipId && pendingBox && tracks ? (
+            <MarkObject
+              clipId={clipId}
+              box={pendingBox.box}
+              frameIndex={pendingBox.frameIndex}
+              fps={tracks.fps}
+              onCancel={() => setPendingBox(null)}
+              onDone={() => {
+                setPendingBox(null);
+                setMarking(false);
+                setReload((n) => n + 1);
+              }}
+            />
+          ) : null}
           {counterfactual ? (
             <p className="topfix cf-banner">Showing the clip as if hands had been cleaned at {counterfactual.inserted.t.toFixed(1)} s.</p>
           ) : narrative ? (

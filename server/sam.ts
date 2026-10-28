@@ -4,10 +4,11 @@
 import { createReadStream, existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import OpenAI, { toFile } from "openai";
-import { decodeMaskToRaster, frameIndexOf, parseImageStream, parseVideoStream, recordsOfKind } from "@meta-sam/parser";
-import type { FrameSize, MaskRecord } from "../engine/types.ts";
+import { buildObjectPrompt, decodeMaskToRaster, frameIndexOf, parseImageStream, parseVideoStream, recordsOfKind } from "@meta-sam/parser";
+import type { FrameSize, MaskBounds, MaskRecord } from "../engine/types.ts";
 import { readMeta, writeMeta, type ClipMeta } from "./clips.ts";
 import { requireEnv } from "./env.ts";
+import { HttpError } from "./errors.ts";
 import { sampledPath, trackPath, tracksDir } from "./paths.ts";
 
 export const META_BASE_URL = "https://api.meta.ai/v1";
@@ -103,34 +104,59 @@ async function* tee(stream: AsyncIterable<unknown>, sink: { usage?: Segmentation
   }
 }
 
+export interface BoxPrompt {
+  readonly frameIndex: number;
+  readonly box: MaskBounds;
+  readonly direction?: "both" | "forward" | "backward";
+}
+
+// Phrase keys for box-tracked entities, so the same cache and loaders work: "box:<entityId>".
+export const BOX_PREFIX = "box:";
+export function isBoxPhrase(phrase: string): boolean {
+  return phrase.startsWith(BOX_PREFIX);
+}
+
 export class MetaSamBackend implements SegmentationBackend {
   readonly name = "meta-model-api";
 
   async segmentVideo(clip: ClipMeta, phrase: string): Promise<SegmentationResult> {
+    return this.withRemoteFile(clip, (c, fileId) => this.segmentWithFile(c, phrase, fileId));
+  }
+
+  // Track one object from a box drawn on a frame, forward and backward through the clip.
+  async segmentVideoByBox(clip: ClipMeta, key: string, prompt: BoxPrompt): Promise<SegmentationResult> {
+    const text = buildObjectPrompt({
+      size: { width: clip.sampled.width, height: clip.sampled.height },
+      objects: [{ id: 1, prompts: [{ frame: prompt.frameIndex, box: prompt.box }] }],
+    });
+    return this.withRemoteFile(clip, (c, fileId) => this.segmentWithFile(c, key, fileId, text, prompt.direction ?? "both"));
+  }
+
+  private async withRemoteFile(clip: ClipMeta, run: (clip: ClipMeta, fileId: string) => Promise<SegmentationResult>): Promise<SegmentationResult> {
     try {
-      return await this.segmentWithFile(clip, phrase, await ensureRemoteFile(clip));
+      return await run(clip, await ensureRemoteFile(clip));
     } catch (err) {
       // A remembered file id can go stale (expired, or deleted out of band). Upload once more.
       if (!clip.remoteFileId || !isMissingFileError(err)) throw err;
       console.log(`files   | ${clip.id} | remote ${clip.remoteFileId} is gone, uploading again`);
       const fresh = await forgetRemoteFile(clip);
-      return this.segmentWithFile(fresh, phrase, await ensureRemoteFile(fresh));
+      return run(fresh, await ensureRemoteFile(fresh));
     }
   }
 
-  private async segmentWithFile(clip: ClipMeta, phrase: string, fileId: string): Promise<SegmentationResult> {
+  private async segmentWithFile(clip: ClipMeta, phrase: string, fileId: string, promptText: string = phrase, direction?: "both" | "forward" | "backward"): Promise<SegmentationResult> {
     const started = Date.now();
     const sink: { usage?: SegmentationUsage } = {};
     const stream = await metaClient().responses.create({
       model: SAM_MODEL,
       stream: true,
-      metadata: { mask_encoding: "one_bit", include_confidence: "true" },
+      metadata: { mask_encoding: "one_bit", include_confidence: "true", ...(direction ? { propagation_direction: direction } : {}) },
       input: [
         {
           type: "message",
           role: "user",
           content: [
-            { type: "input_text", text: phrase },
+            { type: "input_text", text: promptText },
             { type: "input_video", file_id: fileId },
           ],
         },
@@ -205,12 +231,7 @@ export async function readTrack(clipId: string, phrase: string): Promise<TrackFi
   return JSON.parse(await readFile(file, "utf8")) as TrackFile;
 }
 
-// Returns the cached track for a phrase, calling the backend only when no cache exists.
-export async function segmentPhrase(clipId: string, phrase: string, backend: SegmentationBackend): Promise<TrackFile> {
-  const cached = await readTrack(clipId, phrase);
-  if (cached) return cached;
-  const clip = await readMeta(clipId);
-  const result = await backend.segmentVideo(clip, phrase);
+async function cacheTrack(clipId: string, clip: ClipMeta, phrase: string, result: SegmentationResult): Promise<TrackFile> {
   const frames = new Set(result.records.map((r) => r.frameIndex)).size;
   const objects = new Set(result.records.map((r) => r.objectId)).size;
   const cost = estimateSamCost(result.usage.videoFramesProcessed);
@@ -227,4 +248,20 @@ export async function segmentPhrase(clipId: string, phrase: string, backend: Seg
   await mkdir(tracksDir(clipId), { recursive: true });
   await writeFile(trackPath(clipId, phrase), JSON.stringify(track));
   return track;
+}
+
+// Returns the cached track for a phrase, calling the backend only when no cache exists.
+export async function segmentPhrase(clipId: string, phrase: string, backend: SegmentationBackend): Promise<TrackFile> {
+  const cached = await readTrack(clipId, phrase);
+  if (cached) return cached;
+  if (isBoxPhrase(phrase)) throw new HttpError(409, `${phrase.slice(BOX_PREFIX.length)} is tracked from a drawn box and its track is missing; draw the box again`);
+  const clip = await readMeta(clipId);
+  return cacheTrack(clipId, clip, phrase, await backend.segmentVideo(clip, phrase));
+}
+
+// Tracks an object from a box on one frame and caches it under the entity's box key.
+export async function segmentBox(clipId: string, entityId: string, prompt: BoxPrompt, backend: MetaSamBackend): Promise<TrackFile> {
+  const clip = await readMeta(clipId);
+  const key = `${BOX_PREFIX}${entityId}`;
+  return cacheTrack(clipId, clip, key, await backend.segmentVideoByBox(clip, key, prompt));
 }

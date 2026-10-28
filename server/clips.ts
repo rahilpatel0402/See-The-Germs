@@ -22,7 +22,8 @@ export interface ClipMeta {
   readonly remoteFileId?: string;
 }
 
-const SOURCE_EXTENSIONS = [".mp4", ".mov", ".m4v"];
+// webm comes from in-browser recording; ffmpeg turns it into the H.264 MP4 that SAM needs.
+const SOURCE_EXTENSIONS = [".mp4", ".mov", ".m4v", ".webm"];
 
 export async function readMeta(clipId: string): Promise<ClipMeta> {
   if (!isValidClipId(clipId)) throw new HttpError(400, "invalid clip id");
@@ -81,7 +82,7 @@ export async function createClipFromUpload(tmpPath: string, originalName: string
   const ext = path.extname(originalName).toLowerCase();
   if (!SOURCE_EXTENSIONS.includes(ext)) {
     await rm(tmpPath, { force: true });
-    throw new HttpError(400, `unsupported video type ${ext || "(none)"}; use mp4 or mov`);
+    throw new HttpError(400, `unsupported video type ${ext || "(none)"}; use mp4, mov, or webm`);
   }
   let info: ProbeInfo;
   try {

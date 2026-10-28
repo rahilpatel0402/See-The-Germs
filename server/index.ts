@@ -18,7 +18,7 @@ import { withClipLock } from "./locks.ts";
 import { analysisPath, clipDir, sampledPath, TMP_DIR } from "./paths.ts";
 import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
-import { deleteRemoteFile, MetaSamBackend, readTrack, segmentPhrase } from "./sam.ts";
+import { BOX_PREFIX, deleteRemoteFile, MetaSamBackend, readTrack, segmentBox, segmentPhrase } from "./sam.ts";
 import { proposeScene } from "./scene.ts";
 import { MetaSparkBackend } from "./spark.ts";
 
@@ -130,6 +130,55 @@ app.get("/api/clips/:id/analysis", wrap(async (req, res) => {
 app.get("/api/clips/:id/tracks", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
   res.json(await tracksPayload(meta.id));
+}));
+
+// Track an object from a box drawn on one frame: SAM follows it forward and backward, the
+// entity joins entities.json, and the analysis is rerun. Body: { frameIndex, box, label, kind,
+// zone, agent?, entityId? (to redo an existing one) }.
+app.post("/api/clips/:id/track-box", wrap(async (req, res) => {
+  const meta = await readMeta(String(req.params["id"]));
+  assertEditable(meta.id);
+  const body = (req.body ?? {}) as { frameIndex?: unknown; box?: { left?: unknown; top?: unknown; right?: unknown; bottom?: unknown }; label?: unknown; kind?: unknown; zone?: unknown; agent?: unknown; entityId?: unknown };
+  const frameIndex = Number(body.frameIndex);
+  if (!Number.isInteger(frameIndex) || frameIndex < 0 || frameIndex >= meta.sampled.frames) throw new HttpError(400, `frameIndex must be 0 to ${meta.sampled.frames - 1}`);
+  const b = body.box ?? {};
+  const box = { left: Math.floor(Number(b.left)), top: Math.floor(Number(b.top)), right: Math.ceil(Number(b.right)), bottom: Math.ceil(Number(b.bottom)) };
+  if (![box.left, box.top, box.right, box.bottom].every(Number.isFinite) || box.left < 0 || box.top < 0 || box.right > meta.sampled.width || box.bottom > meta.sampled.height || box.right - box.left < 4 || box.bottom - box.top < 4) {
+    throw new HttpError(400, "box must be inside the frame and at least 4 px on each side");
+  }
+  const label = String(body.label ?? "").trim();
+  if (!label) throw new HttpError(400, "label is required");
+  const entities = await readEntities(meta.id);
+  const used = new Set(entities.map((e) => e.id));
+  let entityId = typeof body.entityId === "string" && used.has(body.entityId) ? body.entityId : "";
+  if (!entityId) {
+    const base = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "prop";
+    entityId = base;
+    for (let n = 2; used.has(entityId); n++) entityId = `${base}_${n}`;
+  }
+  const draft = {
+    id: entityId,
+    label,
+    class: String(body.kind ?? "object"),
+    zone: String(body.zone ?? "healthcare_area"),
+    samPhrase: `${BOX_PREFIX}${entityId}`,
+    ...(typeof body.agent === "string" && body.agent ? { agent: body.agent } : {}),
+  };
+  const next = [...entities.filter((e) => e.id !== entityId), draft];
+  try {
+    validateEntities(next);
+  } catch (err) {
+    throw new HttpError(400, (err as Error).message);
+  }
+  const track = await withClipLock(meta.id, async () => {
+    const t = await segmentBox(meta.id, entityId, { frameIndex, box, direction: "both" }, backend);
+    await writeEntities(meta.id, next);
+    return t;
+  });
+  const frames = new Set(track.records.map((r) => r.frameIndex)).size;
+  if (frames === 0) throw new HttpError(422, "SAM could not track anything from that box; try a tighter box on a clearer frame");
+  const analysis = existsSync(analysisPath(meta.id)) ? await runAnalysis(meta.id) : null;
+  res.json({ entity: next.find((e) => e.id === entityId), frames, objects: new Set(track.records.map((r) => r.objectId)).size, analysis });
 }));
 
 // Spark proposes the prop table from three frames, SAM verifies every phrase. Writes entities.json.

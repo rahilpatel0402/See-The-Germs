@@ -24,8 +24,10 @@ export async function rawFramePath(clipId: string, frameIndex: number): Promise<
   const meta = await readMeta(clipId);
   await mkdir(framesDir(clipId), { recursive: true });
   const file = path.join(framesDir(clipId), `f${String(frameIndex).padStart(5, "0")}.png`);
-  // Seek to the middle of the frame's interval so timebase rounding cannot land on a neighbour.
-  if (!existsSync(file)) await extractFrame(sampledPath(clipId), (frameIndex + 0.5) / meta.fps, file);
+  // The sampled clip is constant frame rate, so frame N has pts N / fps. An accurate seek emits
+  // the first frame with pts at or after the target; targeting half a frame early lands exactly
+  // on N (frame N-1 is a full frame earlier) and still works for the last frame of the clip.
+  if (!existsSync(file)) await extractFrame(sampledPath(clipId), Math.max(0, (frameIndex - 0.5) / meta.fps), file);
   return file;
 }
 

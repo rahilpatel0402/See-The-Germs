@@ -768,3 +768,81 @@ body {
 .entities-editor .small {
   font-size: 11px;
 }
+
+.stage.marking .overlay {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.mark-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.mark-form {
+  margin-top: 8px;
+  border: 1px solid #ff00c8;
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px 12px;
+}
+
+.mark-form p {
+  margin: 0 0 8px;
+}
+
+.mark-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.mark-row input {
+  flex: 1;
+  min-width: 160px;
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.record-panel video {
+  display: block;
+  width: 100%;
+  max-height: 50vh;
+  background: #000;
+  border-radius: 6px;
+}
+
+.record-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.rec-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bad);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.2;
+  }
+}

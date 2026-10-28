@@ -140,8 +140,19 @@ export interface SceneResult {
   readonly cost: number;
 }
 
+export interface TrackBoxRequest {
+  readonly frameIndex: number;
+  readonly box: { left: number; top: number; right: number; bottom: number };
+  readonly label: string;
+  readonly kind: "object" | "resident_zone" | "dispenser";
+  readonly zone: string;
+  readonly agent?: string;
+}
+
 export const api = {
   clips: () => request<{ clips: string[]; demo: string[] }>("/api/clips"),
+  trackBox: (clipId: string, body: TrackBoxRequest) =>
+    post<{ entity: EntityConfig; frames: number; objects: number; analysis: Analysis | null }>(`/api/clips/${encodeURIComponent(clipId)}/track-box`, body),
   scene: (clipId: string) => post<SceneResult>(`/api/clips/${encodeURIComponent(clipId)}/scene`, {}),
   clip: (clipId: string) => request<ClipInfo>(`/api/clips/${encodeURIComponent(clipId)}`),
   saveEntities: (clipId: string, entities: readonly EntityConfig[]) =>
