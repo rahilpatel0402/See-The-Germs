@@ -222,3 +222,30 @@ test("rejects a non-positive fps", () => {
   const t = { ...tracks([hand, rail], seq([true, true, true])), fps: 0 };
   assert.throws(() => detectContacts(t, CONTACT_CONFIG));
 });
+
+test("the bounding box pre-check skips far pairs and never changes the result", () => {
+  const hits = [false, true, true, true, true, true, true, false, false, false, true, true, true, true, true, true];
+  const perFrame = seq(hits, handGrip);
+  const t = tracks([hand, rail], perFrame);
+  // Bounds derived from the same masks, half-open like the server's boundsAt.
+  function boxOf(mask: FrameMask): { left: number; top: number; right: number; bottom: number } {
+    let left = mask.w, top = mask.h, right = 0, bottom = 0;
+    for (let y = 0; y < mask.h; y++) for (let x = 0; x < mask.w; x++) if (mask.data[y * mask.w + x]) { left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x + 1); bottom = Math.max(bottom, y + 1); }
+    return { left, top, right, bottom };
+  }
+  let scans = 0;
+  const counted: Tracks = {
+    ...t,
+    masksAt: (f) => {
+      scans++;
+      return t.masksAt(f);
+    },
+    boundsAt: (f) => {
+      const m = new Map<string, { left: number; top: number; right: number; bottom: number }>();
+      for (const [id, mask] of t.masksAt(f)) m.set(id, boxOf(mask));
+      return m;
+    },
+  };
+  assert.deepEqual(detectContacts(counted, CONTACT_CONFIG), detectContacts(t, CONTACT_CONFIG));
+  assert.ok(scans > 0);
+});

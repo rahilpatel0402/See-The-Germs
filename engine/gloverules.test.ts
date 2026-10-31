@@ -48,3 +48,11 @@ test("a second don for the same person while gloved is ignored", () => {
   const issues = run(contacts, [don(5), don(7)]);
   assert.equal(issues.length, 1);
 });
+
+test("the contact before donning is the one that ended last, not the one that started last", () => {
+  // Rail held 1 to 9 s, phone brushed 2 to 3 s, rub at 5 s, gloves on at 10 s: the hand touched
+  // the rail after the rub, so the don is not covered.
+  const contacts = [contact("bare_hand", "rail_A", 1, 9), contact("bare_hand", "phone", 2, 3), contact("gloved_hand", "resident_B", 12, 13)];
+  const issues = run(contacts, [don(10)], [rub(5)]);
+  assert.deepEqual(issues.map((i) => [i.type, i.t, i.entityIds]), [["no_hygiene_before_don", 10, ["rail_A"]]]);
+});

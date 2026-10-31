@@ -128,3 +128,12 @@ test("a second person is scored independently", () => {
   const misses = detectMomentMisses({ contacts, hygieneEvents: [], entities }, propagate(input), (ins) => propagate({ ...input, hygieneEvents: [ins] }));
   assert.deepEqual(misses, []);
 });
+
+test("an outside touch that starts while the other hand is still in the zone is a miss at the outside touch, not after it", () => {
+  // Rail held 1 to 5 s by one hand; the phone is touched 2 to 3 s by the other. The departure is
+  // 2 s, where hygiene would have had to happen, and no rub can fit in an empty window.
+  const contacts = [contact("bare_hand", "rail_A", 1, 5), contact("gloved_hand", "phone", 2, 3)];
+  const opportunities = detectMomentOpportunities({ contacts, hygieneEvents: [rub(1.5)], entities: CLIP_A_ENTITIES });
+  const leaving = opportunities.filter((o) => o.moment === 5);
+  assert.deepEqual(leaving.map((o) => [o.t, o.met]), [[2, false]]);
+});

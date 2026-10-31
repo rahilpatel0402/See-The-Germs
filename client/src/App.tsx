@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PATHOGEN_IDS, PATHOGENS } from "../../engine/pathogens.ts";
-import type { Analysis, Counterfactual, HygieneAgent, MaskBounds, Narrative, PathogenId } from "../../engine/types.ts";
+import type { Analysis, Counterfactual, HygieneAgent, MaskBounds, MomentMiss, Narrative, PathogenId } from "../../engine/types.ts";
 import { api, ApiError, type ClipDetail, type NarrativeLanguage, type ScenarioOverride, type TracksPayload } from "./api.ts";
 import { ClipCards } from "./ClipCards.tsx";
 import { CounterfactualBar } from "./CounterfactualBar.tsx";
@@ -25,6 +25,20 @@ const initialView: View = params.get("view") === "audit" ? "audit" : "coach";
 const initialLanguage: NarrativeLanguage = params.get("lang") === "es" ? "es" : "en";
 
 type NarrativeState = "idle" | "loading" | "error" | "ready";
+
+// The miss the hero line and its Show me button point at. The narrative's top_fix names a
+// time ("... at 12.3 seconds"); when a miss sits within a second of it, that is the one. Else
+// the highest-impact miss: the largest downstream set, ties broken by the earliest time.
+function topMissFor(misses: readonly MomentMiss[], topFix: string | undefined): MomentMiss | undefined {
+  if (misses.length === 0) return undefined;
+  const named = topFix?.match(/at\s+(\d+(?:\.\d+)?)\s*(?:s\b|sec|seconds)/i);
+  if (named) {
+    const t = Number(named[1]);
+    const near = misses.filter((m) => Math.abs(m.t - t) <= 1.0).sort((a, b) => Math.abs(a.t - t) - Math.abs(b.t - t));
+    if (near[0]) return near[0];
+  }
+  return [...misses].sort((a, b) => b.downstream.length - a.downstream.length || a.t - b.t)[0];
+}
 
 export function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -56,16 +70,22 @@ export function App() {
   const [reload, setReload] = useState(0);
   const [marking, setMarking] = useState(false);
   const [pendingBox, setPendingBox] = useState<{ box: MaskBounds; frameIndex: number } | null>(null);
+  // The clip list gates the first load: a deep link to an unknown clip falls back to the first
+  // clip instead of requesting video and tracks that do not exist.
+  const [listReady, setListReady] = useState(false);
+  const knownClips = useRef<string[]>([]);
 
   const refreshClips = useCallback(
     () =>
       api
         .clips()
         .then(({ clips, demo, details }) => {
+          knownClips.current = clips;
           setClips(clips);
           setDemoClips(demo);
           setDetails(details);
           setClipId((current) => (current && clips.includes(current) ? current : clips[0] ?? null));
+          setListReady(true);
         })
         .catch((e: Error) => setError(e.message)),
     [],
@@ -77,7 +97,7 @@ export function App() {
 
   // Load the clip: tracks, analysis (or run it), and a cached narrative for the shown scenario.
   useEffect(() => {
-    if (!clipId) return;
+    if (!clipId || !listReady || !knownClips.current.includes(clipId)) return;
     let cancelled = false;
     setBusy(true);
     setError(null);
@@ -109,16 +129,8 @@ export function App() {
           } else throw e;
         }
         if (cancelled) return;
+        // The narrative effect below fetches the cached note once the analysis is in.
         setAnalysis(a);
-        try {
-          const n = await api.narrative(clipId, { pathogen: a.scenario.pathogen, sourceEntityId: a.scenario.sourceEntityId }, language);
-          if (!cancelled) {
-            setNarrative(n.narrative);
-            setNarrativeState("ready");
-          }
-        } catch {
-          // none cached yet
-        }
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
       } finally {
@@ -130,7 +142,7 @@ export function App() {
     };
     // language changes are handled below without reloading the clip
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clipId, reload]);
+  }, [clipId, reload, listReady]);
 
   const index: OverlayIndex | null = useMemo(() => (tracks ? buildOverlayIndex(tracks) : null), [tracks]);
 
@@ -139,7 +151,8 @@ export function App() {
     [analysis],
   );
 
-  // Language switch: use the cached narrative in that language if it exists, else wait for a click.
+  // The one place that fetches a cached narrative: on clip open, on a scenario rerun, and on a
+  // language switch. If none is cached in that language, the drawer waits for a click.
   useEffect(() => {
     if (!clipId || !analysis) return;
     let cancelled = false;
@@ -239,9 +252,9 @@ export function App() {
   }, [tracks]);
 
   const sources = (analysis?.entities ?? []).filter((e) => e.class === "object" || e.class === "resident_zone");
-  const firstMiss = analysis?.momentMisses[0];
+  const topMiss = useMemo(() => topMissFor(analysis?.momentMisses ?? [], narrative?.top_fix), [analysis, narrative]);
   const current = details.find((d) => d.id === clipId);
-  const topFixText = narrative?.top_fix ?? (firstMiss ? `The highest-impact change in this clip was hand hygiene at ${firstMiss.t.toFixed(1)} seconds (Moment ${firstMiss.moment}).` : analysis ? "No missed hand hygiene moments in this clip." : null);
+  const topFixText = narrative?.top_fix ?? (topMiss ? `The highest-impact change in this clip was hand hygiene at ${topMiss.t.toFixed(1)} seconds (Moment ${topMiss.moment}).` : analysis ? "No missed hand hygiene moments in this clip." : null);
 
   return (
     <div className={`app view-${view}`}>
@@ -326,6 +339,8 @@ export function App() {
       {sessionOpen ? (
         <Session
           clips={clips}
+          analyzed={details.filter((d) => d.analyzed).map((d) => d.id)}
+          titles={Object.fromEntries(details.map((d) => [d.id, d.title]))}
           onClose={() => setSessionOpen(false)}
           onOpenClip={(id) => {
             setSessionOpen(false);
@@ -389,8 +404,8 @@ export function App() {
           ) : topFixText ? (
             <div className="topfix hero">
               <span>{topFixText}</span>
-              {firstMiss ? (
-                <button type="button" className="show-me" onClick={() => showMe(firstMiss.t)}>
+              {topMiss ? (
+                <button type="button" className="show-me" onClick={() => showMe(topMiss.t)}>
                   Show me
                 </button>
               ) : null}

@@ -12,7 +12,9 @@ export interface AdjudicationFrames {
 export interface AdjudicationPlan {
   // Ambiguous candidates without a cached verdict, within the cap, in start order.
   readonly selected: readonly ContactCandidate[];
-  // Eligible candidates beyond the cap. They stay contacts, unreviewed.
+  // Eligible candidates beyond the cap. Without a verdict they are not contacts (CLAUDE.md:
+  // ambiguous candidates become contacts only with verdict touching or unclear), so the UI
+  // shows them as not yet reviewed, not counted.
   readonly skipped: readonly ContactCandidate[];
   readonly frames: Readonly<Record<string, AdjudicationFrames>>;
 }

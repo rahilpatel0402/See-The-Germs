@@ -3,6 +3,10 @@ import { api, type SessionReport } from "./api.ts";
 
 interface Props {
   readonly clips: readonly string[];
+  // Clips with a cached analysis. Only these can join a session; the rest are listed unchecked.
+  readonly analyzed: readonly string[];
+  // Titles by clip id, for the pick list and the table; ids are shown when no title exists.
+  readonly titles: Readonly<Record<string, string>>;
   readonly onOpenClip: (clipId: string) => void;
   readonly onClose: () => void;
 }
@@ -12,18 +16,20 @@ const pct = (rate: number | null): string => (rate === null ? "n/a" : `${Math.ro
 // The infection preventionist's view: several clips as one session (a shift, a training
 // cycle), compliance by Moment and caregiver, surfaces that keep getting contaminated, and a
 // before-and-after compare of any two clips. Everything comes from cached analyses.
-export function Session({ clips, onOpenClip, onClose }: Props) {
-  const [selected, setSelected] = useState<string[]>([...clips]);
+export function Session({ clips, analyzed, titles, onOpenClip, onClose }: Props) {
+  const nameOf = (id: string): string => titles[id] || id;
+  const [selected, setSelected] = useState<string[]>(clips.filter((id) => analyzed.includes(id)));
   const [report, setReport] = useState<SessionReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [before, setBefore] = useState<string>("");
   const [after, setAfter] = useState<string>("");
 
-  // The clip list can arrive after the panel opens (deep link); start with everything selected.
+  // The clip list can arrive after the panel opens (deep link); start with every analyzed clip
+  // selected. A clip that stopped before analysis would make the report request fail.
   useEffect(() => {
-    setSelected((prev) => (prev.length === 0 ? [...clips] : prev));
-  }, [clips]);
+    setSelected((prev) => (prev.length === 0 ? clips.filter((id) => analyzed.includes(id)) : prev.filter((id) => analyzed.includes(id))));
+  }, [clips, analyzed]);
 
   useEffect(() => {
     if (selected.length === 0) {
@@ -65,11 +71,17 @@ export function Session({ clips, onOpenClip, onClose }: Props) {
       <p className="muted">A session is any set of analyzed clips: one shift, one caregiver before and after coaching, one unit this week. Numbers come from the cached analyses; nothing is recomputed.</p>
 
       <div className="session-pick">
-        {clips.map((id) => (
-          <label key={id}>
-            <input type="checkbox" checked={selected.includes(id)} onChange={() => toggle(id)} /> {id}
-          </label>
-        ))}
+        {clips.map((id) =>
+          analyzed.includes(id) ? (
+            <label key={id}>
+              <input type="checkbox" checked={selected.includes(id)} onChange={() => toggle(id)} /> {nameOf(id)}
+            </label>
+          ) : (
+            <label key={id} className="muted" title="Finish processing this clip to include it">
+              <input type="checkbox" checked={false} disabled /> {nameOf(id)} (not analyzed yet)
+            </label>
+          ),
+        )}
         {selected.length > 0 ? (
           <a className="link" href={api.sessionCsvUrl(selected)} download>
             Download opportunities CSV
@@ -103,7 +115,7 @@ export function Session({ clips, onOpenClip, onClose }: Props) {
                 <tr key={c.clipId}>
                   <td>
                     <button type="button" className="link" onClick={() => onOpenClip(c.clipId)}>
-                      {c.clipId}
+                      {nameOf(c.clipId)}
                     </button>
                   </td>
                   <td>{c.pathogen}</td>
@@ -153,11 +165,11 @@ export function Session({ clips, onOpenClip, onClose }: Props) {
             </section>
             <section>
               <h3>Surfaces that keep getting contaminated</h3>
-              {report.surfaces.length === 0 ? (
+              {report.surfaces.every((s) => s.contacts === 0) ? (
                 <p className="muted">None.</p>
               ) : (
                 <ol className="chain">
-                  {report.surfaces.map((s) => (
+                  {report.surfaces.filter((s) => s.contacts > 0).map((s) => (
                     <li key={s.label}>
                       {s.label}: {s.contacts} contact{s.contacts === 1 ? "" : "s"} while contaminated across {s.clips} clip{s.clips === 1 ? "" : "s"}
                     </li>
@@ -175,7 +187,7 @@ export function Session({ clips, onOpenClip, onClose }: Props) {
                 <option value="">before...</option>
                 {report.clips.map((c) => (
                   <option key={c.clipId} value={c.clipId}>
-                    {c.clipId}
+                    {nameOf(c.clipId)}
                   </option>
                 ))}
               </select>
@@ -183,7 +195,7 @@ export function Session({ clips, onOpenClip, onClose }: Props) {
                 <option value="">after...</option>
                 {report.clips.map((c) => (
                   <option key={c.clipId} value={c.clipId}>
-                    {c.clipId}
+                    {nameOf(c.clipId)}
                   </option>
                 ))}
               </select>
@@ -193,8 +205,8 @@ export function Session({ clips, onOpenClip, onClose }: Props) {
                 <thead>
                   <tr>
                     <th></th>
-                    <th>{b.clipId}</th>
-                    <th>{a.clipId}</th>
+                    <th>{nameOf(b.clipId)}</th>
+                    <th>{nameOf(a.clipId)}</th>
                     <th>Change</th>
                   </tr>
                 </thead>

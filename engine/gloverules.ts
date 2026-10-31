@@ -66,7 +66,8 @@ export function detectGloveIssues(input: GloveRulesInput): GloveIssue[] {
     const own = contacts.filter((c) => personOfHand(c.handId) === iv.person);
 
     // Before donning: hygiene since the last contact that ended before the don.
-    const before = own.filter((c) => c.endT <= iv.on).at(-1);
+    let before: (typeof own)[number] | undefined;
+    for (const c of own) if (c.endT <= iv.on && (before === undefined || c.endT > before.endT)) before = c;
     if (before !== undefined && !hygieneBetween(iv.person, before.endT, iv.on)) {
       issues.push({ type: "no_hygiene_before_don", handId: iv.handId, t: iv.on, entityIds: [before.entityId] });
     }

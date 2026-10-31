@@ -106,8 +106,9 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
         if (gloveOn && lastGlovedCenter !== undefined) {
           absentRun++;
           if (absentRun === config.closeFrames) absentStart = f - config.closeFrames + 1;
-          // Keep checking while absent: the bare hand may reappear nearby a little later.
-          if (absentStart !== null && f < absentStart + config.handoverWindowFrames && bareNear(bare.id, absentStart, absentStart + config.handoverWindowFrames - 1, lastGlovedCenter)) {
+          // The window after the absence is fixed and every frame in it is readable, so the
+          // bare-hand check runs once, when the absence is first confirmed.
+          if (absentRun === config.closeFrames && absentStart !== null && bareNear(bare.id, absentStart, absentStart + config.handoverWindowFrames - 1, lastGlovedCenter)) {
             events.push({ handId: bare.id, t: absentStart / tracks.fps, type: "doff", source: "detected" });
             gloveOn = false;
             absentStart = null;

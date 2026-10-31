@@ -92,6 +92,10 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
     }
   };
 
+  // A phrase that verified on a still but produced no frames on the video, from the last run.
+  const videoMiss = (phrase: string): string | null =>
+    lines.some((l) => l.phrase === phrase && l.frames === 0) ? "Passed the still check but SAM found nothing in the video. Use a plainer appearance phrase, or Mark an object on the video." : null;
+
   const runPipeline = async () => {
     if (!clipId) return;
     setError(null);
@@ -178,8 +182,9 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
             {s.id === "segmenting" && lines.length > 0 ? (
               <ul className="plain muted small">
                 {lines.map((l) => (
-                  <li key={l.phrase}>
+                  <li key={l.phrase} className={l.frames === 0 ? "warn" : ""}>
                     {l.phrase}: {l.objects} object{l.objects === 1 ? "" : "s"} in {l.frames} frames
+                    {l.frames === 0 ? ". This phrase passed the still-frame check but SAM found nothing in the video. Try a plainer appearance phrase, or draw a box on it with Mark an object once the clip opens." : null}
                   </li>
                 ))}
               </ul>
@@ -313,7 +318,7 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
                         </select>
                       ) : null}
                     </td>
-                    <td className="muted small">{hand ? "" : (verification(e.id) ?? "")}</td>
+                    <td className={`small ${videoMiss(e.samPhrase) ? "warn" : "muted"}`}>{hand ? "" : (videoMiss(e.samPhrase) ?? verification(e.id) ?? "")}</td>
                     <td>{hand ? null : <button type="button" className="link" onClick={() => remove(i)}>remove</button>}</td>
                   </tr>
                 );

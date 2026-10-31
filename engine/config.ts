@@ -93,7 +93,8 @@ export const DOFF_EXPOSES_BARE_HAND = true;
 
 export interface AdjudicationConfig {
   // Heuristic: at most this many Spark vision calls per clip, to protect the credit budget
-  // (PLAN.md 6.8). Lowest-overlap candidates go first; the rest stay contacts unreviewed.
+  // (PLAN.md 6.8). Lowest-overlap candidates go first; the rest wait unreviewed and are not
+  // counted as contacts until a verdict exists.
   readonly capPerClip: number;
 }
 

@@ -73,7 +73,10 @@ export function detectMomentOpportunities(input: MomentsInput): MomentOpportunit
       // Leaving a patient zone: Moment 4 or Moment 5, once per departure.
       if (episodeZone !== null && e.zone !== episodeZone) {
         if (isPatientZone(episodeZone)) {
-          found.push({ moment: episodeTouchedResident ? 4 : 5, handId: episodeHandId, t: episodeLastEnd, met: hygieneBetween(person, episodeLastEnd, c.startT) });
+          // The person's other hand can still be in the zone when this touch starts, so the
+          // departure is the earlier of the two: hygiene had to happen before the outside touch.
+          const left = Math.min(episodeLastEnd, c.startT);
+          found.push({ moment: episodeTouchedResident ? 4 : 5, handId: episodeHandId, t: left, met: hygieneBetween(person, left, c.startT) });
         }
         episodeTouchedResident = false;
       }

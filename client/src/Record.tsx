@@ -19,9 +19,13 @@ export function Record({ maxSeconds, onFile, onCancel }: Props) {
   const [seconds, setSeconds] = useState(0);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by "Record again" to reopen the camera without leaving the panel.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setState("starting");
+    setError(null);
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
@@ -44,7 +48,7 @@ export function Record({ maxSeconds, onFile, onCancel }: Props) {
       cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [attempt]);
 
   // Stop a second before the server's cap so the file never lands just over it.
   useEffect(() => {
@@ -92,6 +96,21 @@ export function Record({ maxSeconds, onFile, onCancel }: Props) {
     streamRef.current?.getTracks().forEach((t) => t.stop());
   };
 
+  // Drop the reviewed take, put the element back on the live stream, and open the camera again.
+  const again = () => {
+    const v = videoRef.current;
+    if (v) {
+      if (v.src) URL.revokeObjectURL(v.src);
+      v.removeAttribute("src");
+      v.controls = false;
+      v.load();
+    }
+    setBlob(null);
+    setSeconds(0);
+    chunksRef.current = [];
+    setAttempt((n) => n + 1);
+  };
+
   const use = () => {
     if (!blob) return;
     const ext = blob.type.includes("mp4") ? "mp4" : "webm";
@@ -121,7 +140,7 @@ export function Record({ maxSeconds, onFile, onCancel }: Props) {
             <button type="button" onClick={use}>
               Use this clip
             </button>
-            <button type="button" className="link" onClick={() => window.location.reload()}>
+            <button type="button" className="link" onClick={again}>
               Record again
             </button>
           </>

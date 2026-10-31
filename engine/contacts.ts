@@ -117,17 +117,27 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
   for (let f = 0; f < tracks.frameCount; f++) {
     const frame = tracks.masksAt(f);
     const inferredHere = tracks.inferredAt?.(f);
+    // Cheap pre-check: a dilated hand reaches at most k pixels past its box, so a target whose
+    // box is farther away than that cannot intersect it and the full-frame scan is skipped.
+    const bounds = tracks.boundsAt?.(f);
     for (const hand of hands) {
       const handMask = frame.get(hand.id);
-      const dilated: FrameMask | undefined = handMask === undefined ? undefined : dilate(handMask, k);
+      let dilated: FrameMask | undefined;
+      const handBox = bounds?.get(hand.id);
       for (const target of targets) {
+        const targetBox = bounds?.get(target.id);
+        const apart =
+          handBox !== undefined &&
+          targetBox !== undefined &&
+          (handBox.right + k <= targetBox.left || targetBox.right + k <= handBox.left || handBox.bottom + k <= targetBox.top || targetBox.bottom + k <= handBox.top);
+        if (!apart && dilated === undefined && handMask !== undefined) dilated = dilate(handMask, k);
         const key = `${hand.id}|${target.id}`;
         let state = states.get(key);
         if (state === undefined) {
           state = newState();
           states.set(key, state);
         }
-        const targetMask = frame.get(target.id);
+        const targetMask = apart ? undefined : frame.get(target.id);
         const inter = dilated !== undefined && targetMask !== undefined ? intersectArea(dilated, targetMask) : 0;
         const hit = inter >= floor;
         const inferred = hit && inferredHere !== undefined && inferredHere.has(target.id);
