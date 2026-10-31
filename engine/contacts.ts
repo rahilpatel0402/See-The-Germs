@@ -3,7 +3,7 @@
 // that is the adjudication step's job, and the engine consumes its verdicts as input.
 
 import { dilationPx, scaledFloorPx, type ContactConfig } from "./config.ts";
-import { personOf } from "./gloves.ts";
+import { isHand, personOf } from "./gloves.ts";
 import { dilate, intersectArea } from "./masks.ts";
 import type { ContactCandidate, ContactEvent, Entity, FrameMask, Tracks } from "./types.ts";
 
@@ -74,10 +74,6 @@ interface PairState {
   pendingInferred: boolean;
   run: OpenRun | null;
   misses: number;
-}
-
-function isHand(entity: Entity): boolean {
-  return entity.class === "bare_hand" || entity.class === "gloved_hand";
 }
 
 function newState(): PairState {

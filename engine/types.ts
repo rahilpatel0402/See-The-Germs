@@ -10,6 +10,14 @@ export type HygieneAgent = "alcohol_rub" | "soap_water";
 // What a dwell at a dispenser produces.
 export type DispenserAgent = HygieneAgent | "gloves";
 
+// The closed vocabularies above as runtime lists, so validators, schemas, and selects in the
+// server and the client enumerate the same values as the types.
+export const ZONE_TAGS: readonly ZoneTag[] = ["patient_zone_A", "patient_zone_B", "healthcare_area", "hygiene_station"];
+export const ENTITY_CLASSES: readonly EntityClass[] = ["bare_hand", "gloved_hand", "object", "resident_zone", "dispenser"];
+// The classes a person can add to a scene; hands are fixed per person.
+export const PROP_CLASSES: readonly EntityClass[] = ["object", "resident_zone", "dispenser"];
+export const DISPENSER_AGENTS: readonly DispenserAgent[] = ["alcohol_rub", "soap_water", "gloves"];
+
 export interface Entity {
   readonly id: string;
   // Shown in the UI, for example "bed rail A".

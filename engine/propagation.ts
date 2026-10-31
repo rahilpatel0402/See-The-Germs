@@ -2,7 +2,7 @@
 // timeline of glove, hygiene, and contact events. Pure and deterministic. Rules are PLAN.md 6.4.
 
 import { DOFF_EXPOSES_BARE_HAND } from "./config.ts";
-import { personOf } from "./gloves.ts";
+import { isHand, personOf } from "./gloves.ts";
 import type {
   ContactEvent,
   ContaminationChange,
@@ -36,10 +36,6 @@ interface MutableHand {
   contaminated: boolean;
   gloved: boolean;
   preGloveContaminated: boolean;
-}
-
-function isHand(entity: Entity): boolean {
-  return entity.class === "bare_hand" || entity.class === "gloved_hand";
 }
 
 // Hands of one person share state, so a change on one hand entity applies to all of them.

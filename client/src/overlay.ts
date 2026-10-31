@@ -2,6 +2,7 @@
 // use and cached as Path2D; contamination at time t is replayed from the analysis changes, so
 // the same analysis and the same t always draw the same pixels.
 import { decodeMaskToSVGPath } from "@meta-sam/parser";
+import { isHand } from "../../engine/gloves.ts";
 import type { Analysis, Entity, MaskRecord, PropagationResult } from "../../engine/types.ts";
 import type { TracksPayload } from "./api.ts";
 
@@ -52,10 +53,6 @@ export function buildOverlayIndex(payload: TracksPayload): OverlayIndex {
       return shapes;
     },
   };
-}
-
-function isHand(e: Entity): boolean {
-  return e.class === "bare_hand" || e.class === "gloved_hand";
 }
 
 // State replay lives in the engine (tested there); the overlay only draws it.

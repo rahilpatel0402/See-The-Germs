@@ -39,6 +39,11 @@ export const REFERENCE_FRAME: FrameSize = { w: 1280, h: 720 };
 // feasibility clip and at 0.93 on the real glove, so a glove track below this is ignored.
 export const GLOVE_MIN_CONFIDENCE = 0.85;
 
+// Heuristic: the scene loop accepts a SAM phrase on a still frame when it finds between
+// minObjects and maxObjects instances at this mean confidence or better. One to three because a
+// prop phrase that lights up half the room is describing a texture, not the prop.
+export const SCENE_PHRASE_CONFIG = { minConfidence: 0.5, minObjects: 1, maxObjects: 3 } as const;
+
 // The sampling rate every clip is resampled to before SAM. Frame index N is at N / SAMPLE_FPS s.
 export const SAMPLE_FPS = 10;
 

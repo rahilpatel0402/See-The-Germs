@@ -3,8 +3,8 @@
 // phrases. The result is an entities.json a person can still edit. Spark proposes, SAM verifies.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { GLOVE_MIN_CONFIDENCE } from "../engine/config.ts";
-import type { DispenserAgent, EntityClass, MaskRecord, ZoneTag } from "../engine/types.ts";
+import { GLOVE_MIN_CONFIDENCE, SCENE_PHRASE_CONFIG } from "../engine/config.ts";
+import { PROP_CLASSES, ZONE_TAGS, type DispenserAgent, type EntityClass, type MaskRecord, type ZoneTag } from "../engine/types.ts";
 import { readMeta } from "./clips.ts";
 import { type EntityConfig, readEntities, validateEntities, writeEntities } from "./entities.ts";
 import { rawFramePath } from "./frames.ts";
@@ -12,11 +12,9 @@ import { clipDir } from "./paths.ts";
 import { isBoxPhrase, segmentImage } from "./sam.ts";
 import { estimateSparkCost, type SparkBackend } from "./spark.ts";
 
-const ZONES: ZoneTag[] = ["patient_zone_A", "patient_zone_B", "healthcare_area", "hygiene_station"];
-const KINDS: EntityClass[] = ["object", "resident_zone", "dispenser"];
+const ZONES: readonly ZoneTag[] = ZONE_TAGS;
+const KINDS: readonly EntityClass[] = PROP_CLASSES;
 const AGENTS = ["alcohol_rub", "soap_water", "gloves", "none"] as const;
-// A phrase counts as verified when SAM finds one to three objects at this mean confidence.
-const MIN_PHRASE_CONFIDENCE = 0.5;
 const MAX_PROPS = 10;
 
 const SCENE_SCHEMA = {
@@ -98,7 +96,7 @@ function trial(phrase: string, records: readonly MaskRecord[]): PhraseTrial {
 }
 
 function good(t: PhraseTrial): boolean {
-  return t.objects >= 1 && t.objects <= 3 && (t.meanConfidence ?? 0) >= MIN_PHRASE_CONFIDENCE;
+  return t.objects >= SCENE_PHRASE_CONFIG.minObjects && t.objects <= SCENE_PHRASE_CONFIG.maxObjects && (t.meanConfidence ?? 0) >= SCENE_PHRASE_CONFIG.minConfidence;
 }
 
 async function loadPrompt(): Promise<string> {

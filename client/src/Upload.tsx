@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { DispenserAgent, EntityClass, ZoneTag } from "../../engine/types.ts";
+import { DISPENSER_AGENTS, PROP_CLASSES, ZONE_TAGS, type DispenserAgent, type EntityClass, type ZoneTag } from "../../engine/types.ts";
 import { api, ApiError, segmentStream, uploadClip, type EntityConfig, type SceneResult, type SegmentLine } from "./api.ts";
 import { TASK_PRESETS } from "./presets.ts";
 import { Record } from "./Record.tsx";
@@ -21,9 +21,9 @@ const STEPS: Array<{ id: Step; label: string }> = [
   { id: "analyzing", label: "Run the engine" },
 ];
 
-const ZONES: ZoneTag[] = ["patient_zone_A", "patient_zone_B", "healthcare_area", "hygiene_station"];
-const CLASSES: EntityClass[] = ["object", "resident_zone", "dispenser"];
-const AGENTS: DispenserAgent[] = ["alcohol_rub", "soap_water", "gloves"];
+const ZONES = ZONE_TAGS;
+const CLASSES = PROP_CLASSES;
+const AGENTS = DISPENSER_AGENTS;
 
 export function Upload({ resumeClipId, onDone, onClose }: Props) {
   const [step, setStep] = useState<Step>(resumeClipId ? "entities" : "pick");

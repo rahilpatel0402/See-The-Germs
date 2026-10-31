@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { DispenserAgent, EntityClass, MaskBounds, ZoneTag } from "../../engine/types.ts";
+import { PROP_CLASSES, ZONE_TAGS, type DispenserAgent, type EntityClass, type MaskBounds, type ZoneTag } from "../../engine/types.ts";
 import { api } from "./api.ts";
 
 interface Props {
@@ -11,8 +11,8 @@ interface Props {
   readonly onCancel: () => void;
 }
 
-const ZONES: ZoneTag[] = ["patient_zone_A", "patient_zone_B", "healthcare_area", "hygiene_station"];
-const KINDS: EntityClass[] = ["object", "resident_zone", "dispenser"];
+const ZONES = ZONE_TAGS;
+const KINDS = PROP_CLASSES;
 
 // Names a drawn box and sends it to SAM as a box prompt tracked through the whole clip.
 export function MarkObject({ clipId, box, frameIndex, fps, onDone, onCancel }: Props) {

@@ -7,6 +7,7 @@
 import { GAP_FILL_CONFIG } from "../engine/config.ts";
 import { fromRecord, union } from "../engine/masks.ts";
 import { fillObjectGaps } from "../engine/persistence.ts";
+import { isHand } from "../engine/gloves.ts";
 import type { Entity, FrameMask, MaskBounds, MaskRecord, Tracks } from "../engine/types.ts";
 import { readMeta } from "./clips.ts";
 import { passesConfidence, readEntities, type EntityConfig } from "./entities.ts";
@@ -14,10 +15,6 @@ import { readTrack } from "./sam.ts";
 
 // Frames kept decoded at once. The engine walks forward and looks back at most ten frames.
 const FRAME_CACHE_SIZE = 24;
-
-function isHand(entity: EntityConfig): boolean {
-  return entity.class === "bare_hand" || entity.class === "gloved_hand";
-}
 
 // Records for one entity: confidence applied, and for objects, gaps filled and marked inferred.
 export function entityRecords(entity: EntityConfig, records: readonly MaskRecord[], frameCount: number): MaskRecord[] {

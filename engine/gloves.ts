@@ -15,6 +15,11 @@ export function personOf(entity: Entity): string {
   return entity.person ?? "P1";
 }
 
+// The two hand classes. Everything else is a surface, a resident zone, or a dispenser.
+export function isHand(entity: { readonly class: Entity["class"] }): boolean {
+  return entity.class === "bare_hand" || entity.class === "gloved_hand";
+}
+
 function centerOfBounds(box: MaskBounds | null | undefined): Point | undefined {
   if (!box) return undefined;
   return { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };

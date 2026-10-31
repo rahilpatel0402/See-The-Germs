@@ -2,7 +2,7 @@
 // Stored at data/clips/<id>/entities.json and editable before segmentation.
 import { readFile, writeFile } from "node:fs/promises";
 import { GLOVE_MIN_CONFIDENCE } from "../engine/config.ts";
-import type { Entity, MaskRecord } from "../engine/types.ts";
+import { DISPENSER_AGENTS, ENTITY_CLASSES, ZONE_TAGS, type Entity, type MaskRecord } from "../engine/types.ts";
 import { entitiesPath } from "./paths.ts";
 
 // The one place that decides whether a SAM record counts for an entity. Used by the engine
@@ -41,8 +41,9 @@ export async function writeEntities(clipId: string, entities: readonly EntityCon
   await writeFile(entitiesPath(clipId), JSON.stringify(entities, null, 2));
 }
 
-const CLASSES = new Set(["bare_hand", "gloved_hand", "object", "resident_zone", "dispenser"]);
-const ZONES = new Set(["patient_zone_A", "patient_zone_B", "healthcare_area", "hygiene_station"]);
+const CLASSES = new Set<string>(ENTITY_CLASSES);
+const ZONES = new Set<string>(ZONE_TAGS);
+const AGENTS = new Set<string>(DISPENSER_AGENTS);
 
 export function validateEntities(entities: unknown): asserts entities is EntityConfig[] {
   if (!Array.isArray(entities) || entities.length === 0) throw new Error("entities must be a non-empty array");
@@ -64,4 +65,3 @@ export function validateEntities(entities: unknown): asserts entities is EntityC
   }
 }
 
-const AGENTS = new Set(["alcohol_rub", "soap_water", "gloves"]);
