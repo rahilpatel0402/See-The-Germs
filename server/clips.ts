@@ -111,7 +111,8 @@ export async function createClipFromUpload(tmpPath: string, originalName: string
     await rm(tmpPath, { force: true });
     throw new HttpError(400, "the file is not a readable video");
   }
-  if (info.durationS > maxSeconds) {
+  // Half a second of grace: a clip cut or recorded to exactly the cap probes a few frames over it.
+  if (info.durationS > maxSeconds + 0.5) {
     await rm(tmpPath, { force: true });
     throw new HttpError(413, `clip is ${info.durationS.toFixed(1)} s; the limit is ${maxSeconds} s`);
   }
