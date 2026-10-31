@@ -99,10 +99,12 @@ export class OpenAICompatSparkBackend implements SparkBackend {
     try {
       completion = await call(this.jsonSchemaSupported);
     } catch (err) {
-      const status = (err as { status?: number }).status;
-      if (!this.jsonSchemaSupported || status !== 400) throw err;
-      // Provider does not take json_schema: fall back once and remember.
+      const { status, message } = err as { status?: number; message?: string };
+      // Only a 400 that names the response format means the provider rejects json_schema. Any
+      // other 400 (payload too large, bad model id) is the caller's problem and is rethrown.
+      if (!this.jsonSchemaSupported || status !== 400 || !/response_format|json_schema/i.test(message ?? "")) throw err;
       this.jsonSchemaSupported = false;
+      console.log(`spark   | ${this.name} | provider rejected json_schema (${(message ?? "").slice(0, 80)}); using json_object with the schema in the prompt from now on`);
       completion = await call(false);
     }
     const choice = completion.choices[0];
@@ -147,7 +149,7 @@ export function createSparkBackend(name: string = optionalEnv("SPARK_BACKEND", "
       return new OpenAICompatSparkBackend(
         "fireworks",
         optionalEnv("FIREWORKS_BASE_URL", "https://api.fireworks.ai/inference/v1"),
-        process.env["FIREWORKS_API_KEY"] || requireEnv("FIREWORK_API_KEY"),
+        process.env["FIREWORKS_API_KEY"] || process.env["FIREWORK_API_KEY"] || requireEnv("FIREWORKS_API_KEY"),
         optionalEnv("FIREWORKS_MODEL", "accounts/fireworks/models/muse-spark-open"),
       );
     default:

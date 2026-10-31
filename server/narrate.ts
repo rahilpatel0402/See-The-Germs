@@ -52,7 +52,12 @@ const LANGUAGE_NOTE: Record<NarrativeLanguage, string> = {
 // Finds disallowed language, ignoring the clip's own entity labels.
 export function findDisallowed(text: string, labels: readonly string[]): string | null {
   let scrubbed = text;
-  for (const label of labels) if (label) scrubbed = scrubbed.split(label).join(" ");
+  for (const label of labels) {
+    if (!label) continue;
+    // Whole word, any case: "Resident B" at a sentence start is removed, "IV" inside "given" is not.
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    scrubbed = scrubbed.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "giu"), " ");
+  }
   const hit = DISALLOWED.exec(scrubbed);
   return hit ? hit[0] : null;
 }

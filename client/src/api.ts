@@ -135,7 +135,17 @@ export async function segmentStream(clipId: string, onLine: (line: SegmentLine) 
 
 export interface SceneResult {
   readonly entities: EntityConfig[];
-  readonly report: Array<{ id: string; label: string; tried: Array<{ phrase: string; objects: number; meanConfidence: number | null }>; chosen: string | null; verified: boolean }>;
+  readonly report: Array<{
+    id: string;
+    label: string;
+    tried: Array<{ phrase: string; objects: number; meanConfidence: number | null }>;
+    chosen: string | null;
+    verified: boolean;
+    // Set when SAM resolved this prop to the same object as an earlier one; it was not added.
+    mergedInto?: string;
+    // A plain-language note about a change the loop made, for example a dispenser kept as a surface.
+    note?: string;
+  }>;
   readonly frames: number[];
   readonly cost: number;
 }

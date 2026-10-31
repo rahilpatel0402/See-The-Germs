@@ -69,13 +69,13 @@ async function findSource(clipId: string): Promise<string | null> {
 
 // Returns the clip meta, creating it when a folder with a source file exists but has not been
 // probed and resampled yet (a clip dropped in by hand, like the dev clip).
-export async function ensureClip(clipId: string): Promise<ClipMeta> {
+export async function ensureClip(clipId: string, knownSource?: ProbeInfo): Promise<ClipMeta> {
   if (!isValidClipId(clipId)) throw new HttpError(400, "invalid clip id");
   if (existsSync(metaPath(clipId))) return readMeta(clipId);
   const sourceFile = await findSource(clipId);
   if (!sourceFile) throw new HttpError(404, `clip ${clipId} has no source video`);
   const sourcePath = path.join(clipDir(clipId), sourceFile);
-  const source = await probe(sourcePath);
+  const source = knownSource ?? (await probe(sourcePath));
   await resample(sourcePath, sampledPath(clipId), SAMPLE_FPS);
   const sampled = await probe(sampledPath(clipId), { countFrames: true });
   const meta: ClipMeta = {
@@ -119,7 +119,7 @@ export async function createClipFromUpload(tmpPath: string, originalName: string
   await mkdir(clipDir(id), { recursive: true });
   await rename(tmpPath, path.join(clipDir(id), `source${ext}`));
   try {
-    return await ensureClip(id);
+    return await ensureClip(id, info);
   } catch (err) {
     await rm(clipDir(id), { recursive: true, force: true });
     throw err;

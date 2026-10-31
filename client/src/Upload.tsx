@@ -56,7 +56,8 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
     const r = scene?.report.find((x) => x.id === id);
     if (!r) return null;
     const best = r.tried.find((t) => t.phrase === r.chosen) ?? r.tried.at(-1);
-    return r.verified ? `SAM found it: ${best?.objects} object${best?.objects === 1 ? "" : "s"}, confidence ${best?.meanConfidence?.toFixed(2) ?? "?"}` : `SAM did not find it with ${r.tried.length} phrase${r.tried.length === 1 ? "" : "s"}; edit the phrase`;
+    const base = r.verified ? `SAM found it: ${best?.objects} object${best?.objects === 1 ? "" : "s"}, confidence ${best?.meanConfidence?.toFixed(2) ?? "?"}` : `SAM did not find it with ${r.tried.length} phrase${r.tried.length === 1 ? "" : "s"}; edit the phrase`;
+    return r.note ? `${base}. ${r.note}` : base;
   };
 
   useEffect(() => {
@@ -256,7 +257,9 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
             </button>{" "}
             {scene ? (
               <span className="muted">
-                {scene.report.length} props proposed, {scene.report.filter((r) => r.verified).length} verified by SAM, about ${scene.cost.toFixed(2)}.
+                {scene.report.length} props proposed, {scene.report.filter((r) => r.verified && !r.mergedInto).length} verified by SAM
+                {scene.report.some((r) => r.mergedInto) ? `, ${scene.report.filter((r) => r.mergedInto).length} named twice and kept once` : ""}, about ${scene.cost.toFixed(2)}.
+                {scene.report.filter((r) => r.mergedInto).map((r) => ` "${r.label}" is the same object as "${scene.report.find((x) => x.id === r.mergedInto)?.label ?? r.mergedInto}".`).join("")}
               </span>
             ) : (
               <span className="muted">Spark proposes, SAM verifies each phrase on a frame, anything unfound goes back to Spark once. A few cents.</span>

@@ -365,7 +365,7 @@ export function App() {
 
       <main className={`main${drawerOpen ? " with-drawer" : ""}`}>
         <div className="stage-column">
-          {clipId ? (
+          {clipId && clips.includes(clipId) ? (
             <div className="stage-wrap">
               <VideoStage
                 videoRef={videoRef}

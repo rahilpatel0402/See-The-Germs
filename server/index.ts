@@ -15,10 +15,11 @@ import { optionalEnv } from "./env.ts";
 import { readEntities, validateEntities, writeEntities } from "./entities.ts";
 import { HttpError } from "./errors.ts";
 import { withClipLock } from "./locks.ts";
-import { analysisPath, clipDir, sampledPath, TMP_DIR } from "./paths.ts";
+import { analysisPath, clipDir, sampledPath, TMP_DIR, trackPath } from "./paths.ts";
 import { tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
-import { BOX_PREFIX, deleteRemoteFile, MetaSamBackend, readTrack, segmentBox, segmentPhrase } from "./sam.ts";
+import { BOX_PREFIX, deleteRemoteFile, MetaSamBackend, segmentBox, segmentPhrase } from "./sam.ts";
+import { readAdjudications } from "./scenario.ts";
 import { proposeScene, slugId } from "./scene.ts";
 import { createSparkBackend } from "./spark.ts";
 
@@ -45,14 +46,11 @@ app.use(express.json({ limit: "1mb" }));
 app.use((_req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", optionalEnv("CLIENT_ORIGIN", "*"));
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
-  next();
-});
-app.options("/{*path}", (_req, res) => res.sendStatus(204));
-app.use((_req, res, next) => {
+  // Set before the preflight handler so a cross-origin DELETE (delete my clip) is allowed too.
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
   next();
 });
+app.options("/{*path}", (_req, res) => res.sendStatus(204));
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
@@ -197,29 +195,42 @@ app.post("/api/clips/:id/track-box", wrap(async (req, res) => {
   }
   const label = String(body.label ?? "").trim();
   if (!label) throw new HttpError(400, "label is required");
-  const entities = await readEntities(meta.id);
-  const used = new Set(entities.map((e) => e.id));
-  const entityId = typeof body.entityId === "string" && used.has(body.entityId) ? body.entityId : slugId(label, used);
-  const draft = {
-    id: entityId,
-    label,
-    class: String(body.kind ?? "object"),
-    zone: String(body.zone ?? "healthcare_area"),
-    samPhrase: `${BOX_PREFIX}${entityId}`,
-    ...(typeof body.agent === "string" && body.agent ? { agent: body.agent } : {}),
-  };
-  const next = [...entities.filter((e) => e.id !== entityId), draft];
-  try {
-    validateEntities(next);
-  } catch (err) {
-    throw new HttpError(400, (err as Error).message);
-  }
-  const track = await withClipLock(meta.id, async () => {
+  // The entity table is read and written inside the lock, so an edit saved while SAM runs is
+  // merged onto, not overwritten.
+  const { track, next, entityId } = await withClipLock(meta.id, async () => {
+    const draftFor = (entities: readonly { id: string }[]) => {
+      const used = new Set(entities.map((e) => e.id));
+      const id = typeof body.entityId === "string" && used.has(body.entityId) ? body.entityId : slugId(label, used);
+      const draft = {
+        id,
+        label,
+        class: String(body.kind ?? "object"),
+        zone: String(body.zone ?? "healthcare_area"),
+        samPhrase: `${BOX_PREFIX}${id}`,
+        ...(typeof body.agent === "string" && body.agent ? { agent: body.agent } : {}),
+      };
+      return { id, draft };
+    };
+    const before = await readEntities(meta.id);
+    const { id: entityId, draft } = draftFor(before);
+    try {
+      validateEntities([...before.filter((e) => e.id !== entityId), draft]);
+    } catch (err) {
+      throw new HttpError(400, (err as Error).message);
+    }
     const t = await segmentBox(meta.id, entityId, { frameIndex, box, direction: "both" }, backend);
     // The box call re-uploads the clip; it does not need to stay on the Meta side.
     await deleteRemoteFile(await readMeta(meta.id)).catch((err: Error) => console.log(`files   | ${meta.id} | remote delete failed: ${err.message}`));
+    // Merge onto the table as it is now, in case it changed while SAM ran.
+    const current = await readEntities(meta.id);
+    const next = [...current.filter((e) => e.id !== entityId), draft];
+    try {
+      validateEntities(next);
+    } catch (err) {
+      throw new HttpError(409, `the entity table changed while SAM ran: ${(err as Error).message}`);
+    }
     if (t) await writeEntities(meta.id, next);
-    return t;
+    return { track: t, next, entityId };
   });
   if (!track) throw new HttpError(422, "SAM could not track anything from that box; try a tighter box on a clearer frame");
   const frames = new Set(track.records.map((r) => r.frameIndex)).size;
@@ -257,7 +268,7 @@ app.post("/api/segment", wrap(async (req, res) => {
   const phrases = [...new Set(entities.map((e) => e.samPhrase))];
   // Demo clips are served from cache and never spend credit.
   if (isDemo(meta.id)) {
-    for (const phrase of phrases) if (!(await readTrack(meta.id, phrase))) throw new HttpError(403, `${meta.id} is a demo clip; "${phrase}" is not cached and will not be segmented live`);
+    for (const phrase of phrases) if (!existsSync(trackPath(meta.id, phrase))) throw new HttpError(403, `${meta.id} is a demo clip; "${phrase}" is not cached and will not be segmented live`);
   }
   const stream = req.query["stream"] === "1";
   if (stream) {
@@ -423,6 +434,11 @@ app.post("/api/counterfactual/explain", wrap(async (req, res) => {
 app.post("/api/adjudicate", wrap(async (req, res) => {
   const clipId = String((req.body as { clipId?: unknown })?.clipId ?? "");
   await readMeta(clipId);
+  // Demo clips work offline from cache and never trigger live vision calls.
+  if (isDemo(clipId)) {
+    res.json({ added: [], failed: [], skipped: [], adjudications: await readAdjudications(clipId), analysis: await runAnalysis(clipId) });
+    return;
+  }
   const run = await withClipLock(clipId, () => adjudicateClip(clipId, spark));
   const analysis = await runAnalysis(clipId);
   res.json({ added: run.added, failed: run.failed, skipped: run.plan.skipped.map((c) => c.id), adjudications: run.all, analysis });

@@ -208,3 +208,26 @@ Rahil asked to check the program on a few YouTube clips (local test only, nothin
 - Cut-heavy footage splits every SAM track into many object ids (12 for one gloved hand over 34 s) and the hand classes swap at each cut, which the glove detector reads as don and doff pairs. The engine stays deterministic, but the clinical read is noise. The product needs one continuous shot, which the shoot script already requires.
 - A phrase can verify on a still through the image endpoint and return nothing on the video ("white pad with blue border", "turquoise fabric"). The segment stream reports zero frames; the upload UI should say so in words.
 - Spark's scene proposal can name the same prop three times (tray, basket, instruments for one perforated basket). Dedupe by verified phrase overlap is on the LATER list.
+
+## Review pass five, Sat Oct 31 (25 findings fixed, browser pass clean)
+
+Full scan over engine, server, and client at high effort, plus a browser pass that drives the app in headless Chrome over the DevTools protocol (every flow clicked, console errors, uncaught exceptions, and failed requests recorded; the harness lives outside the repo). Both passes clean after the fixes.
+
+Engine:
+- Moment 4 and 5 departure window: the person's other hand can still be in the zone when the outside touch starts, so the departure is the earlier of the episode end and the outside touch; the miss is timed at that touch, never after it.
+- Before donning, the contact that matters is the one that ended last, not the one that started last.
+- Contact detection skips the full-frame intersection when the hand box widened by the dilation cannot reach the target box; identical output, tested against the unoptimized path.
+- Glove absence check runs once when the absence is confirmed instead of every remaining frame.
+- Vocabulary (`ZONE_TAGS`, `ENTITY_CLASSES`, `PROP_CLASSES`, `DISPENSER_AGENTS`) and `isHand` are defined once in the engine; the scene phrase acceptance threshold moved to `engine/config.ts` as `SCENE_PHRASE_CONFIG`.
+- Comments and this document now match the code and CLAUDE.md: an ambiguous candidate without a verdict is not a contact; the cap only bounds spend.
+
+Server:
+- Adjudication frames use the gap-filled records the engine sees; an inferred object outline is drawn dashed and the request text says it marks the last seen position.
+- A dispenser Spark proposes with no hygiene agent becomes a plain surface, never a sanitizer. An LLM proposal cannot create hygiene events.
+- Scene loop calls are cached to disk: `scene/proposal-<hash>.json`, `scene/retry-<hash>.json`, `phrases/f<frame>-<slug>.json`. A repeated propose with nothing changed costs zero (verified live: second run cost 0.00). Props that SAM resolves to the same object on the test frame (same count, union box IoU at or above 0.7) are kept once and reported as merged. Re-proposing keeps hands, box-tracked props, and any prop whose phrase already has a cached video track.
+- CORS preflight advertises DELETE; track-box reads and merges the entity table inside the clip lock; the segment demo guard checks file existence; `/api/adjudicate` never calls Spark on a demo clip; lock entries are released; the partner backend only drops json_schema on a 400 that names it; meta.json is re-read before the remote file id is written; labels are scrubbed whole-word and case-insensitively before the clinical-language check; the fireworks error names `FIREWORKS_API_KEY`; uploads are probed once.
+
+Client:
+- Session report preselects only analyzed clips, shows titles instead of ids, hides surfaces with zero contaminated contacts.
+- The hero and Show me point at the highest-impact miss (largest downstream, earliest on ties) or the miss the narrative's top fix names.
+- One narrative fetch per clip open; Record again restarts the camera without a reload; a phrase that verified on a still but found nothing on video is explained in words with the fix; merged scene props are named in the summary; favicon; a deep link to an unknown clip falls back to the first clip without requesting its video or tracks.

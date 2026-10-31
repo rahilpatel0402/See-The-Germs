@@ -61,14 +61,15 @@ export async function ensureRemoteFile(clip: ClipMeta): Promise<string> {
     file: await toFile(createReadStream(sampledPath(clip.id)), "sampled.mp4", { type: "video/mp4" }),
     purpose: "user_data",
   });
-  const updated: ClipMeta = { ...clip, remoteFileId: uploaded.id };
-  await writeMeta(updated);
+  // Re-read meta.json first: a title or story saved while the upload ran must not be clobbered.
+  const fresh = await readMeta(clip.id);
+  await writeMeta({ ...fresh, remoteFileId: uploaded.id });
   console.log(`files   | ${clip.id} | uploaded sampled.mp4 as ${uploaded.id}`);
   return uploaded.id;
 }
 
 async function forgetRemoteFile(clip: ClipMeta): Promise<ClipMeta> {
-  const { remoteFileId: _dropped, ...rest } = clip;
+  const { remoteFileId: _dropped, ...rest } = await readMeta(clip.id);
   await writeMeta(rest);
   return rest;
 }

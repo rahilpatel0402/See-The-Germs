@@ -14,6 +14,8 @@ export interface Outline {
   readonly records: readonly MaskRecord[];
   readonly color: string;
   readonly strokeWidth?: number;
+  // Dashed stroke: the outline is a carried-forward position, not a detection in this frame.
+  readonly dashed?: boolean;
 }
 
 export function framesDir(clipId: string): string {
@@ -42,7 +44,7 @@ export function outlineSvg(width: number, height: number, outlines: readonly Out
       const d = decodeMaskToSVGPath(record.mask);
       if (d === "") continue;
       paths.push(
-        `<path d="${d}" transform="translate(${record.bounds.left} ${record.bounds.top})" fill="none" stroke="${escapeAttr(outline.color)}" stroke-width="${outline.strokeWidth ?? 3}" stroke-linejoin="round"/>`,
+        `<path d="${d}" transform="translate(${record.bounds.left} ${record.bounds.top})" fill="none" stroke="${escapeAttr(outline.color)}" stroke-width="${outline.strokeWidth ?? 3}" stroke-linejoin="round"${outline.dashed || record.inferred ? ' stroke-dasharray="12 8"' : ""}/>`,
       );
     }
   }

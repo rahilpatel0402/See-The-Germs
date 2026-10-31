@@ -15,4 +15,3 @@ Ideas that appeared during the build and were not in the ladder. Written down so
 
 - Analyze a video from a YouTube link. Deferred (Oct 27): real-facility footage conflicts with the staged-only rule and the not-surveillance stance, downloaders are fragile and mostly Python, and an unstaged scene lacks a source surface and zones. If ever revisited: only for staged training footage the user has rights to, through the existing upload path, never a live fetch in the demo.
 
-- Scene loop: dedupe proposals that verify to the same SAM object (the gloving test clip got tray, basket, and instruments for one perforated basket). Upload UI: say in words when a phrase verified on a still but found nothing on the video.
