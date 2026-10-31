@@ -231,3 +231,14 @@ Client:
 - Session report preselects only analyzed clips, shows titles instead of ids, hides surfaces with zero contaminated contacts.
 - The hero and Show me point at the highest-impact miss (largest downstream, earliest on ties) or the miss the narrative's top fix names.
 - One narrative fetch per clip open; Record again restarts the camera without a reload; a phrase that verified on a still but found nothing on video is explained in words with the fix; merged scene props are named in the summary; favicon; a deep link to an unknown clip falls back to the first clip without requesting its video or tracks.
+
+## Outside footage check before the shoot, Sat Oct 31 afternoon
+
+Six segments from public training videos (WHO handrub, UCSF wall dispenser, Globus glove donning and doffing, Open RN occupied bed with bare and with gloved hands) ran through upload, scene loop, SAM, engine, and vision review, then were compared to hand-labeled frame sheets. Local only; nothing from them enters the repo or the demo.
+
+What held: the hygiene path (bottle pick-up at 4 s, rub measured to the clip end, adequate), dispenser box tracking when the phrase failed, contact timing on linens, rail, and mattress, and vision review verdicts (all plausible on inspection, including "passing in front" for hands rubbing in front of a wall dispenser).
+
+What broke, and the fix:
+- SAM video tracking follows an object through an appearance change. A hand tracked as "bare hand" stays that object after a glove goes on, and a glove tracked as "gloved hand" is followed after it comes off. The class-handover detector therefore missed every don and doff on real gloving footage. `Tracks` gained `objectBirthsAt` (boxes of SAM objects first seen in a frame, filled by the server from object ids); `detectGloveEvents` now treats a bare-hand object born within handover distance of the gloved hand as a doff, and arms that rule when gloves are already on at the first frame. Measured: doff clip now reports the second glove off at 32.3 s (truth 32 to 36 s); the first glove off at 9 s is still missed because the gloved entity's center is the union of both hands. Don clip reports the don at 1.8 s, when the glove is pulled from the box, against a true "worn" time near 9 s.
+- `GLOVE_MIN_CONFIDENCE` 0.85 to 0.6: real blue nitrile gloves in a wide shot scored 0.70 to 0.72, the same as the false positives, so the gate only removes clear noise. The feasibility clip's analysis is unchanged under the new gate and rule.
+- Known limits recorded for the shoot script: a second person's hands merge into P1 until item 3 lands; a resident's or manikin's bare hands are detected as bare hands; a loose glove or glove box can be picked up by the "gloved hand" phrase; the rub duration runs to the clip end when no later touch exists.

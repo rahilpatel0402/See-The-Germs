@@ -65,6 +65,7 @@ export interface LoadedTracks {
 
 const EMPTY_FRAME: ReadonlyMap<string, FrameMask> = new Map();
 const EMPTY_SET: ReadonlySet<string> = new Set();
+const EMPTY_BIRTHS: ReadonlyMap<string, readonly MaskBounds[]> = new Map();
 
 export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   const meta = await readMeta(clipId);
@@ -76,6 +77,8 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   // entity id -> frame index -> records (small: encoded payloads only).
   const byEntity = new Map<string, Map<number, MaskRecord[]>>();
   const inferredByFrame = new Map<number, Set<string>>();
+  // frame index -> entity id -> boxes of SAM objects first seen in that frame.
+  const birthsByFrame = new Map<number, Map<string, MaskBounds[]>>();
   for (const entity of entities) {
     const track = await readTrack(clipId, entity.samPhrase);
     if (!track) {
@@ -83,9 +86,16 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
       continue;
     }
     const perFrame = new Map<number, MaskRecord[]>();
-    for (const record of entityRecords(entity, track.records, frameCount)) {
+    const seenObjects = new Set<string>();
+    const kept = entityRecords(entity, track.records, frameCount).sort((a, b) => a.frameIndex - b.frameIndex);
+    for (const record of kept) {
       (perFrame.get(record.frameIndex) ?? perFrame.set(record.frameIndex, []).get(record.frameIndex)!).push(record);
       if (record.inferred) (inferredByFrame.get(record.frameIndex) ?? inferredByFrame.set(record.frameIndex, new Set()).get(record.frameIndex)!).add(entity.id);
+      else if (!seenObjects.has(record.objectId)) {
+        seenObjects.add(record.objectId);
+        const atFrame = birthsByFrame.get(record.frameIndex) ?? birthsByFrame.set(record.frameIndex, new Map()).get(record.frameIndex)!;
+        (atFrame.get(entity.id) ?? atFrame.set(entity.id, []).get(entity.id)!).push(record.bounds);
+      }
     }
     byEntity.set(entity.id, perFrame);
   }
@@ -128,7 +138,8 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   };
 
   const inferredAt = (frameIndex: number): ReadonlySet<string> => inferredByFrame.get(frameIndex) ?? EMPTY_SET;
+  const objectBirthsAt = (frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]> => birthsByFrame.get(frameIndex) ?? EMPTY_BIRTHS;
 
-  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount, entities: plainEntities(entities), masksAt, boundsAt, inferredAt };
+  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount, entities: plainEntities(entities), masksAt, boundsAt, inferredAt, objectBirthsAt };
   return { tracks, entities, missingPhrases: missing };
 }

@@ -128,3 +128,27 @@ test("a person with only one hand class produces nothing", () => {
   const onlyGloved: Tracks = { ...t, entities: [gloved] };
   assert.deepEqual(detectGloveEvents(onlyGloved, GLOVE_CONFIG), []);
 });
+
+test("a bare-hand object born on the gloved hand is a doff even though the gloved track keeps going", () => {
+  // Gloved from the don at frame 10 to the end; SAM keeps following the glove after it comes off
+  // (outside footage, Oct 31), so the doff shows only as a new bare object born at frame 25.
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 10; f++) frames.push([near, null]);
+  for (let f = 10; f < 40; f++) frames.push([f >= 25 ? near : null, near]);
+  const base = tracks(frames);
+  const withBirths: Tracks = { ...base, objectBirthsAt: (f) => (f === 25 ? new Map([[bare.id, [bbox(near)]]]) : new Map()) };
+  assert.deepEqual(detectGloveEvents(withBirths, GLOVE_CONFIG), [
+    { handId: "bare_hand", t: 1.0, type: "don", source: "detected" },
+    { handId: "bare_hand", t: 2.5, type: "doff", source: "detected" },
+  ]);
+  // A bare object born far from the gloved hand is another hand, not a doff.
+  const farBirth: Tracks = { ...base, objectBirthsAt: (f) => (f === 25 ? new Map([[bare.id, [bbox(far)]]]) : new Map()) };
+  assert.deepEqual(detectGloveEvents(farBirth, GLOVE_CONFIG).map((e) => e.type), ["don"]);
+});
+
+test("gloves already on at the start can still come off: a bare object born on the hand is the doff", () => {
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 40; f++) frames.push([f >= 20 ? near : null, near]);
+  const t: Tracks = { ...tracks(frames), objectBirthsAt: (f) => (f === 20 ? new Map([[bare.id, [bbox(near)]]]) : new Map()) };
+  assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG), [{ handId: "bare_hand", t: 2.0, type: "doff", source: "detected" }]);
+});

@@ -27,6 +27,16 @@ Phrases describe appearance, not function (feasibility clip: "towel rail" found 
 
 If two props share a phrase ("pillow"), SAM returns two tracks under one phrase and they become one entity. Make them visually different (one white pillow, one colored cushion) and use two phrases.
 
+## Rules learned from outside footage (added Sat Oct 31, read before pressing record)
+Six public training clips ran through the pipeline this afternoon and were checked frame by frame. These are the things that broke there and are cheap to avoid on set:
+- **One caregiver's hands in frame, and nobody else's.** A second person's gloved hands merge into the same caregiver. The helper playing the resident keeps both hands under the blanket or out of frame for the whole clip, because a bare hand anywhere in frame is read as the caregiver's bare hand.
+- **Gloves: put them on in frame, in one motion, and move the box away afterwards.** The glove shows up when the glove object first appears near the bare hand, so pulling a glove out of the box and fiddling with it for ten seconds reads as "gloves on" ten seconds early. A loose glove left on the table can be read as a gloved hand, so the box goes out of frame once the gloves are on. Blue or black nitrile, never clear.
+- **Taking gloves off: peel and drop them out of frame.** The skin reappearing is what the engine sees as the doff. A removed glove balled in the bare hand can read as a glove again.
+- **Rub in open space, not in front of the dispenser or the rail.** Hands rubbing in front of the dispenser read as a second touch of it. Step half a pace away from the wall or table before rubbing.
+- **Every rub ends with a visible next touch.** Rub time is measured to the next touch; a clip that ends mid-rub counts the rub to the end of the clip.
+- **Dispenser pump: a real press, one full second on the pump, not a tap.** The dwell threshold is one second.
+- **Resident prop: a pillow or a dressed manikin, never a helper's bare skin on camera.** SAM finds "white pillow" and "beige foot" reliably; it also finds a helper's arms and calls them the resident.
+
 ## Clip A: the chain (30 to 40 s)
 Pathogen MRSA. Source rail A. No hygiene at all. Proves transitive spread to a second resident.
 1. Enter frame. Grip rail A, hold one second.

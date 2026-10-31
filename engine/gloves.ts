@@ -1,6 +1,8 @@
 // Glove on and off from the handover between the bare hand and gloved hand SAM classes of one
 // person. A don is the gloved track appearing where the bare track just was; a doff is the
-// reverse. Detected only; the manual fallback is a separate path.
+// reverse, or a new bare-hand object being born on the gloved hand: SAM keeps following the
+// glove after it comes off, so the gloved track rarely vanishes on a real doff (measured on
+// outside footage, Oct 31). Detected only; the manual fallback is a separate path.
 
 import type { GloveConfig } from "./config.ts";
 import { bbox } from "./masks.ts";
@@ -76,6 +78,16 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
 
     for (let f = 0; f <= maxFrame; f++) {
       const g = centerOf(gloved.id, f);
+      // A bare-hand object born within reach of the gloved hand while a glove is on: the skin
+      // just came back into view, which is the doff, whatever the gloved track does next.
+      if (gloveOn && g !== undefined && tracks.objectBirthsAt !== undefined) {
+        const births = tracks.objectBirthsAt(f).get(bare.id) ?? [];
+        if (births.some((box) => distance(centerOfBounds(box) as Point, g) <= maxDistance)) {
+          events.push({ handId: bare.id, t: f / tracks.fps, type: "doff", source: "detected" });
+          gloveOn = false;
+          absentStart = null;
+        }
+      }
       if (g !== undefined) {
         glovedRun++;
         absentRun = 0;
@@ -88,6 +100,11 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
           runChecked = true;
           const startCenter = centerOf(gloved.id, runStart);
           const handover = runStart > 0 && startCenter !== undefined && bareNear(bare.id, runStart - config.handoverWindowFrames, runStart - 1, startCenter);
+          if (!handover && runStart === 0) {
+            // Gloves already on when the clip starts: no don to report, but the glove is worn,
+            // so a later doff (bare hand reappearing) is still detected.
+            gloveOn = true;
+          }
           if (handover) {
             // A fresh bare-to-gloved handover while a glove was still "on" means the earlier
             // glove came off out of view: close it at the start of that absence.

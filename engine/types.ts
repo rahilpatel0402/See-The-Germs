@@ -93,6 +93,10 @@ export interface Tracks {
   // Optional: entity ids whose mask in this frame is inferred, not seen. A contact that rests on
   // an inferred object mask is ambiguous and goes to vision review.
   inferredAt?(frameIndex: number): ReadonlySet<string>;
+  // Optional: for each entity, the boxes of SAM objects first seen in this frame. SAM follows an
+  // object through an appearance change (a hand stays "bare hand" after a glove goes on), so a
+  // class change shows up as a new object being born, not as the old one vanishing.
+  objectBirthsAt?(frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]>;
 }
 
 export type CandidateConfidence = "confident" | "ambiguous";
