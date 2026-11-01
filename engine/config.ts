@@ -35,11 +35,12 @@ export const CONTACT_CONFIG: ContactConfig = {
 // The frame size the pixel constants above were chosen at.
 export const REFERENCE_FRAME: FrameSize = { w: 1280, h: 720 };
 
-// Heuristic: SAM confidence for the "gloved hand" class. Measured Oct 31 on four clips: real
-// gloves scored 0.70 to 0.96 (blue nitrile in a wide shot sat at 0.70 to 0.72), while a bare hand
-// or a loose glove in a fist scored 0.71. Confidence cannot separate the two, so the gate only
-// drops clear noise and the handover rules in gloves.ts carry the decision.
-export const GLOVE_MIN_CONFIDENCE = 0.6;
+// Heuristic: SAM confidence gate for the "gloved hand" class. Measured Oct 31 on four clips:
+// real gloves scored 0.81 to 0.96 at normal distance and 0.70 to 0.72 only in a wide shot with
+// small hands; a bare hand or a loose glove held in a fist scored 0.71. The gate sits above the
+// false positives seen so far and below every close-range true glove, so the wide-shot case is
+// the one it gives up. Rerun the glove clips if this changes.
+export const GLOVE_MIN_CONFIDENCE = 0.75;
 
 // Heuristic: the scene loop accepts a SAM phrase on a still frame when it finds between
 // minObjects and maxObjects instances at this mean confidence or better. One to three because a

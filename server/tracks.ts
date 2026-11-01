@@ -77,8 +77,18 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   // entity id -> frame index -> records (small: encoded payloads only).
   const byEntity = new Map<string, Map<number, MaskRecord[]>>();
   const inferredByFrame = new Map<number, Set<string>>();
-  // frame index -> entity id -> boxes of SAM objects first seen in that frame.
+  // Hands only, for glove handover: frame index -> entity id -> boxes of SAM objects first seen
+  // in that frame (from the raw track, before the confidence gate, so a confidence dip never
+  // manufactures a birth), and frame index -> entity id -> every object's box.
   const birthsByFrame = new Map<number, Map<string, MaskBounds[]>>();
+  const objectBoxesByFrame = new Map<number, Map<string, MaskBounds[]>>();
+  const getOrInit = <K, V>(map: Map<K, V>, key: K, init: () => V): V => {
+    const hit = map.get(key);
+    if (hit !== undefined) return hit;
+    const made = init();
+    map.set(key, made);
+    return made;
+  };
   for (const entity of entities) {
     const track = await readTrack(clipId, entity.samPhrase);
     if (!track) {
@@ -86,16 +96,22 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
       continue;
     }
     const perFrame = new Map<number, MaskRecord[]>();
-    const seenObjects = new Set<string>();
-    const kept = entityRecords(entity, track.records, frameCount).sort((a, b) => a.frameIndex - b.frameIndex);
-    for (const record of kept) {
-      (perFrame.get(record.frameIndex) ?? perFrame.set(record.frameIndex, []).get(record.frameIndex)!).push(record);
-      if (record.inferred) (inferredByFrame.get(record.frameIndex) ?? inferredByFrame.set(record.frameIndex, new Set()).get(record.frameIndex)!).add(entity.id);
-      else if (!seenObjects.has(record.objectId)) {
-        seenObjects.add(record.objectId);
-        const atFrame = birthsByFrame.get(record.frameIndex) ?? birthsByFrame.set(record.frameIndex, new Map()).get(record.frameIndex)!;
-        (atFrame.get(entity.id) ?? atFrame.set(entity.id, []).get(entity.id)!).push(record.bounds);
+    for (const record of entityRecords(entity, track.records, frameCount)) {
+      getOrInit(perFrame, record.frameIndex, () => []).push(record);
+      if (record.inferred) getOrInit(inferredByFrame, record.frameIndex, () => new Set<string>()).add(entity.id);
+      else if (isHand(entity)) getOrInit(getOrInit(objectBoxesByFrame, record.frameIndex, () => new Map<string, MaskBounds[]>()), entity.id, () => []).push(record.bounds);
+    }
+    if (isHand(entity)) {
+      // Birth frame from the raw track so a confidence dip never manufactures one, but only for
+      // objects that survive the gate at all: an object below it everywhere is not a hand.
+      const survivors = new Set(track.records.filter((r) => passesConfidence(entity, r)).map((r) => r.objectId));
+      const firstFrame = new Map<string, MaskRecord>();
+      for (const record of track.records) {
+        if (!survivors.has(record.objectId)) continue;
+        const seen = firstFrame.get(record.objectId);
+        if (seen === undefined || record.frameIndex < seen.frameIndex) firstFrame.set(record.objectId, record);
       }
+      for (const record of firstFrame.values()) getOrInit(getOrInit(birthsByFrame, record.frameIndex, () => new Map<string, MaskBounds[]>()), entity.id, () => []).push(record.bounds);
     }
     byEntity.set(entity.id, perFrame);
   }
@@ -139,7 +155,8 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
 
   const inferredAt = (frameIndex: number): ReadonlySet<string> => inferredByFrame.get(frameIndex) ?? EMPTY_SET;
   const objectBirthsAt = (frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]> => birthsByFrame.get(frameIndex) ?? EMPTY_BIRTHS;
+  const objectBoundsAt = (frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]> => objectBoxesByFrame.get(frameIndex) ?? EMPTY_BIRTHS;
 
-  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount, entities: plainEntities(entities), masksAt, boundsAt, inferredAt, objectBirthsAt };
+  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount, entities: plainEntities(entities), masksAt, boundsAt, inferredAt, objectBirthsAt, objectBoundsAt };
   return { tracks, entities, missingPhrases: missing };
 }

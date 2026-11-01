@@ -44,89 +44,120 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
 
   const maxFrame = tracks.frameCount - 1;
   const maxDistance = config.maxHandoverDistanceFraction * tracks.frameSize.w;
-  const centers = new Map<string, Point | undefined>();
-  // Centers come from record bounds when the source offers them (no mask decoding), else from
-  // the decoded mask's bounding box.
-  const centerOf = (entityId: string, f: number): Point | undefined => {
-    if (f < 0 || f > maxFrame) return undefined;
+  const boxCache = new Map<string, readonly MaskBounds[]>();
+  // Per-object boxes of an entity in a frame: from the source when it tells objects apart, else
+  // the union box, else the decoded mask's box. No mask decoding when bounds are offered.
+  const boxesOf = (entityId: string, f: number): readonly MaskBounds[] => {
+    if (f < 0 || f > maxFrame) return [];
     const key = `${entityId}@${f}`;
-    if (!centers.has(key)) {
-      const box = tracks.boundsAt ? tracks.boundsAt(f).get(entityId) : bbox(tracks.masksAt(f).get(entityId) ?? { w: 0, h: 0, data: new Uint8Array(0) });
-      centers.set(key, centerOfBounds(box));
+    let boxes = boxCache.get(key);
+    if (boxes === undefined) {
+      const perObject = tracks.objectBoundsAt?.(f).get(entityId);
+      if (perObject !== undefined && perObject.length > 0) boxes = perObject;
+      else if (tracks.boundsAt) {
+        const b = tracks.boundsAt(f).get(entityId);
+        boxes = b ? [b] : [];
+      } else {
+        const b = bbox(tracks.masksAt(f).get(entityId) ?? { w: 0, h: 0, data: new Uint8Array(0) });
+        boxes = b ? [b] : [];
+      }
+      boxCache.set(key, boxes);
     }
-    return centers.get(key);
+    return boxes;
   };
-  const bareNear = (bareId: string, from: number, to: number, target: Point): boolean => {
-    for (let f = Math.max(0, from); f <= Math.min(maxFrame, to); f++) {
-      const c = centerOf(bareId, f);
-      if (c !== undefined && distance(c, target) <= maxDistance) return true;
-    }
-    return false;
+  const presentAt = (entityId: string, f: number): boolean => boxesOf(entityId, f).length > 0;
+  // Objects first seen in frame f. When the source cannot tell objects apart, a track starting
+  // after an absence stands in for a birth.
+  const birthsOf = (entityId: string, f: number): readonly MaskBounds[] => {
+    if (tracks.objectBirthsAt) return tracks.objectBirthsAt(f).get(entityId) ?? [];
+    return presentAt(entityId, f) && !presentAt(entityId, f - 1) ? boxesOf(entityId, f) : [];
   };
+  const persists = (entityId: string, from: number, frames: number): boolean => {
+    if (from + frames - 1 > maxFrame) return false;
+    for (let f = from; f < from + frames; f++) if (!presentAt(entityId, f)) return false;
+    return true;
+  };
+  const near = (box: MaskBounds, others: readonly MaskBounds[]): boolean => {
+    const c = centerOfBounds(box) as Point;
+    return others.some((o) => distance(c, centerOfBounds(o) as Point) <= maxDistance);
+  };
+  const nearAny = (boxes: readonly MaskBounds[], others: readonly MaskBounds[]): boolean => boxes.some((b) => near(b, others));
 
   const events: GloveEvent[] = [];
   for (const [, { bare, gloved }] of persons) {
     if (bare === undefined || gloved === undefined) continue;
+    const push = (type: GloveEvent["type"], f: number) => events.push({ handId: bare.id, t: f / tracks.fps, type, source: "detected" });
     let gloveOn = false;
-    let glovedRun = 0;
-    let runStart = -1;
-    let runChecked = false;
     let absentRun = 0;
     // First frame of the current absence of the gloved track while a glove is on, or null.
     let absentStart: number | null = null;
-    let lastGlovedCenter: Point | undefined;
+    let lastGlovedBoxes: readonly MaskBounds[] = [];
+    let lastGlovedFrame = -1;
 
     for (let f = 0; f <= maxFrame; f++) {
-      const g = centerOf(gloved.id, f);
-      // A bare-hand object born within reach of the gloved hand while a glove is on: the skin
-      // just came back into view, which is the doff, whatever the gloved track does next.
-      if (gloveOn && g !== undefined && tracks.objectBirthsAt !== undefined) {
-        const births = tracks.objectBirthsAt(f).get(bare.id) ?? [];
-        if (births.some((box) => distance(centerOfBounds(box) as Point, g) <= maxDistance)) {
-          events.push({ handId: bare.id, t: f / tracks.fps, type: "doff", source: "detected" });
-          gloveOn = false;
+      const gBoxes = boxesOf(gloved.id, f);
+
+      // Gloves already on when the clip starts: reported as a don at 0 so hand state is right.
+      if (f === 0 && gBoxes.length > 0 && persists(gloved.id, 0, config.openFrames)) {
+        push("don", 0);
+        gloveOn = true;
+      }
+
+      // Don: a gloved object born where a bare hand was seen within the handover window. The
+      // bare track may keep running through the glove, so only the gloved birth matters.
+      if (f > 0) {
+        for (const birth of birthsOf(gloved.id, f)) {
+          if (!persists(gloved.id, f, config.openFrames)) break;
+          let bareSeen = false;
+          for (let j = f - config.handoverWindowFrames; j <= f && !bareSeen; j++) bareSeen = near(birth, boxesOf(bare.id, j));
+          if (!bareSeen) continue;
+          if (!gloveOn) {
+            push("don", f);
+            gloveOn = true;
+          } else if (absentStart !== null) {
+            // A fresh handover while the earlier glove had left view: that glove came off out of
+            // camera, so it is closed at the start of its absence.
+            push("doff", absentStart);
+            push("don", f);
+          }
+          // A second glove on the other hand while one is already on changes nothing.
           absentStart = null;
+          break;
         }
       }
-      if (g !== undefined) {
-        glovedRun++;
+
+      // Doff: a bare-hand object born on the gloved hand. SAM keeps following the glove after it
+      // comes off, so the gloved track rarely vanishes on a real doff; the skin coming back is
+      // the signal. The gloved hand's last boxes within closeFrames cover a one-frame dropout.
+      if (gloveOn) {
+        const reference = gBoxes.length > 0 ? gBoxes : f - lastGlovedFrame <= config.closeFrames ? lastGlovedBoxes : [];
+        if (reference.length > 0) {
+          for (const birth of birthsOf(bare.id, f)) {
+            if (!persists(bare.id, f, config.closeFrames)) break;
+            if (near(birth, reference)) {
+              push("doff", f);
+              gloveOn = false;
+              absentStart = null;
+              break;
+            }
+          }
+        }
+      }
+
+      // The gloved track leaving view while a glove is on: if the bare hand shows up where the
+      // glove was within the handover window, the glove came off there.
+      if (gBoxes.length > 0) {
         absentRun = 0;
-        lastGlovedCenter = g;
-        if (glovedRun === 1) {
-          runStart = f;
-          runChecked = false;
-        }
-        if (!runChecked && glovedRun >= config.openFrames) {
-          runChecked = true;
-          const startCenter = centerOf(gloved.id, runStart);
-          const handover = runStart > 0 && startCenter !== undefined && bareNear(bare.id, runStart - config.handoverWindowFrames, runStart - 1, startCenter);
-          if (!handover && runStart === 0) {
-            // Gloves already on when the clip starts: no don to report, but the glove is worn,
-            // so a later doff (bare hand reappearing) is still detected.
-            gloveOn = true;
-          }
-          if (handover) {
-            // A fresh bare-to-gloved handover while a glove was still "on" means the earlier
-            // glove came off out of view: close it at the start of that absence.
-            if (gloveOn && absentStart !== null) {
-              events.push({ handId: bare.id, t: absentStart / tracks.fps, type: "doff", source: "detected" });
-            }
-            if (!gloveOn || absentStart !== null) {
-              events.push({ handId: bare.id, t: runStart / tracks.fps, type: "don", source: "detected" });
-            }
-            gloveOn = true;
-            absentStart = null;
-          }
-        }
-      } else {
-        glovedRun = 0;
-        if (gloveOn && lastGlovedCenter !== undefined) {
-          absentRun++;
-          if (absentRun === config.closeFrames) absentStart = f - config.closeFrames + 1;
-          // The window after the absence is fixed and every frame in it is readable, so the
-          // bare-hand check runs once, when the absence is first confirmed.
-          if (absentRun === config.closeFrames && absentStart !== null && bareNear(bare.id, absentStart, absentStart + config.handoverWindowFrames - 1, lastGlovedCenter)) {
-            events.push({ handId: bare.id, t: absentStart / tracks.fps, type: "doff", source: "detected" });
+        lastGlovedBoxes = gBoxes;
+        lastGlovedFrame = f;
+      } else if (gloveOn) {
+        absentRun++;
+        if (absentRun === config.closeFrames) {
+          absentStart = f - config.closeFrames + 1;
+          let bareBack = false;
+          for (let j = absentStart; j < absentStart + config.handoverWindowFrames && !bareBack; j++) bareBack = nearAny(boxesOf(bare.id, j), lastGlovedBoxes);
+          if (bareBack) {
+            push("doff", absentStart);
             gloveOn = false;
             absentStart = null;
           }

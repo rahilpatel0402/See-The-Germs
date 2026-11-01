@@ -97,6 +97,9 @@ export interface Tracks {
   // object through an appearance change (a hand stays "bare hand" after a glove goes on), so a
   // class change shows up as a new object being born, not as the old one vanishing.
   objectBirthsAt?(frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]>;
+  // Optional: for each entity, the box of every SAM object present in this frame (boundsAt gives
+  // only their union). Glove handover compares hands one by one.
+  objectBoundsAt?(frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]>;
 }
 
 export type CandidateConfidence = "confident" | "ambiguous";

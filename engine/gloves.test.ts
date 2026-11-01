@@ -64,10 +64,10 @@ test("a gloved track far from the bare track is a different hand, no don", () =>
   assert.deepEqual(detectGloveEvents(tracks(frames), GLOVE_CONFIG), []);
 });
 
-test("gloved from the first frame is not a don, and a two frame dropout is not a doff", () => {
+test("gloves on from the first frame are reported as a don at 0, and a two frame dropout is not a doff", () => {
   const frames: Array<[FrameMask | null, FrameMask | null]> = [];
   for (let f = 0; f < 10; f++) frames.push([null, near]);
-  assert.deepEqual(detectGloveEvents(tracks(frames), GLOVE_CONFIG), []);
+  assert.deepEqual(detectGloveEvents(tracks(frames), GLOVE_CONFIG), [{ handId: "bare_hand", t: 0, type: "don", source: "detected" }]);
 
   const dropout: Array<[FrameMask | null, FrameMask | null]> = [];
   for (let f = 0; f < 5; f++) dropout.push([near, null]);
@@ -136,19 +136,58 @@ test("a bare-hand object born on the gloved hand is a doff even though the glove
   for (let f = 0; f < 10; f++) frames.push([near, null]);
   for (let f = 10; f < 40; f++) frames.push([f >= 25 ? near : null, near]);
   const base = tracks(frames);
-  const withBirths: Tracks = { ...base, objectBirthsAt: (f) => (f === 25 ? new Map([[bare.id, [bbox(near)]]]) : new Map()) };
+  const births = (bareAt: FrameMask) => (f: number) => (f === 10 ? new Map([[gloved.id, [bbox(near)!]]]) : f === 25 ? new Map([[bare.id, [bbox(bareAt)!]]]) : new Map());
+  const withBirths: Tracks = { ...base, objectBirthsAt: births(near) };
   assert.deepEqual(detectGloveEvents(withBirths, GLOVE_CONFIG), [
     { handId: "bare_hand", t: 1.0, type: "don", source: "detected" },
     { handId: "bare_hand", t: 2.5, type: "doff", source: "detected" },
   ]);
   // A bare object born far from the gloved hand is another hand, not a doff.
-  const farBirth: Tracks = { ...base, objectBirthsAt: (f) => (f === 25 ? new Map([[bare.id, [bbox(far)]]]) : new Map()) };
+  const farBirth: Tracks = { ...base, objectBirthsAt: births(far) };
   assert.deepEqual(detectGloveEvents(farBirth, GLOVE_CONFIG).map((e) => e.type), ["don"]);
 });
 
 test("gloves already on at the start can still come off: a bare object born on the hand is the doff", () => {
   const frames: Array<[FrameMask | null, FrameMask | null]> = [];
   for (let f = 0; f < 40; f++) frames.push([f >= 20 ? near : null, near]);
-  const t: Tracks = { ...tracks(frames), objectBirthsAt: (f) => (f === 20 ? new Map([[bare.id, [bbox(near)]]]) : new Map()) };
-  assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG), [{ handId: "bare_hand", t: 2.0, type: "doff", source: "detected" }]);
+  const t: Tracks = { ...tracks(frames), objectBirthsAt: (f) => (f === 0 ? new Map([[gloved.id, [bbox(near)!]]]) : f === 20 ? new Map([[bare.id, [bbox(near)!]]]) : new Map()) };
+  assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG), [
+    { handId: "bare_hand", t: 0, type: "don", source: "detected" },
+    { handId: "bare_hand", t: 2.0, type: "doff", source: "detected" },
+  ]);
+});
+
+test("a fresh gloved object born on the bare hand is a don even while the old gloved track follows the removed glove", () => {
+  // Don at 10, skin back at 25 (doff), new glove at 40 while the first glove's track never ends.
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 10; f++) frames.push([near, null]);
+  for (let f = 10; f < 60; f++) frames.push([f >= 25 ? near : null, near]);
+  const births = (f: number) =>
+    f === 10 ? new Map([[gloved.id, [bbox(near)!]]]) : f === 25 ? new Map([[bare.id, [bbox(near)!]]]) : f === 40 ? new Map([[gloved.id, [bbox(near)!]]]) : new Map();
+  const t: Tracks = { ...tracks(frames), objectBirthsAt: births };
+  assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 1.0], ["doff", 2.5], ["don", 4.0]]);
+});
+
+test("a bare object born during a one frame gloved dropout still counts as the doff", () => {
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 10; f++) frames.push([near, null]);
+  for (let f = 10; f < 40; f++) frames.push([f >= 25 ? near : null, f === 25 ? null : near]);
+  const births = (f: number) => (f === 10 ? new Map([[gloved.id, [bbox(near)!]]]) : f === 25 ? new Map([[bare.id, [bbox(near)!]]]) : new Map());
+  const t: Tracks = { ...tracks(frames), objectBirthsAt: births };
+  assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 1.0], ["doff", 2.5]]);
+});
+
+test("with per-object boxes, a bare hand born on one of two gloved hands is a doff even though the union center is far", () => {
+  // Two gloved hands 13 px apart on a 20 px frame; handover distance is 3 px.
+  const left = blob(1, 3);
+  const right = blob(14, 3);
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 30; f++) frames.push([f >= 15 ? left : null, left]);
+  const base = tracks(frames);
+  const t: Tracks = {
+    ...base,
+    objectBoundsAt: () => new Map([[gloved.id, [bbox(left)!, bbox(right)!]]]),
+    objectBirthsAt: (f) => (f === 0 ? new Map([[gloved.id, [bbox(left)!, bbox(right)!]]]) : f === 15 ? new Map([[bare.id, [bbox(left)!]]]) : new Map()),
+  };
+  assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 0], ["doff", 1.5]]);
 });
