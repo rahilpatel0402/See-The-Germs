@@ -19,12 +19,14 @@ export interface ContactConfig {
   // times the floor. Below it, the overlap is thin and goes to adjudication.
   readonly confidentIntersectionFactor: number;
   // Heuristic: a candidate is confident only if it dwelt at least this many hit frames
-  // (500 ms at 10 fps). Shorter contacts go to adjudication.
+  // (600 ms at 10 fps). Shorter contacts go to adjudication. Raised from 5 on Nov 3 after the
+  // feasibility labels: a 0.5 s brush of the rail while holding the remote below it was
+  // confident at 5, and vision review had already judged it a pass.
   readonly confidentDwellFrames: number;
   // Heuristic: a contact that lasts this fraction of the clip or more goes to vision review
-  // however thick it is. On outside footage (Oct 31) a prop between the camera and the hands
-  // read as one long confident touch; a real hold that long survives review, a foreground prop
-  // does not.
+  // however thick it is. On outside footage (Oct 31, Nov 3) a prop between the camera and the
+  // hands read as one long confident touch, 10 s of a 45 s clip in the mildest case; a real hold
+  // that long survives review, a foreground prop does not.
   readonly reviewLongerThanFraction: number;
   // Heuristic: and at least this many hit frames (5 s at 10 fps), so a short clip is not sent
   // to review for an ordinary grip.
@@ -37,8 +39,8 @@ export const CONTACT_CONFIG: ContactConfig = {
   openFrames: 3,
   closeFrames: 3,
   confidentIntersectionFactor: 2,
-  confidentDwellFrames: 5,
-  reviewLongerThanFraction: 0.5,
+  confidentDwellFrames: 6,
+  reviewLongerThanFraction: 0.2,
   reviewLongerThanMinFrames: 50,
 };
 

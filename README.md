@@ -81,9 +81,10 @@ Contacts in each demo clip are hand-labeled with a stopwatch into `labels.json`.
 
 | Clip | Labels | Detected | Precision | Recall | Named failures |
 | --- | --- | --- | --- | --- | --- |
-| A, B, C | to be measured after the Oct 31 shoot | | | | |
+| feasibility (Oct 26, 24 s, bare and clear-gloved hand, rail, remote, phone) | 6 | 7 | 0.86 | 1.00 | 1 false alarm: an open palm shown above the rail after the glove came off, 1.8 s, thick overlap, which 2D cannot separate from a touch |
+| A, B, C | to be measured when the staged clips are shot | | | | |
 
-On the Oct 26 feasibility clip (24 s, bare and clear-gloved hand, rail, remote, phone), every real contact was found with the right hand class within a second; the one false positive was a deliberate pass over the rail, which the 2D heuristic cannot distinguish from a touch and which Muse Spark vision correctly called "passing in front" from the two annotated frames. Details in `docs/API_NOTES.md`.
+On the feasibility clip every real contact was found with the right hand class within 0.2 s of the stopwatch label. The clip stages two deliberate non-contacts: a 0.5 s brush of the rail while holding the remote below it, which the engine routes to vision review and which Muse Spark vision correctly called "passing in front", and an open palm held above the rail for 1.8 s, which the engine counts because the overlap is thick and long, the one false alarm in the table. The labels were written from frame sheets before looking at the engine's candidates.
 
 To harden the pipeline before the shoot, nine public hand-hygiene and nursing skills-lab training videos were run through the live path on a local machine and checked frame by frame (none is in the demo and none is stored in the repo). That round found and fixed the glove handover failure above, added long-contact review, shot-change detection, and the first-approach Moment 1, and left the limitations below stated as measured rather than guessed. Details in `docs/ENGINE_CONTRACTS.md`.
 

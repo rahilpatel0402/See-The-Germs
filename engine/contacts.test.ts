@@ -175,7 +175,7 @@ test("a grip that rests on inferred object masks is a candidate but never confid
 
 test("a long seen grip with a few inferred frames inside it stays confident and is not marked inferred", () => {
   // Found on a YouTube test clip, Oct 27: one filled frame inside a 27 s hold made the whole
-  // contact ambiguous. Six seen hits remain here, above the confident dwell of five.
+  // contact ambiguous. Six seen hits remain here, meeting the confident dwell of six.
   const hits = [false, false, true, true, true, true, true, true, true, true, false, false, false];
   const t = tracks([hand, rail], seq(hits, handGrip));
   const inferred: Tracks = { ...t, inferredAt: (f) => (f >= 4 && f <= 5 ? new Set(["rail"]) : new Set()) };
@@ -257,8 +257,8 @@ test("a contact lasting most of the clip goes to vision review even when thick, 
   assert.equal(out.length, 1);
   assert.equal(out[0]!.confidence, "ambiguous");
   assert.equal(out[0]!.longContact, true);
-  // The same grip in a clip three times as long is an ordinary confident contact.
-  const longer = [...hits, ...Array.from({ length: 200 }, () => false)];
+  // The same grip in a clip five times as long is an ordinary confident contact.
+  const longer = [...hits, ...Array.from({ length: 400 }, () => false)];
   const out2 = detectContacts(tracks([hand, rail], seq(longer, handGrip)), CONTACT_CONFIG);
   assert.equal(out2[0]!.confidence, "confident");
   assert.equal(out2[0]!.longContact, undefined);
