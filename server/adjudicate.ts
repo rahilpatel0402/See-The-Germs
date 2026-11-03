@@ -14,9 +14,8 @@ import { HttpError } from "./errors.ts";
 import { renderAnnotatedFrame, type Outline } from "./frames.ts";
 import { adjudicationsPath, clipDir } from "./paths.ts";
 import { perceptionFor } from "./pipeline.ts";
-import { readTrack } from "./sam.ts";
 import { estimateSparkCost, type SparkBackend } from "./spark.ts";
-import { entityRecords } from "./tracks.ts";
+import { type EntityTrack, loadEntityTracks } from "./tracks.ts";
 
 const VERDICTS: readonly Verdict[] = ["touching", "passing_in_front", "unclear"];
 const HAND_COLOR = "#00e5ff";
@@ -62,15 +61,15 @@ function parseVerdict(json: unknown): Omit<Adjudication, "candidateId"> | null {
 // (dashed) at its carried-forward position. Track files are read once per run, not per frame.
 type TrackReader = (entity: EntityConfig, frameIndex: number) => Promise<MaskRecord[]>;
 
-function trackReader(clipId: string, frameCount: number, cuts: readonly number[]): TrackReader {
+function trackReader(clipId: string, resolved: readonly EntityTrack[]): TrackReader {
   const cache = new Map<string, Promise<Map<number, MaskRecord[]>>>();
   return async (entity, frameIndex) => {
     let indexed = cache.get(entity.id);
     if (!indexed) {
-      indexed = readTrack(clipId, entity.samPhrase).then((track) => {
+      indexed = Promise.resolve(resolved.find((t) => t.entity.id === entity.id)).then((track) => {
         if (!track) throw new HttpError(409, `clip ${clipId} has no track for "${entity.samPhrase}"`);
         const byFrame = new Map<number, MaskRecord[]>();
-        for (const r of entityRecords(entity, track.records, frameCount, cuts)) (byFrame.get(r.frameIndex) ?? byFrame.set(r.frameIndex, []).get(r.frameIndex)!).push(r);
+        for (const r of track.records) (byFrame.get(r.frameIndex) ?? byFrame.set(r.frameIndex, []).get(r.frameIndex)!).push(r);
         return byFrame;
       });
       cache.set(entity.id, indexed);
@@ -95,7 +94,7 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
 
   const byId = new Map(perception.entityConfigs.map((e) => [e.id, e]));
   const clipMeta = await readMeta(clipId);
-  const recordsAt = trackReader(clipId, clipMeta.sampled.frames, clipMeta.cuts ?? []);
+  const recordsAt = trackReader(clipId, (await loadEntityTracks(clipId, clipMeta, perception.entityConfigs)).tracks);
   const prompt = await loadPrompt();
   const outDir = path.join(clipDir(clipId), "adjudication");
   await mkdir(outDir, { recursive: true });

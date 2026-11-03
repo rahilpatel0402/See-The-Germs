@@ -25,14 +25,18 @@ export interface ClipMeta {
   // Shown on the clip card: a short title and one sentence on what the clip demonstrates.
   readonly title?: string;
   readonly story?: string;
+  // More than one person is in frame (a second caregiver, or the resident played by a helper).
+  // SAM then also tracks "person" and each hand is assigned to the person holding it.
+  readonly multiPerson?: boolean;
 }
 
-export async function updateClipInfo(clipId: string, info: { title?: string; story?: string }): Promise<ClipMeta> {
+export async function updateClipInfo(clipId: string, info: { title?: string; story?: string; multiPerson?: boolean }): Promise<ClipMeta> {
   const meta = await readMeta(clipId);
   const next: ClipMeta = {
     ...meta,
     ...(info.title !== undefined ? { title: info.title.trim().slice(0, 80) } : {}),
     ...(info.story !== undefined ? { story: info.story.trim().slice(0, 300) } : {}),
+    ...(info.multiPerson !== undefined ? { multiPerson: info.multiPerson } : {}),
   };
   await writeMeta(next);
   return next;

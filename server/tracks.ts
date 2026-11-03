@@ -8,13 +8,89 @@ import { GAP_FILL_CONFIG } from "../engine/config.ts";
 import { fromRecord, union } from "../engine/masks.ts";
 import { fillObjectGaps } from "../engine/persistence.ts";
 import { isHand } from "../engine/gloves.ts";
+import { assignHandObjects, labelPersons, PERSON_CONFIG, RESIDENT_PERSON } from "../engine/persons.ts";
 import type { Entity, FrameMask, MaskBounds, MaskRecord, Tracks } from "../engine/types.ts";
-import { readMeta } from "./clips.ts";
+import { type ClipMeta, readMeta } from "./clips.ts";
 import { passesConfidence, readEntities, type EntityConfig } from "./entities.ts";
 import { readTrack } from "./sam.ts";
 
 // Frames kept decoded at once. The engine walks forward and looks back at most ten frames.
 const FRAME_CACHE_SIZE = 24;
+
+// The SAM phrase tracked alongside the props when a clip has more than one person in frame.
+export const PERSON_PHRASE = "person";
+
+export interface EntityTrack {
+  readonly entity: EntityConfig;
+  readonly records: MaskRecord[];
+}
+
+// Every entity's records exactly as the engine, the overlay, and the adjudication images see
+// them: confidence applied, object gaps filled (never across a cut), and, when the clip has
+// more than one person, each hand object assigned to the person holding it. Hands of a second
+// caregiver become their own entities with person "P2"; hands of a person lying on the resident
+// zone are the resident's and are dropped.
+export async function loadEntityTracks(clipId: string, meta: ClipMeta, entities: readonly EntityConfig[]): Promise<{ tracks: EntityTrack[]; missingPhrases: string[] }> {
+  const frameCount = meta.sampled.frames;
+  const cuts = meta.cuts ?? [];
+  const missing: string[] = [];
+  const raw = new Map<string, readonly MaskRecord[]>();
+  for (const entity of entities) {
+    const track = await readTrack(clipId, entity.samPhrase);
+    if (!track) {
+      missing.push(entity.samPhrase);
+      continue;
+    }
+    raw.set(entity.id, track.records);
+  }
+  const persons = meta.multiPerson ? await readTrack(clipId, PERSON_PHRASE) : null;
+  let handOwner: ReadonlyMap<string, string> | null = null;
+  if (persons) {
+    const residentRecords = entities.filter((e) => e.class === "resident_zone").flatMap((e) => (raw.get(e.id) ?? []).filter((r) => passesConfidence(e, r)));
+    const labels = labelPersons(persons.records, residentRecords, PERSON_CONFIG);
+    const handRecords = entities.filter(isHand).flatMap((e) => (raw.get(e.id) ?? []).filter((r) => passesConfidence(e, r)).map((r) => ({ ...r, objectId: `${e.id}|${r.objectId}` })));
+    const people = new Set(labels.values());
+    people.delete(RESIDENT_PERSON);
+    if (people.size === 0) {
+      // A person track that found nobody standing must not erase the analysis: fall back to
+      // one caregiver, as if the flag were off.
+      console.log(`persons | ${clipId} | person track found no caregiver (${labels.size} person object${labels.size === 1 ? "" : "s"}, all on the resident zone); hands kept as one caregiver`);
+    } else {
+      handOwner = assignHandObjects(handRecords, persons.records, labels);
+      console.log(`persons | ${clipId} | ${people.size} caregiver${people.size === 1 ? "" : "s"} in frame${labels.size > people.size ? ", plus the resident" : ""}; hand objects assigned by person box`);
+    }
+  }
+
+  const out: EntityTrack[] = [];
+  for (const entity of entities) {
+    const records = raw.get(entity.id);
+    if (!records) continue;
+    if (!isHand(entity) || handOwner === null) {
+      out.push({ entity, records: entityRecords(entity, records, frameCount, cuts) });
+      continue;
+    }
+    const kept = records.filter((r) => passesConfidence(entity, r));
+    const byPerson = new Map<string, MaskRecord[]>();
+    for (const r of kept) {
+      const owner = handOwner.get(`${entity.id}|${r.objectId}`) ?? "P1";
+      if (owner === RESIDENT_PERSON) continue;
+      const list = byPerson.get(owner);
+      if (list) list.push(r);
+      else byPerson.set(owner, [r]);
+    }
+    const base = entity.person ?? "P1";
+    for (const person of [...byPerson.keys()].sort()) {
+      const personRecords = byPerson.get(person) as MaskRecord[];
+      if (person === base) out.push({ entity, records: personRecords });
+      else {
+        const n = Number(person.replace(/\D/g, "")) || 2;
+        out.push({ entity: { ...entity, id: `${entity.id}_${person.toLowerCase()}`, label: `${entity.label} (caregiver ${n})`, person }, records: personRecords });
+      }
+    }
+    if (!byPerson.has(base)) out.push({ entity, records: [] });
+  }
+  return { tracks: out, missingPhrases: missing };
+}
 
 // Records for one entity: confidence applied, and for objects, gaps filled and marked inferred.
 export function entityRecords(entity: EntityConfig, records: readonly MaskRecord[], frameCount: number, cuts: readonly number[] = []): MaskRecord[] {
@@ -35,13 +111,10 @@ export interface TracksPayload {
 export async function tracksPayload(clipId: string): Promise<TracksPayload> {
   const meta = await readMeta(clipId);
   const entities = await readEntities(clipId);
+  const resolved = await loadEntityTracks(clipId, meta, entities);
   const tracks: Record<string, MaskRecord[]> = {};
-  for (const entity of entities) {
-    const track = await readTrack(clipId, entity.samPhrase);
-    if (!track) continue;
-    tracks[entity.id] = entityRecords(entity, track.records, meta.sampled.frames, meta.cuts ?? []);
-  }
-  return { frameSize: { w: meta.sampled.width, h: meta.sampled.height }, fps: meta.fps, frames: meta.sampled.frames, entities: plainEntities(entities), tracks };
+  for (const t of resolved.tracks) tracks[t.entity.id] = t.records;
+  return { frameSize: { w: meta.sampled.width, h: meta.sampled.height }, fps: meta.fps, frames: meta.sampled.frames, entities: plainEntities(resolved.tracks.map((t) => t.entity)), tracks };
 }
 
 export function plainEntities(entities: readonly EntityConfig[]): Entity[] {
@@ -72,7 +145,8 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   const entities = await readEntities(clipId);
   const frameSize = { w: meta.sampled.width, h: meta.sampled.height };
   const frameCount = meta.sampled.frames;
-  const missing: string[] = [];
+  const resolved = await loadEntityTracks(clipId, meta, entities);
+  const missing = resolved.missingPhrases;
 
   // entity id -> frame index -> records (small: encoded payloads only).
   const byEntity = new Map<string, Map<number, MaskRecord[]>>();
@@ -89,25 +163,20 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
     map.set(key, made);
     return made;
   };
-  for (const entity of entities) {
-    const track = await readTrack(clipId, entity.samPhrase);
-    if (!track) {
-      missing.push(entity.samPhrase);
-      continue;
-    }
+  for (const { entity, records } of resolved.tracks) {
     const perFrame = new Map<number, MaskRecord[]>();
-    for (const record of entityRecords(entity, track.records, frameCount, meta.cuts ?? [])) {
+    for (const record of records) {
       getOrInit(perFrame, record.frameIndex, () => []).push(record);
       if (record.inferred) getOrInit(inferredByFrame, record.frameIndex, () => new Set<string>()).add(entity.id);
       else if (isHand(entity)) getOrInit(getOrInit(objectBoxesByFrame, record.frameIndex, () => new Map<string, MaskBounds[]>()), entity.id, () => []).push(record.bounds);
     }
     if (isHand(entity)) {
-      // Birth frame from the raw track so a confidence dip never manufactures one, but only for
-      // objects that survive the gate at all: an object below it everywhere is not a hand.
-      const survivors = new Set(track.records.filter((r) => passesConfidence(entity, r)).map((r) => r.objectId));
+      // Births from the raw track of the phrase, restricted to the objects this entity kept.
+      const rawRecords = (await readTrack(clipId, entity.samPhrase))?.records ?? [];
+      const mine = new Set(records.map((r) => r.objectId));
       const firstFrame = new Map<string, MaskRecord>();
-      for (const record of track.records) {
-        if (!survivors.has(record.objectId)) continue;
+      for (const record of rawRecords) {
+        if (!mine.has(record.objectId)) continue;
         const seen = firstFrame.get(record.objectId);
         if (seen === undefined || record.frameIndex < seen.frameIndex) firstFrame.set(record.objectId, record);
       }
@@ -157,6 +226,7 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   const objectBirthsAt = (frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]> => birthsByFrame.get(frameIndex) ?? EMPTY_BIRTHS;
   const objectBoundsAt = (frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]> => objectBoxesByFrame.get(frameIndex) ?? EMPTY_BIRTHS;
 
-  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount, entities: plainEntities(entities), masksAt, boundsAt, inferredAt, objectBirthsAt, objectBoundsAt };
-  return { tracks, entities, missingPhrases: missing };
+  const effective = resolved.tracks.map((t) => t.entity);
+  const tracks: Tracks = { frameSize, fps: meta.fps, frameCount, entities: plainEntities(effective), masksAt, boundsAt, inferredAt, objectBirthsAt, objectBoundsAt };
+  return { tracks, entities: effective, missingPhrases: missing };
 }

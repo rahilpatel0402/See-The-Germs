@@ -37,6 +37,7 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
   const [duration, setDuration] = useState<number | null>(null);
   // Frame indexes where the clip changes shot. The engine never carries a prop across one.
   const [cuts, setCuts] = useState<readonly number[]>([]);
+  const [multiPerson, setMultiPerson] = useState(false);
   const [proposing, setProposing] = useState(false);
   const [scene, setScene] = useState<SceneResult | null>(null);
 
@@ -70,6 +71,7 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
         setEntities(info.entities);
         setDuration(info.clip.source.durationS);
         setCuts(info.clip.cuts ?? []);
+        setMultiPerson(info.clip.multiPerson === true);
       })
       .catch((e: Error) => setError(e.message));
   }, [resumeClipId]);
@@ -240,6 +242,20 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
             {duration !== null ? `${duration.toFixed(1)} s clip. ` : ""}
             Name what is in the scene. The phrase is what SAM looks for: describe how the prop looks, not what it is for ("white rod" works, "bed rail" may not).
             Keep the two hands. Remove props that are not in the clip.
+          </p>
+          <p className="mark-row">
+            <label title="SAM also tracks each person; hands are assigned to the person holding them, and a helper lying in the resident zone is the resident, not a caregiver">
+              <input
+                type="checkbox"
+                checked={multiPerson}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setMultiPerson(on);
+                  if (clipId) api.updateInfo(clipId, { multiPerson: on }).catch(fail);
+                }}
+              />{" "}
+              More than one person is in frame (a second caregiver, or a helper playing the resident)
+            </label>
           </p>
           <p className="mark-row">
             <label>

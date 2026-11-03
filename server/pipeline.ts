@@ -20,7 +20,7 @@ import { readEntities, type EntityConfig } from "./entities.ts";
 import { HttpError } from "./errors.ts";
 import { entitiesPath, metaPath, trackPath } from "./paths.ts";
 import { readAdjudications, readScenario, validateScenario } from "./scenario.ts";
-import { loadTracks } from "./tracks.ts";
+import { loadTracks, PERSON_PHRASE } from "./tracks.ts";
 
 export interface Pipeline {
   readonly analysis: Analysis;
@@ -82,19 +82,20 @@ async function mtime(file: string): Promise<string> {
 
 async function perceptionKey(clipId: string, entities: readonly EntityConfig[]): Promise<string> {
   const parts = [await mtime(metaPath(clipId)), await mtime(entitiesPath(clipId))];
-  for (const phrase of new Set(entities.map((e) => e.samPhrase))) parts.push(`${phrase}=${await mtime(trackPath(clipId, phrase))}`);
+  for (const phrase of new Set([...entities.map((e) => e.samPhrase), PERSON_PHRASE])) parts.push(`${phrase}=${await mtime(trackPath(clipId, phrase))}`);
   return parts.join("|");
 }
 
 // Candidates and glove events for a clip, from cache when nothing on disk has changed.
 export async function perceptionFor(clipId: string): Promise<Perception> {
-  const entityConfigs = await readEntities(clipId);
-  const key = await perceptionKey(clipId, entityConfigs);
+  const stored = await readEntities(clipId);
+  const key = await perceptionKey(clipId, stored);
   const cached = perceptionCache.get(clipId);
   if (cached && cached.key === key) return cached.value;
 
   const meta = await readMeta(clipId);
-  const { tracks, missingPhrases } = await loadTracks(clipId);
+  // The effective table: with more than one person in frame, hands are split per caregiver.
+  const { tracks, missingPhrases, entities: entityConfigs } = await loadTracks(clipId);
   if (missingPhrases.length > 0) {
     throw new HttpError(409, `clip ${clipId} is not segmented for: ${missingPhrases.join(", ")}. Run segmentation first.`);
   }

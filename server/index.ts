@@ -16,7 +16,7 @@ import { readEntities, validateEntities, writeEntities } from "./entities.ts";
 import { HttpError } from "./errors.ts";
 import { withClipLock } from "./locks.ts";
 import { analysisPath, clipDir, sampledPath, TMP_DIR, trackPath } from "./paths.ts";
-import { tracksPayload } from "./tracks.ts";
+import { PERSON_PHRASE, tracksPayload } from "./tracks.ts";
 import { adjudicateClip } from "./adjudicate.ts";
 import { BOX_PREFIX, deleteRemoteFile, MetaSamBackend, segmentBox, segmentPhrase } from "./sam.ts";
 import { readAdjudications } from "./scenario.ts";
@@ -86,10 +86,11 @@ app.get("/api/clips", wrap(async (_req, res) => {
 // Title and story for the clip card. Allowed on demo clips too: it is presentation, not data.
 app.put("/api/clips/:id/info", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
-  const body = (req.body ?? {}) as { title?: unknown; story?: unknown };
+  const body = (req.body ?? {}) as { title?: unknown; story?: unknown; multiPerson?: unknown };
   const info = {
     ...(typeof body.title === "string" ? { title: body.title } : {}),
     ...(typeof body.story === "string" ? { story: body.story } : {}),
+    ...(typeof body.multiPerson === "boolean" ? { multiPerson: body.multiPerson } : {}),
   };
   res.json({ clip: await updateClipInfo(meta.id, info) });
 }));
@@ -265,7 +266,7 @@ app.post("/api/segment", wrap(async (req, res) => {
   const clipId = String((req.body as { clipId?: unknown })?.clipId ?? "");
   const meta = await readMeta(clipId);
   const entities = await readEntities(meta.id);
-  const phrases = [...new Set(entities.map((e) => e.samPhrase))];
+  const phrases = [...new Set([...entities.map((e) => e.samPhrase), ...(meta.multiPerson ? [PERSON_PHRASE] : [])])];
   // Demo clips are served from cache and never spend credit.
   if (isDemo(meta.id)) {
     for (const phrase of phrases) if (!existsSync(trackPath(meta.id, phrase))) throw new HttpError(403, `${meta.id} is a demo clip; "${phrase}" is not cached and will not be segmented live`);

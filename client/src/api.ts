@@ -56,6 +56,8 @@ export interface ClipInfo {
     readonly sampled: { readonly frames: number };
     // Frame indexes that start a new shot; empty or absent for a single take.
     readonly cuts?: readonly number[];
+    // More than one person in frame: SAM also tracks people and hands are assigned by person.
+    readonly multiPerson?: boolean;
   };
   readonly entities: EntityConfig[];
 }
@@ -197,7 +199,7 @@ export type NarrativeLanguage = "en" | "es";
 
 export const api = {
   clips: () => request<{ clips: string[]; demo: string[]; details: ClipDetail[] }>("/api/clips"),
-  updateInfo: (clipId: string, info: { title?: string; story?: string }) =>
+  updateInfo: (clipId: string, info: { title?: string; story?: string; multiPerson?: boolean }) =>
     request<{ clip: unknown }>(`/api/clips/${encodeURIComponent(clipId)}/info`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(info) }),
   deleteClip: (clipId: string) => request<{ deleted: string }>(`/api/clips/${encodeURIComponent(clipId)}`, { method: "DELETE" }),
   session: (clipIds: readonly string[]) => request<SessionReport>(`/api/compliance?clips=${encodeURIComponent(clipIds.join(","))}`),
