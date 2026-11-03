@@ -123,3 +123,10 @@ test("contaminatedDurationsAt accumulates time dirty, including across a clean-u
 test("same input, same output", () => {
   assert.deepEqual(propagate(base), propagate(base));
 });
+
+test("touching the source resident again with a contaminated hand is not an exposure; another resident is", () => {
+  const entities = [...CLIP_A_ENTITIES, { id: "resident_A", label: "resident A", class: "resident_zone" as const, zone: "patient_zone_A" as const, samPhrase: "pillow" }];
+  const contacts = [contact("bare_hand", "resident_A", 1, 2), contact("bare_hand", "resident_A", 3, 4), contact("bare_hand", "resident_B", 6, 7)];
+  const r = propagate({ ...base, entities, contacts, scenario: { sourceEntityId: "resident_A", pathogen: "mrsa" } });
+  assert.deepEqual(r.residentExposures.map((x) => [x.residentId, x.t]), [["resident_B", 6]]);
+});

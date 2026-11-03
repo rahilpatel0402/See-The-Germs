@@ -21,6 +21,14 @@ export interface ContactConfig {
   // Heuristic: a candidate is confident only if it dwelt at least this many hit frames
   // (500 ms at 10 fps). Shorter contacts go to adjudication.
   readonly confidentDwellFrames: number;
+  // Heuristic: a contact that lasts this fraction of the clip or more goes to vision review
+  // however thick it is. On outside footage (Oct 31) a prop between the camera and the hands
+  // read as one long confident touch; a real hold that long survives review, a foreground prop
+  // does not.
+  readonly reviewLongerThanFraction: number;
+  // Heuristic: and at least this many hit frames (5 s at 10 fps), so a short clip is not sent
+  // to review for an ordinary grip.
+  readonly reviewLongerThanMinFrames: number;
 }
 
 export const CONTACT_CONFIG: ContactConfig = {
@@ -30,6 +38,8 @@ export const CONTACT_CONFIG: ContactConfig = {
   closeFrames: 3,
   confidentIntersectionFactor: 2,
   confidentDwellFrames: 5,
+  reviewLongerThanFraction: 0.5,
+  reviewLongerThanMinFrames: 50,
 };
 
 // The frame size the pixel constants above were chosen at.
@@ -96,12 +106,25 @@ export const DOFF_EXPOSES_BARE_HAND = true;
 
 export interface AdjudicationConfig {
   // Heuristic: at most this many Spark vision calls per clip, to protect the credit budget
-  // (PLAN.md 6.8). Lowest-overlap candidates go first; the rest wait unreviewed and are not
-  // counted as contacts until a verdict exists.
+  // (PLAN.md 6.8). Contacts flagged long are reviewed outside the cap; of the rest the
+  // lowest-overlap candidates go first and the remainder wait unreviewed, not counted as
+  // contacts until a verdict exists.
   readonly capPerClip: number;
 }
 
 export const ADJUDICATION_CONFIG: AdjudicationConfig = { capPerClip: 12 };
+
+// Clinical rule choice, proposed Tue Nov 3 after outside footage, for Rahil to confirm or flip:
+// the first touch of a resident in a clip is a Moment 1 opportunity when the person's first
+// touch of anything comes at least minLeadS into the clip (so the approach, and the chance to
+// clean hands on camera, is in the clip), even if nothing outside the zone was touched first. WHO Moment 1 is before every approach to the patient; a clip that
+// opens on the walk to the bed shows that approach.
+export const FIRST_RESIDENT_CONTACT = { isOpportunity: true, minLeadS: 2 } as const;
+
+// Clinical rule choice, proposed Tue Nov 3, for Rahil to confirm or flip: a contaminated hand
+// touching the resident who is the chosen source is not a transmission, so it is not counted as
+// an exposure. Only other residents are.
+export const COUNT_EXPOSURE_OF_SOURCE_RESIDENT = false;
 
 export interface GapFillConfig {
   readonly enabled: boolean;

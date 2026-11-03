@@ -15,3 +15,5 @@ Ideas that appeared during the build and were not in the ladder. Written down so
 
 - Analyze a video from a YouTube link. Deferred (Oct 27): real-facility footage conflicts with the staged-only rule and the not-surveillance stance, downloaders are fragile and mostly Python, and an unstaged scene lacks a source surface and zones. If ever revisited: only for staged training footage the user has rights to, through the existing upload path, never a live fetch in the demo.
 
+
+- Hygiene without a visible dispenser: a sustained two-hand rub with no object contact could be offered as "rub seen, agent unknown" for the user to confirm. Seen on the CNA skills clip, Nov 3.

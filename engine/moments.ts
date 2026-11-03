@@ -9,6 +9,7 @@
 // without touching the patient). Moment 1 is one opportunity per arrival at a resident, Moment 2
 // one per approach to an aseptic task.
 
+import { FIRST_RESIDENT_CONTACT } from "./config.ts";
 import { personOf } from "./gloves.ts";
 import type { ContactEvent, Entity, HygieneEvent, MomentMiss, MomentOpportunity, PropagationResult } from "./types.ts";
 
@@ -60,6 +61,9 @@ export function detectMomentOpportunities(input: MomentsInput): MomentOpportunit
     const contacts = [...list].sort((a, b) => a.startT - b.startT || a.endT - b.endT);
     const chargedOutside = new Set<number>();
     const chargedAseptic = new Set<number>();
+    let residentSeen = false;
+    // When the person's first touch of any kind comes this late, the clip shows their approach.
+    const approachOnCamera = (contacts[0]?.startT ?? 0) >= FIRST_RESIDENT_CONTACT.minLeadS;
 
     let episodeZone: string | null = null;
     let episodeTouchedResident = false;
@@ -101,7 +105,12 @@ export function detectMomentOpportunities(input: MomentsInput): MomentOpportunit
         if (outside !== undefined && !chargedOutside.has(outsideIndex)) {
           chargedOutside.add(outsideIndex);
           found.push({ moment: 1, handId: c.handId, t: c.startT, met: hygieneBetween(person, outside.endT, c.startT) });
+        } else if (outside === undefined && !residentSeen && FIRST_RESIDENT_CONTACT.isOpportunity && approachOnCamera) {
+          // The first approach of the clip: the caregiver arrived from somewhere, and had time
+          // on camera to clean hands before this touch.
+          found.push({ moment: 1, handId: c.handId, t: c.startT, met: hygieneBetween(person, 0, c.startT) });
         }
+        residentSeen = true;
       }
 
       // Moment 2: before a clean or aseptic task, once per approach.

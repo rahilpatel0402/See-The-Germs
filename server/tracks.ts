@@ -17,9 +17,9 @@ import { readTrack } from "./sam.ts";
 const FRAME_CACHE_SIZE = 24;
 
 // Records for one entity: confidence applied, and for objects, gaps filled and marked inferred.
-export function entityRecords(entity: EntityConfig, records: readonly MaskRecord[], frameCount: number): MaskRecord[] {
+export function entityRecords(entity: EntityConfig, records: readonly MaskRecord[], frameCount: number, cuts: readonly number[] = []): MaskRecord[] {
   const kept = records.filter((r) => passesConfidence(entity, r));
-  return isHand(entity) ? kept : fillObjectGaps(kept, frameCount, GAP_FILL_CONFIG);
+  return isHand(entity) ? kept : fillObjectGaps(kept, frameCount, GAP_FILL_CONFIG, cuts);
 }
 
 // What the client needs to draw the overlay: raw records per entity, the same records the
@@ -39,7 +39,7 @@ export async function tracksPayload(clipId: string): Promise<TracksPayload> {
   for (const entity of entities) {
     const track = await readTrack(clipId, entity.samPhrase);
     if (!track) continue;
-    tracks[entity.id] = entityRecords(entity, track.records, meta.sampled.frames);
+    tracks[entity.id] = entityRecords(entity, track.records, meta.sampled.frames, meta.cuts ?? []);
   }
   return { frameSize: { w: meta.sampled.width, h: meta.sampled.height }, fps: meta.fps, frames: meta.sampled.frames, entities: plainEntities(entities), tracks };
 }
@@ -96,7 +96,7 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
       continue;
     }
     const perFrame = new Map<number, MaskRecord[]>();
-    for (const record of entityRecords(entity, track.records, frameCount)) {
+    for (const record of entityRecords(entity, track.records, frameCount, meta.cuts ?? [])) {
       getOrInit(perFrame, record.frameIndex, () => []).push(record);
       if (record.inferred) getOrInit(inferredByFrame, record.frameIndex, () => new Set<string>()).add(entity.id);
       else if (isHand(entity)) getOrInit(getOrInit(objectBoxesByFrame, record.frameIndex, () => new Map<string, MaskBounds[]>()), entity.id, () => []).push(record.bounds);

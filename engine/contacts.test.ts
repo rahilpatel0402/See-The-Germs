@@ -249,3 +249,17 @@ test("the bounding box pre-check skips far pairs and never changes the result", 
   assert.deepEqual(detectContacts(counted, CONTACT_CONFIG), detectContacts(t, CONTACT_CONFIG));
   assert.ok(scans > 0);
 });
+
+test("a contact lasting most of the clip goes to vision review even when thick, and is marked long", () => {
+  // 100 frames, grip for 60 of them: thick, long, and most of the clip, so ambiguous with the flag.
+  const hits = Array.from({ length: 100 }, (_, f) => f >= 20 && f < 80);
+  const out = detectContacts(tracks([hand, rail], seq(hits, handGrip)), CONTACT_CONFIG);
+  assert.equal(out.length, 1);
+  assert.equal(out[0]!.confidence, "ambiguous");
+  assert.equal(out[0]!.longContact, true);
+  // The same grip in a clip three times as long is an ordinary confident contact.
+  const longer = [...hits, ...Array.from({ length: 200 }, () => false)];
+  const out2 = detectContacts(tracks([hand, rail], seq(longer, handGrip)), CONTACT_CONFIG);
+  assert.equal(out2[0]!.confidence, "confident");
+  assert.equal(out2[0]!.longContact, undefined);
+});

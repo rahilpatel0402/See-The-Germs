@@ -50,7 +50,13 @@ export interface EntityConfig extends Entity {
 }
 
 export interface ClipInfo {
-  readonly clip: { readonly id: string; readonly source: { readonly durationS: number; readonly width: number; readonly height: number }; readonly sampled: { readonly frames: number } };
+  readonly clip: {
+    readonly id: string;
+    readonly source: { readonly durationS: number; readonly width: number; readonly height: number };
+    readonly sampled: { readonly frames: number };
+    // Frame indexes that start a new shot; empty or absent for a single take.
+    readonly cuts?: readonly number[];
+  };
   readonly entities: EntityConfig[];
 }
 

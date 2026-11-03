@@ -1,7 +1,7 @@
 // Contamination propagation: a small state machine over entities and hands, driven by a merged
 // timeline of glove, hygiene, and contact events. Pure and deterministic. Rules are PLAN.md 6.4.
 
-import { DOFF_EXPOSES_BARE_HAND } from "./config.ts";
+import { COUNT_EXPOSURE_OF_SOURCE_RESIDENT, DOFF_EXPOSES_BARE_HAND } from "./config.ts";
 import { isHand, personOf } from "./gloves.ts";
 import type {
   ContactEvent,
@@ -183,7 +183,7 @@ export function propagate(input: PropagationInput): PropagationResult {
     const targetContaminated = state.get(target.id) ?? false;
     const handWasContaminated = h.contaminated;
 
-    if (handWasContaminated && target.class === "resident_zone") {
+    if (handWasContaminated && target.class === "resident_zone" && (COUNT_EXPOSURE_OF_SOURCE_RESIDENT || target.id !== input.scenario.sourceEntityId)) {
       exposures.push({ residentId: target.id, handId: hand.id, t: item.t });
     }
     if (handWasContaminated && !targetContaminated) {

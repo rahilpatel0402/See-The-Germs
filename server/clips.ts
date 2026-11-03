@@ -7,7 +7,7 @@ import path from "node:path";
 import { SAMPLE_FPS } from "../engine/config.ts";
 import { DEFAULT_ENTITIES, writeEntities } from "./entities.ts";
 import { HttpError } from "./errors.ts";
-import { probe, resample, type ProbeInfo } from "./ffmpeg.ts";
+import { probe, resample, type ProbeInfo, detectCuts } from "./ffmpeg.ts";
 import { CLIPS_DIR, clipDir, entitiesPath, isValidClipId, metaPath, sampledPath } from "./paths.ts";
 
 export interface ClipMeta {
@@ -18,6 +18,8 @@ export interface ClipMeta {
   readonly source: ProbeInfo;
   readonly sampled: ProbeInfo;
   readonly fps: number;
+  // Frame indexes that start a new shot (server/ffmpeg.ts detectCuts). Empty for a single take.
+  readonly cuts?: readonly number[];
   // Files API id of the uploaded sampled clip, kept so every class call reuses one upload.
   readonly remoteFileId?: string;
   // Shown on the clip card: a short title and one sentence on what the clip demonstrates.
@@ -78,6 +80,11 @@ export async function ensureClip(clipId: string, knownSource?: ProbeInfo): Promi
   const source = knownSource ?? (await probe(sourcePath));
   await resample(sourcePath, sampledPath(clipId), SAMPLE_FPS);
   const sampled = await probe(sampledPath(clipId), { countFrames: true });
+  const cuts = await detectCuts(sampledPath(clipId), SAMPLE_FPS).catch((err: Error) => {
+    console.log(`ffmpeg  | ${clipId} | cut detection failed: ${err.message}`);
+    return [] as number[];
+  });
+  if (cuts.length > 0) console.log(`ffmpeg  | ${clipId} | ${cuts.length} shot change${cuts.length === 1 ? "" : "s"} at frames ${cuts.join(", ")}`);
   const meta: ClipMeta = {
     id: clipId,
     createdAt: new Date().toISOString(),
@@ -86,6 +93,7 @@ export async function ensureClip(clipId: string, knownSource?: ProbeInfo): Promi
     source,
     sampled,
     fps: SAMPLE_FPS,
+    ...(cuts.length > 0 ? { cuts } : {}),
   };
   await writeMeta(meta);
   if (!existsSync(entitiesPath(clipId))) await writeEntities(clipId, DEFAULT_ENTITIES);

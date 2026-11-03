@@ -35,11 +35,14 @@ export function planAdjudication(
   const eligible = candidates.filter((c) => c.confidence === "ambiguous" && !done.has(c.id));
   // Live verdicts count against the cap, so a clip never exceeds it across runs.
   const budget = Math.max(0, config.capPerClip - done.size);
-  // Lowest overlap first: the thinnest contacts are the ones most worth a second look.
-  const byOverlap = [...eligible].sort(
-    (a, b) => a.peakIntersectionPx - b.peakIntersectionPx || a.startFrame - b.startFrame || a.id.localeCompare(b.id),
-  );
-  const chosen = new Set(byOverlap.slice(0, budget).map((c) => c.id));
+  // Long contacts are always reviewed, outside the cap: a prop in front of the hands or a real
+  // hold that long changes the whole analysis, and there are never more than a few. The cap
+  // then buys the thinnest of the rest, the ones most worth a second look.
+  const long = eligible.filter((c) => c.longContact === true);
+  const byOverlap = eligible
+    .filter((c) => c.longContact !== true)
+    .sort((a, b) => a.peakIntersectionPx - b.peakIntersectionPx || a.startFrame - b.startFrame || a.id.localeCompare(b.id));
+  const chosen = new Set([...long, ...byOverlap.slice(0, budget)].map((c) => c.id));
   const byStart = (a: ContactCandidate, b: ContactCandidate): number => a.startFrame - b.startFrame || a.id.localeCompare(b.id);
   const selected = eligible.filter((c) => chosen.has(c.id)).sort(byStart);
   const skipped = eligible.filter((c) => !chosen.has(c.id)).sort(byStart);

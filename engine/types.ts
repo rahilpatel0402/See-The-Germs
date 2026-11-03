@@ -117,6 +117,9 @@ export interface ContactCandidate {
   readonly dwellFrames: number;
   // True when any hit frame used an inferred object mask (occluded or not yet detected).
   readonly inferredObject?: boolean;
+  // True when the contact lasted most of the clip, so it was sent to vision review even though
+  // the overlap was thick: a prop in front of the hands looks exactly like a long hold.
+  readonly longContact?: boolean;
 }
 
 export type Verdict = "touching" | "passing_in_front" | "unclear";

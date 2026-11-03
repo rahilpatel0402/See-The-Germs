@@ -79,6 +79,19 @@ export async function resample(src: string, dst: string, fps: number): Promise<v
   ]);
 }
 
+// Shot changes in the sampled clip as frame indexes (the first frame of each new shot), from
+// ffmpeg's scene score. A staged single take has none; an edited video has one per cut, and the
+// engine never carries an object across one.
+export async function detectCuts(file: string, fps: number, threshold = 0.4): Promise<number[]> {
+  const { stderr } = await run(bin("ffmpeg"), ["-v", "info", "-i", file, "-vf", `select='gt(scene,${threshold})',showinfo`, "-f", "null", "-"], { maxBuffer: 64 * 1024 * 1024 });
+  const cuts: number[] = [];
+  for (const m of String(stderr).matchAll(/pts_time:\s*([0-9.]+)/g)) {
+    const frame = Math.round(Number(m[1]) * fps);
+    if (frame > 0 && cuts[cuts.length - 1] !== frame) cuts.push(frame);
+  }
+  return cuts;
+}
+
 // One frame at time t as a PNG. Used later for adjudication images.
 export async function extractFrame(src: string, t: number, dst: string): Promise<void> {
   await run(bin("ffmpeg"), ["-y", "-v", "error", "-ss", String(t), "-i", src, "-frames:v", "1", dst]);

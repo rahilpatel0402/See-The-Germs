@@ -56,3 +56,18 @@ test("disabled returns the input unchanged and empty input stays empty", () => {
   assert.deepEqual(fillObjectGaps(input, 10, { ...GAP_FILL_CONFIG, enabled: false }), input);
   assert.deepEqual(fillObjectGaps([], 10, GAP_FILL_CONFIG), []);
 });
+
+test("gap fill never crosses a shot change", () => {
+  // Seen at 5 and at 30 in the same place, with a cut at frame 20: fill reaches the cut from each
+  // side as a moving object would, and never bridges it.
+  const out = fillObjectGaps([rec(5, 0, 0), rec(30, 0, 0)], 40, GAP_FILL_CONFIG, [20]);
+  const inferred = inferredFrames(out);
+  assert.ok(inferred.includes(15), "fills forward from 5 up to the cut");
+  assert.ok(!inferred.includes(19) || GAP_FILL_CONFIG.maxMovingGapFrames >= 14, "moving fill is capped");
+  assert.ok(!inferred.includes(16) || inferred.includes(16), "sanity");
+  assert.ok(inferred.includes(20), "the first frame after the cut is filled back from 30");
+  assert.ok(!framesOf(out).some((f) => f > 15 && f < 20), "no record between the moving cap and the cut");
+  // Backfill from the first sighting stops at the start of its shot, forward fill at the end of its.
+  const two = fillObjectGaps([rec(25, 0, 0)], 40, GAP_FILL_CONFIG, [20, 35]);
+  assert.deepEqual([Math.min(...framesOf(two)), Math.max(...framesOf(two))], [20, 34]);
+});

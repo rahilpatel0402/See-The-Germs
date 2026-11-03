@@ -59,3 +59,16 @@ test("same input, same plan", () => {
   const cands = [cand(2, "ambiguous", 20), cand(1, "ambiguous", 20)];
   assert.deepEqual(planAdjudication(cands, [], ADJUDICATION_CONFIG), planAdjudication(cands, [], ADJUDICATION_CONFIG));
 });
+
+test("long contacts are selected before thin ones when the cap bites", () => {
+  const thin = cand(1, "ambiguous", 10);
+  const long: ContactCandidate = { ...cand(2, "ambiguous", 5000), longContact: true };
+  const other = cand(3, "ambiguous", 20);
+  const plan = planAdjudication([thin, long, other], [], { capPerClip: 2 });
+  assert.deepEqual(plan.selected.map((c) => c.id), [thin.id, long.id, other.id]);
+  assert.deepEqual(plan.skipped, []);
+  // Long contacts sit outside the cap: with no budget left they are still reviewed.
+  const spent = planAdjudication([thin, long, other], [], { capPerClip: 0 });
+  assert.deepEqual(spent.selected.map((c) => c.id), [long.id]);
+  assert.deepEqual(spent.skipped.map((c) => c.id), [thin.id, other.id]);
+});

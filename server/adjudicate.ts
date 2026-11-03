@@ -62,7 +62,7 @@ function parseVerdict(json: unknown): Omit<Adjudication, "candidateId"> | null {
 // (dashed) at its carried-forward position. Track files are read once per run, not per frame.
 type TrackReader = (entity: EntityConfig, frameIndex: number) => Promise<MaskRecord[]>;
 
-function trackReader(clipId: string, frameCount: number): TrackReader {
+function trackReader(clipId: string, frameCount: number, cuts: readonly number[]): TrackReader {
   const cache = new Map<string, Promise<Map<number, MaskRecord[]>>>();
   return async (entity, frameIndex) => {
     let indexed = cache.get(entity.id);
@@ -70,7 +70,7 @@ function trackReader(clipId: string, frameCount: number): TrackReader {
       indexed = readTrack(clipId, entity.samPhrase).then((track) => {
         if (!track) throw new HttpError(409, `clip ${clipId} has no track for "${entity.samPhrase}"`);
         const byFrame = new Map<number, MaskRecord[]>();
-        for (const r of entityRecords(entity, track.records, frameCount)) (byFrame.get(r.frameIndex) ?? byFrame.set(r.frameIndex, []).get(r.frameIndex)!).push(r);
+        for (const r of entityRecords(entity, track.records, frameCount, cuts)) (byFrame.get(r.frameIndex) ?? byFrame.set(r.frameIndex, []).get(r.frameIndex)!).push(r);
         return byFrame;
       });
       cache.set(entity.id, indexed);
@@ -94,7 +94,8 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
   const queue = [...plan.selected, ...forced];
 
   const byId = new Map(perception.entityConfigs.map((e) => [e.id, e]));
-  const recordsAt = trackReader(clipId, (await readMeta(clipId)).sampled.frames);
+  const clipMeta = await readMeta(clipId);
+  const recordsAt = trackReader(clipId, clipMeta.sampled.frames, clipMeta.cuts ?? []);
   const prompt = await loadPrompt();
   const outDir = path.join(clipDir(clipId), "adjudication");
   await mkdir(outDir, { recursive: true });

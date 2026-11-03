@@ -35,6 +35,8 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
   const [adjudicated, setAdjudicated] = useState<{ added: number; failed: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
+  // Frame indexes where the clip changes shot. The engine never carries a prop across one.
+  const [cuts, setCuts] = useState<readonly number[]>([]);
   const [proposing, setProposing] = useState(false);
   const [scene, setScene] = useState<SceneResult | null>(null);
 
@@ -67,6 +69,7 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
       .then((info) => {
         setEntities(info.entities);
         setDuration(info.clip.source.durationS);
+        setCuts(info.clip.cuts ?? []);
       })
       .catch((e: Error) => setError(e.message));
   }, [resumeClipId]);
@@ -86,6 +89,7 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
       setClipId(info.clip.id);
       setEntities(info.entities);
       setDuration(info.clip.source.durationS);
+      setCuts(info.clip.cuts ?? []);
       setStep("entities");
     } catch (e) {
       setStep("pick");
@@ -226,6 +230,12 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
 
       {step === "entities" ? (
         <div className="entities-editor">
+          {cuts.length > 0 ? (
+            <p className="status warn">
+              This clip changes shot {cuts.length} time{cuts.length === 1 ? "" : "s"} (at {cuts.map((f) => `${(f / 10).toFixed(1)} s`).join(", ")}). Props are not carried across a cut and touches near one are unreliable.
+              One continuous take from a fixed camera works best.
+            </p>
+          ) : null}
           <p className="muted">
             {duration !== null ? `${duration.toFixed(1)} s clip. ` : ""}
             Name what is in the scene. The phrase is what SAM looks for: describe how the prop looks, not what it is for ("white rod" works, "bed rail" may not).

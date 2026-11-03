@@ -74,8 +74,9 @@ test("an aseptic task the detector split into pieces is one Moment 2 miss", () =
 
 test("leaving a patient zone after touching the resident is Moment 4 even via a same-zone object", () => {
   // resident B, then blanket B, then the phone: one departure, the resident was touched, so Moment 4 at the blanket's end.
+  // The first touch at 5 s is also a Moment 1 opportunity (the approach from off camera).
   const contacts = [contact("bare_hand", "resident_B", 5, 6), contact("bare_hand", "blanket_B", 7, 8), contact("bare_hand", "phone", 10, 11)];
-  assert.deepEqual(run(contacts).map((m) => [m.moment, m.t]), [[4, 8]]);
+  assert.deepEqual(run(contacts).map((m) => [m.moment, m.t]), [[1, 5], [4, 8]]);
   // Without the resident it is Moment 5.
   const surroundingsOnly = [contact("bare_hand", "blanket_B", 7, 8), contact("bare_hand", "phone", 10, 11)];
   assert.deepEqual(run(surroundingsOnly).map((m) => [m.moment, m.t]), [[5, 8]]);
@@ -113,9 +114,11 @@ test("a zone episode ends when its longest contact ends", () => {
   assert.deepEqual(misses.map((m) => [m.moment, m.t]), [[5, 9]]);
 });
 
-test("moving inside one patient zone is not a miss, and a first contact is never a miss", () => {
+test("moving inside one patient zone is not a miss, and a first contact in the opening seconds is not one either", () => {
   assert.deepEqual(run([contact("bare_hand", "rail_A", 1, 2)]), []);
   assert.deepEqual(run([contact("bare_hand", "blanket_B", 1, 2), contact("bare_hand", "resident_B", 3, 4)]), []);
+  // The resident touched first at 1 s: no time on camera for hygiene, so no opportunity.
+  assert.deepEqual(run([contact("bare_hand", "resident_B", 1, 2), contact("bare_hand", "blanket_B", 3, 4)]), []);
 });
 
 test("a second person is scored independently", () => {
@@ -136,4 +139,17 @@ test("an outside touch that starts while the other hand is still in the zone is 
   const opportunities = detectMomentOpportunities({ contacts, hygieneEvents: [rub(1.5)], entities: CLIP_A_ENTITIES });
   const leaving = opportunities.filter((o) => o.moment === 5);
   assert.deepEqual(leaving.map((o) => [o.t, o.met]), [[2, false]]);
+});
+
+test("the first touch of a resident in a clip is a Moment 1 opportunity when the caregiver had time to clean hands first", () => {
+  // Nothing touched before 6 s, then the resident: an approach from off camera. No rub: missed.
+  const contacts = [contact("bare_hand", "resident_B", 6, 7), contact("bare_hand", "resident_B", 9, 10)];
+  const found = detectMomentOpportunities({ contacts, hygieneEvents: [], entities: CLIP_A_ENTITIES });
+  assert.deepEqual(found.filter((o) => o.moment === 1).map((o) => [o.t, o.met]), [[6, false]]);
+  // A rub on camera before the touch meets it.
+  const met = detectMomentOpportunities({ contacts, hygieneEvents: [rub(2)], entities: CLIP_A_ENTITIES });
+  assert.deepEqual(met.filter((o) => o.moment === 1).map((o) => [o.t, o.met]), [[6, true]]);
+  // A touch in the first two seconds gives no time for hygiene on camera: not an opportunity.
+  const early = detectMomentOpportunities({ contacts: [contact("bare_hand", "resident_B", 1, 2)], hygieneEvents: [], entities: CLIP_A_ENTITIES });
+  assert.deepEqual(early.filter((o) => o.moment === 1), []);
 });
