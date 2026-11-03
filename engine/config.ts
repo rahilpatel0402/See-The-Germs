@@ -126,6 +126,23 @@ export const FIRST_RESIDENT_CONTACT = { isOpportunity: true, minLeadS: 2 } as co
 // an exposure. Only other residents are.
 export const COUNT_EXPOSURE_OF_SOURCE_RESIDENT = false;
 
+export interface PersonConfig {
+  // Heuristic: a person object is the resident when at least this fraction of its frames have
+  // most of its own box (this fraction of its area) lying on resident-zone records. A person
+  // lying in bed sits inside the sheet and gown; a caregiver leaning over the bed does not.
+  readonly residentFrameFraction: number;
+  readonly residentCoverOfPersonArea: number;
+  // Heuristic: and the person lies down: box height over width at most this. A standing or
+  // leaning caregiver is taller than wide; a resident in bed is wider than tall.
+  readonly residentMaxHeightOverWidth: number;
+}
+
+export const PERSON_CONFIG: PersonConfig = { residentFrameFraction: 0.5, residentCoverOfPersonArea: 0.6, residentMaxHeightOverWidth: 0.8 };
+
+// Heuristic: ffmpeg scene score above which a frame starts a new shot. 0.4 separated real cuts
+// from fast hand motion on nine outside clips (Oct 31); the engine never carries a prop across one.
+export const CUT_SCENE_SCORE = 0.4;
+
 export interface GapFillConfig {
   readonly enabled: boolean;
   // Heuristic: two sightings whose boxes overlap at least this much (IoU) are the same static

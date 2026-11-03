@@ -8,9 +8,8 @@ import { framesFor, planAdjudication, type AdjudicationPlan } from "../engine/ad
 import { ADJUDICATION_CONFIG } from "../engine/config.ts";
 import type { Adjudication, ContactCandidate, MaskRecord, Verdict } from "../engine/types.ts";
 import { readMeta } from "./clips.ts";
-import type { EntityConfig } from "./entities.ts";
+import { readEntities, type EntityConfig } from "./entities.ts";
 import { readAdjudications } from "./scenario.ts";
-import { HttpError } from "./errors.ts";
 import { renderAnnotatedFrame, type Outline } from "./frames.ts";
 import { adjudicationsPath, clipDir } from "./paths.ts";
 import { perceptionFor } from "./pipeline.ts";
@@ -59,23 +58,17 @@ function parseVerdict(json: unknown): Omit<Adjudication, "candidateId"> | null {
 // for objects, gaps filled and marked inferred. A candidate on an inferred object mask is sent
 // for review precisely because the camera lost the object, so the outline must still be drawn
 // (dashed) at its carried-forward position. Track files are read once per run, not per frame.
-type TrackReader = (entity: EntityConfig, frameIndex: number) => Promise<MaskRecord[]>;
+type TrackReader = (entity: EntityConfig, frameIndex: number) => MaskRecord[];
 
-function trackReader(clipId: string, resolved: readonly EntityTrack[]): TrackReader {
-  const cache = new Map<string, Promise<Map<number, MaskRecord[]>>>();
-  return async (entity, frameIndex) => {
-    let indexed = cache.get(entity.id);
-    if (!indexed) {
-      indexed = Promise.resolve(resolved.find((t) => t.entity.id === entity.id)).then((track) => {
-        if (!track) throw new HttpError(409, `clip ${clipId} has no track for "${entity.samPhrase}"`);
-        const byFrame = new Map<number, MaskRecord[]>();
-        for (const r of track.records) (byFrame.get(r.frameIndex) ?? byFrame.set(r.frameIndex, []).get(r.frameIndex)!).push(r);
-        return byFrame;
-      });
-      cache.set(entity.id, indexed);
-    }
-    return (await indexed).get(frameIndex) ?? [];
-  };
+// The resolved records indexed once by entity and frame; everything is already in memory.
+function trackReader(resolved: readonly EntityTrack[]): TrackReader {
+  const index = new Map<string, Map<number, MaskRecord[]>>();
+  for (const t of resolved) {
+    const byFrame = new Map<number, MaskRecord[]>();
+    for (const r of t.records) (byFrame.get(r.frameIndex) ?? byFrame.set(r.frameIndex, []).get(r.frameIndex)!).push(r);
+    index.set(t.entity.id, byFrame);
+  }
+  return (entity, frameIndex) => index.get(entity.id)?.get(frameIndex) ?? [];
 }
 
 export async function adjudicateClip(clipId: string, backend: SparkBackend, options: { force?: readonly string[] } = {}): Promise<AdjudicationRun> {
@@ -94,7 +87,8 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
 
   const byId = new Map(perception.entityConfigs.map((e) => [e.id, e]));
   const clipMeta = await readMeta(clipId);
-  const recordsAt = trackReader(clipId, (await loadEntityTracks(clipId, clipMeta, perception.entityConfigs)).tracks);
+  // The stored table, not the split one: the loader splits hands itself.
+  const recordsAt = trackReader((await loadEntityTracks(clipId, clipMeta, await readEntities(clipId))).tracks);
   const prompt = await loadPrompt();
   const outDir = path.join(clipDir(clipId), "adjudication");
   await mkdir(outDir, { recursive: true });
@@ -110,11 +104,11 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
     const images: Buffer[] = [];
     const inferredImages: number[] = [];
     for (const [n, frameIndex] of [frames.first, frames.middle].entries()) {
-      const objectRecords = await recordsAt(object, frameIndex);
+      const objectRecords = recordsAt(object, frameIndex);
       const inferred = objectRecords.some((r) => r.inferred === true);
       if (inferred) inferredImages.push(n + 1);
       const outlines: Outline[] = [
-        { records: await recordsAt(hand, frameIndex), color: HAND_COLOR },
+        { records: recordsAt(hand, frameIndex), color: HAND_COLOR },
         { records: objectRecords, color: OBJECT_COLOR, dashed: inferred },
       ];
       const png = await renderAnnotatedFrame(clipId, frameIndex, outlines);

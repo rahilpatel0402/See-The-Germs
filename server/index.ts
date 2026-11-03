@@ -92,6 +92,8 @@ app.put("/api/clips/:id/info", wrap(async (req, res) => {
     ...(typeof body.story === "string" ? { story: body.story } : {}),
     ...(typeof body.multiPerson === "boolean" ? { multiPerson: body.multiPerson } : {}),
   };
+  // Title and story are presentation; the person flag changes the analysis, so demo clips keep theirs.
+  if (info.multiPerson !== undefined) assertEditable(meta.id);
   res.json({ clip: await updateClipInfo(meta.id, info) });
 }));
 

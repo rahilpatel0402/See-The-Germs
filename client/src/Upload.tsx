@@ -250,8 +250,11 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
                 checked={multiPerson}
                 onChange={(e) => {
                   const on = e.target.checked;
-                  setMultiPerson(on);
-                  if (clipId) api.updateInfo(clipId, { multiPerson: on }).catch(fail);
+                  if (!clipId) return;
+                  api
+                    .updateInfo(clipId, { multiPerson: on })
+                    .then(() => setMultiPerson(on))
+                    .catch(fail);
                 }}
               />{" "}
               More than one person is in frame (a second caregiver, or a helper playing the resident)

@@ -4,20 +4,9 @@
 // each hand object is assigned by majority vote to the person whose box holds it, and hands that
 // belong to a person lying in the resident zone are the resident's, not a caregiver's. Pure.
 
-import type { MaskBounds, MaskRecord } from "./types.ts";
-
-export interface PersonConfig {
-  // Heuristic: a person object is the resident when at least this fraction of its frames have
-  // most of its own box (this fraction of its area) lying on resident-zone records. A person
-  // lying in bed sits inside the sheet and gown; a caregiver leaning over the bed does not.
-  readonly residentFrameFraction: number;
-  readonly residentCoverOfPersonArea: number;
-  // Heuristic: and the person lies down: box height over width at most this. A standing or
-  // leaning caregiver is taller than wide; a resident in bed is wider than tall.
-  readonly residentMaxHeightOverWidth: number;
-}
-
-export const PERSON_CONFIG: PersonConfig = { residentFrameFraction: 0.5, residentCoverOfPersonArea: 0.6, residentMaxHeightOverWidth: 0.8 };
+import type { PersonConfig } from "./config.ts";
+import { isHand } from "./gloves.ts";
+import type { Entity, MaskBounds, MaskRecord } from "./types.ts";
 
 export const RESIDENT_PERSON = "resident";
 
@@ -75,9 +64,9 @@ export function labelPersons(persons: readonly MaskRecord[], residents: readonly
   return labels;
 }
 
-// hand object id -> person label. A hand whose center falls inside no person box in most of
-// its frames stays with P1, the default caregiver, so a clip where the person track failed
-// behaves as before.
+// hand object id -> person label. A hand whose center falls inside no person box votes for the
+// nearest person present in that frame instead; only a hand seen in frames with nobody at all
+// stays with P1, the default caregiver.
 export function assignHandObjects(
   hands: readonly MaskRecord[],
   persons: readonly MaskRecord[],
@@ -85,6 +74,7 @@ export function assignHandObjects(
 ): ReadonlyMap<string, string> {
   const personsByFrame = byFrame(persons);
   const votes = new Map<string, Map<string, number>>();
+  const nearVotes = new Map<string, Map<string, number>>();
   for (const h of hands) {
     const c = center(h.bounds);
     // The smallest person box holding the hand center wins the frame: two people overlapping
@@ -94,16 +84,31 @@ export function assignHandObjects(
       if (!contains(p.bounds, c)) continue;
       if (best === undefined || area(p.bounds) < area(best.bounds)) best = p;
     }
-    const label = best === undefined ? undefined : personLabels.get(best.objectId);
+    let nearest: MaskRecord | undefined;
+    if (best === undefined) {
+      let bestDistance = Infinity;
+      for (const p of personsByFrame.get(h.frameIndex) ?? []) {
+        const pc = center(p.bounds);
+        const d = Math.hypot(pc.x - c.x, pc.y - c.y);
+        if (d < bestDistance) {
+          bestDistance = d;
+          nearest = p;
+        }
+      }
+    }
+    const holder = best ?? nearest;
+    const label = holder === undefined ? undefined : personLabels.get(holder.objectId);
     if (label === undefined) continue;
-    const tally = votes.get(h.objectId) ?? new Map<string, number>();
+    // Containment outweighs nearness: a hand inside a box is that person's, a hand beside one
+    // only probably so.
+    const tally = (best === undefined ? nearVotes : votes).get(h.objectId) ?? new Map<string, number>();
     tally.set(label, (tally.get(label) ?? 0) + 1);
-    votes.set(h.objectId, tally);
+    (best === undefined ? nearVotes : votes).set(h.objectId, tally);
   }
   const out = new Map<string, string>();
   for (const h of hands) {
     if (out.has(h.objectId)) continue;
-    const tally = votes.get(h.objectId);
+    const tally = votes.get(h.objectId) ?? nearVotes.get(h.objectId);
     let label = "P1";
     if (tally) {
       let bestCount = -1;
@@ -115,6 +120,58 @@ export function assignHandObjects(
       }
     }
     out.set(h.objectId, label);
+  }
+  return out;
+}
+
+export interface EntityRecords {
+  readonly entity: Entity;
+  readonly records: MaskRecord[];
+}
+
+function slug(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 20) || "p";
+}
+
+function caregiverName(person: string): string {
+  const n = person.match(/^P(\d+)$/i);
+  return n ? `caregiver ${n[1]}` : person;
+}
+
+// 7: the split itself is a rule about whose hands count, so it is pure and tested here.
+// Hand entities are split by the owner of each record's object: the base person keeps the
+// entity, every other caregiver gets a copy with its own id, label, and person, and records of
+// the resident are dropped. Non-hand entities pass through. When more than one caregiver is
+// present every hand label names its caregiver.
+export function splitHandsByPerson(entities: readonly Entity[], recordsByEntity: ReadonlyMap<string, readonly MaskRecord[]>, owner: ReadonlyMap<string, string>): EntityRecords[] {
+  const caregivers = new Set<string>();
+  for (const label of owner.values()) if (label !== RESIDENT_PERSON) caregivers.add(label);
+  for (const e of entities) if (isHand(e)) caregivers.add(e.person ?? "P1");
+  const several = caregivers.size > 1;
+  const out: EntityRecords[] = [];
+  for (const entity of entities) {
+    const records = recordsByEntity.get(entity.id) ?? [];
+    if (!isHand(entity)) {
+      out.push({ entity, records: [...records] });
+      continue;
+    }
+    const base = entity.person ?? "P1";
+    const byPerson = new Map<string, MaskRecord[]>();
+    for (const r of records) {
+      const person = owner.get(`${entity.id}|${r.objectId}`) ?? base;
+      if (person === RESIDENT_PERSON) continue;
+      const list = byPerson.get(person);
+      if (list) list.push(r);
+      else byPerson.set(person, [r]);
+    }
+    if (!byPerson.has(base)) byPerson.set(base, []);
+    // The base caregiver first, then the others in name order.
+    for (const person of [base, ...[...byPerson.keys()].filter((k) => k !== base).sort()]) {
+      const personRecords = byPerson.get(person) as MaskRecord[];
+      const label = several ? `${entity.label} (${caregiverName(person)})` : entity.label;
+      if (person === base) out.push({ entity: { ...entity, label, person }, records: personRecords });
+      else out.push({ entity: { ...entity, id: `${entity.id}_${slug(person)}`, label, person }, records: personRecords });
+    }
   }
   return out;
 }

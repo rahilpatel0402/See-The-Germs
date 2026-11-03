@@ -8,7 +8,8 @@ import { GAP_FILL_CONFIG } from "../engine/config.ts";
 import { fromRecord, union } from "../engine/masks.ts";
 import { fillObjectGaps } from "../engine/persistence.ts";
 import { isHand } from "../engine/gloves.ts";
-import { assignHandObjects, labelPersons, PERSON_CONFIG, RESIDENT_PERSON } from "../engine/persons.ts";
+import { PERSON_CONFIG } from "../engine/config.ts";
+import { assignHandObjects, labelPersons, RESIDENT_PERSON, splitHandsByPerson } from "../engine/persons.ts";
 import type { Entity, FrameMask, MaskBounds, MaskRecord, Tracks } from "../engine/types.ts";
 import { type ClipMeta, readMeta } from "./clips.ts";
 import { passesConfidence, readEntities, type EntityConfig } from "./entities.ts";
@@ -25,30 +26,42 @@ export interface EntityTrack {
   readonly records: MaskRecord[];
 }
 
+export interface ResolvedTracks {
+  readonly tracks: EntityTrack[];
+  readonly missingPhrases: string[];
+  // Raw SAM records per phrase, as read, for callers that need object births.
+  readonly rawByPhrase: ReadonlyMap<string, readonly MaskRecord[]>;
+}
+
 // Every entity's records exactly as the engine, the overlay, and the adjudication images see
 // them: confidence applied, object gaps filled (never across a cut), and, when the clip has
 // more than one person, each hand object assigned to the person holding it. Hands of a second
 // caregiver become their own entities with person "P2"; hands of a person lying on the resident
 // zone are the resident's and are dropped.
-export async function loadEntityTracks(clipId: string, meta: ClipMeta, entities: readonly EntityConfig[]): Promise<{ tracks: EntityTrack[]; missingPhrases: string[] }> {
+export async function loadEntityTracks(clipId: string, meta: ClipMeta, entities: readonly EntityConfig[]): Promise<ResolvedTracks> {
   const frameCount = meta.sampled.frames;
   const cuts = meta.cuts ?? [];
   const missing: string[] = [];
-  const raw = new Map<string, readonly MaskRecord[]>();
-  for (const entity of entities) {
-    const track = await readTrack(clipId, entity.samPhrase);
-    if (!track) {
-      missing.push(entity.samPhrase);
-      continue;
-    }
-    raw.set(entity.id, track.records);
+  const rawByPhrase = new Map<string, readonly MaskRecord[]>();
+  const phrases = [...new Set([...entities.map((e) => e.samPhrase), ...(meta.multiPerson ? [PERSON_PHRASE] : [])])];
+  for (const phrase of phrases) {
+    const track = await readTrack(clipId, phrase);
+    if (track) rawByPhrase.set(phrase, track.records);
+    else missing.push(phrase);
   }
-  const persons = meta.multiPerson ? await readTrack(clipId, PERSON_PHRASE) : null;
-  let handOwner: ReadonlyMap<string, string> | null = null;
+  // Records as the engine sees them: confidence applied, object gaps filled, never across a cut.
+  const prepared = new Map<string, MaskRecord[]>();
+  for (const entity of entities) {
+    const raw = rawByPhrase.get(entity.samPhrase);
+    if (raw) prepared.set(entity.id, entityRecords(entity, raw, frameCount, cuts));
+  }
+  const present = entities.filter((e) => prepared.has(e.id));
+
+  let owner: ReadonlyMap<string, string> = new Map();
+  const persons = meta.multiPerson ? rawByPhrase.get(PERSON_PHRASE) : undefined;
   if (persons) {
-    const residentRecords = entities.filter((e) => e.class === "resident_zone").flatMap((e) => (raw.get(e.id) ?? []).filter((r) => passesConfidence(e, r)));
-    const labels = labelPersons(persons.records, residentRecords, PERSON_CONFIG);
-    const handRecords = entities.filter(isHand).flatMap((e) => (raw.get(e.id) ?? []).filter((r) => passesConfidence(e, r)).map((r) => ({ ...r, objectId: `${e.id}|${r.objectId}` })));
+    const residentRecords = present.filter((e) => e.class === "resident_zone").flatMap((e) => prepared.get(e.id) ?? []);
+    const labels = labelPersons(persons, residentRecords, PERSON_CONFIG);
     const people = new Set(labels.values());
     people.delete(RESIDENT_PERSON);
     if (people.size === 0) {
@@ -56,40 +69,20 @@ export async function loadEntityTracks(clipId: string, meta: ClipMeta, entities:
       // one caregiver, as if the flag were off.
       console.log(`persons | ${clipId} | person track found no caregiver (${labels.size} person object${labels.size === 1 ? "" : "s"}, all on the resident zone); hands kept as one caregiver`);
     } else {
-      handOwner = assignHandObjects(handRecords, persons.records, labels);
+      const handRecords = present.filter(isHand).flatMap((e) => (prepared.get(e.id) ?? []).map((r) => ({ ...r, objectId: `${e.id}|${r.objectId}` })));
+      owner = assignHandObjects(handRecords, persons, labels);
       console.log(`persons | ${clipId} | ${people.size} caregiver${people.size === 1 ? "" : "s"} in frame${labels.size > people.size ? ", plus the resident" : ""}; hand objects assigned by person box`);
     }
   }
-
-  const out: EntityTrack[] = [];
-  for (const entity of entities) {
-    const records = raw.get(entity.id);
-    if (!records) continue;
-    if (!isHand(entity) || handOwner === null) {
-      out.push({ entity, records: entityRecords(entity, records, frameCount, cuts) });
-      continue;
-    }
-    const kept = records.filter((r) => passesConfidence(entity, r));
-    const byPerson = new Map<string, MaskRecord[]>();
-    for (const r of kept) {
-      const owner = handOwner.get(`${entity.id}|${r.objectId}`) ?? "P1";
-      if (owner === RESIDENT_PERSON) continue;
-      const list = byPerson.get(owner);
-      if (list) list.push(r);
-      else byPerson.set(owner, [r]);
-    }
-    const base = entity.person ?? "P1";
-    for (const person of [...byPerson.keys()].sort()) {
-      const personRecords = byPerson.get(person) as MaskRecord[];
-      if (person === base) out.push({ entity, records: personRecords });
-      else {
-        const n = Number(person.replace(/\D/g, "")) || 2;
-        out.push({ entity: { ...entity, id: `${entity.id}_${person.toLowerCase()}`, label: `${entity.label} (caregiver ${n})`, person }, records: personRecords });
-      }
-    }
-    if (!byPerson.has(base)) out.push({ entity, records: [] });
-  }
-  return { tracks: out, missingPhrases: missing };
+  const split = splitHandsByPerson(plainEntities(present), prepared, owner);
+  const configByBase = new Map(present.map((e) => [e.id, e]));
+  const tracks: EntityTrack[] = split.map((t) => {
+    // Keep the per-clip config (minConfidence) of the entity each split came from.
+    const baseId = present.find((e) => t.entity.id === e.id || t.entity.id.startsWith(`${e.id}_`))?.id ?? t.entity.id;
+    const base = configByBase.get(baseId);
+    return { entity: { ...(base ?? {}), ...t.entity } as EntityConfig, records: t.records };
+  });
+  return { tracks, missingPhrases: missing, rawByPhrase };
 }
 
 // Records for one entity: confidence applied, and for objects, gaps filled and marked inferred.
@@ -172,7 +165,7 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
     }
     if (isHand(entity)) {
       // Births from the raw track of the phrase, restricted to the objects this entity kept.
-      const rawRecords = (await readTrack(clipId, entity.samPhrase))?.records ?? [];
+      const rawRecords = resolved.rawByPhrase.get(entity.samPhrase) ?? [];
       const mine = new Set(records.map((r) => r.objectId));
       const firstFrame = new Map<string, MaskRecord>();
       for (const record of rawRecords) {

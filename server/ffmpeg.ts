@@ -1,6 +1,7 @@
 // ffprobe and ffmpeg through child_process. FFMPEG_DIR in .env points at a bin folder when the
 // tools are not on PATH.
 import { execFile } from "node:child_process";
+import { CUT_SCENE_SCORE } from "../engine/config.ts";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -82,7 +83,7 @@ export async function resample(src: string, dst: string, fps: number): Promise<v
 // Shot changes in the sampled clip as frame indexes (the first frame of each new shot), from
 // ffmpeg's scene score. A staged single take has none; an edited video has one per cut, and the
 // engine never carries an object across one.
-export async function detectCuts(file: string, fps: number, threshold = 0.4): Promise<number[]> {
+export async function detectCuts(file: string, fps: number, threshold = CUT_SCENE_SCORE): Promise<number[]> {
   const { stderr } = await run(bin("ffmpeg"), ["-v", "info", "-i", file, "-vf", `select='gt(scene,${threshold})',showinfo`, "-f", "null", "-"], { maxBuffer: 64 * 1024 * 1024 });
   const cuts: number[] = [];
   for (const m of String(stderr).matchAll(/pts_time:\s*([0-9.]+)/g)) {
