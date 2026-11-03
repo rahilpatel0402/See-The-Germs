@@ -146,12 +146,23 @@ export async function narrativeHash(analysis: Analysis, language: NarrativeLangu
 
 const words = (s: string): number => s.trim().split(/\s+/).filter(Boolean).length;
 
+// The model likes em and en dashes; the product never shows one. A dash between clauses becomes
+// a comma, a dash at a sentence start is dropped. Facts and words are untouched.
+export function withoutDashes(text: string): string {
+  return text
+    .replace(/\s*[—–]+\s*/g, ", ")
+    .replace(/([.!?])\s*,\s*/g, "$1 ")
+    .replace(/^,\s*/, "")
+    .replace(/\s+,/g, ",")
+    .replace(/,\s*,/g, ",");
+}
+
 export function validateNarrative(json: unknown, labels: readonly string[] = []): { ok: true; narrative: Narrative } | { ok: false; reason: string } {
   const v = json as Partial<Record<keyof Narrative, unknown>>;
   for (const key of ["coaching_note", "audit_summary", "top_fix"] as const) {
     if (typeof v?.[key] !== "string" || !(v[key] as string).trim()) return { ok: false, reason: `${key} missing` };
   }
-  const n = v as Narrative;
+  const n: Narrative = { coaching_note: withoutDashes(v.coaching_note as string), audit_summary: withoutDashes(v.audit_summary as string), top_fix: withoutDashes(v.top_fix as string) };
   const cw = words(n.coaching_note);
   if (cw < COACHING_WORDS[0] || cw > COACHING_WORDS[1]) return { ok: false, reason: `coaching_note is ${cw} words, needs ${COACHING_WORDS[0]} to ${COACHING_WORDS[1]}` };
   const aw = words(n.audit_summary);
@@ -236,7 +247,7 @@ export async function explainCounterfactual(analysis: Analysis, cf: Counterfactu
   const text = (result.json as { counterfactual_explanation?: unknown })?.counterfactual_explanation;
   if (typeof text !== "string" || !text.trim() || findDisallowed(text, analysis.entities.map((e) => e.label)) !== null) throw new Error("counterfactual explanation failed validation");
   console.log(`spark   | ${analysis.clipId} | explain counterfactual at ${cf.inserted.t}s | in=${result.usage.inputTokens} out=${result.usage.outputTokens} | $${estimateSparkCost(result.usage).toFixed(4)}`);
-  const file: ExplanationFile = { hash, model: backend.model, backend: backend.name, createdAt: new Date().toISOString(), usage: result.usage, explanation: text.trim() };
+  const file: ExplanationFile = { hash, model: backend.model, backend: backend.name, createdAt: new Date().toISOString(), usage: result.usage, explanation: withoutDashes(text).trim() };
   await writeJson(explanationPath(analysis.clipId, hash), file);
   return file;
 }
