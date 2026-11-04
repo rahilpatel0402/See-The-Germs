@@ -6,7 +6,7 @@
 
 import type { GloveConfig } from "./config.ts";
 import { bbox } from "./masks.ts";
-import type { Entity, GloveEvent, MaskBounds, MaskRecord, Tracks } from "./types.ts";
+import type { Entity, GloveEvent, MaskBounds, MaskRecord, ObjectBirth, Tracks } from "./types.ts";
 
 interface Point {
   readonly x: number;
@@ -35,16 +35,17 @@ function distance(a: Point, b: Point): number {
 // least gapFrames without a record: SAM reuses ids for a hand that leaves and comes back, and
 // skin reappearing after a glove comes off is such a return. Pure; the server feeds the result
 // to Tracks.objectBirthsAt.
-export function objectBirths(records: readonly MaskRecord[], gapFrames: number): Map<number, MaskBounds[]> {
+export function objectBirths(records: readonly MaskRecord[], gapFrames: number): Map<number, ObjectBirth[]> {
   const sorted = [...records].sort((a, b) => a.frameIndex - b.frameIndex || a.objectId.localeCompare(b.objectId));
   const lastSeen = new Map<string, number>();
-  const out = new Map<number, MaskBounds[]>();
+  const out = new Map<number, ObjectBirth[]>();
   for (const r of sorted) {
     const prev = lastSeen.get(r.objectId);
     if (prev === undefined || r.frameIndex - prev > gapFrames) {
+      const birth: ObjectBirth = { box: r.bounds, returning: prev !== undefined };
       const list = out.get(r.frameIndex);
-      if (list) list.push(r.bounds);
-      else out.set(r.frameIndex, [r.bounds]);
+      if (list) list.push(birth);
+      else out.set(r.frameIndex, [birth]);
     }
     lastSeen.set(r.objectId, r.frameIndex);
   }
@@ -88,9 +89,9 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
   const presentAt = (entityId: string, f: number): boolean => boxesOf(entityId, f).length > 0;
   // Objects first seen in frame f. When the source cannot tell objects apart, a track starting
   // after an absence stands in for a birth.
-  const birthsOf = (entityId: string, f: number): readonly MaskBounds[] => {
+  const birthsOf = (entityId: string, f: number): readonly ObjectBirth[] => {
     if (tracks.objectBirthsAt) return tracks.objectBirthsAt(f).get(entityId) ?? [];
-    return presentAt(entityId, f) && !presentAt(entityId, f - 1) ? boxesOf(entityId, f) : [];
+    return presentAt(entityId, f) && !presentAt(entityId, f - 1) ? boxesOf(entityId, f).map((box) => ({ box, returning: false })) : [];
   };
   const persists = (entityId: string, from: number, frames: number): boolean => {
     if (from + frames - 1 > maxFrame) return false;
@@ -127,6 +128,10 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
       // bare track may keep running through the glove, so only the gloved birth matters.
       if (f > 0) {
         for (const birth of birthsOf(gloved.id, f)) {
+          // A glove object that comes back after a gap is SAM re-latching a removed glove's id
+          // onto the bare hands (clip C of the shoot: the yellow gloves' ids returned on skin
+          // during the next rub). A fresh pair of gloves is a new object. Only new objects don.
+          if (birth.returning) continue;
           if (!persists(gloved.id, f, config.openFrames)) break;
           // The bare hand was seen beside the new glove within the window, or it left view just
           // before the glove appeared (the hands dipped out of frame to glove, clip C of the shoot)
@@ -136,7 +141,7 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
           for (let j = f - config.handoverWindowFrames; j <= f && !bareSeen; j++) {
             const boxes = boxesOf(bare.id, j);
             if (boxes.length > 0 && j < f) bareRecently = true;
-            bareSeen = near(birth, boxes);
+            bareSeen = near(birth.box, boxes);
           }
           if (!bareSeen && !(bareRecently && !presentAt(bare.id, f))) continue;
           if (!gloveOn) {
@@ -162,7 +167,7 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
         if (reference.length > 0) {
           for (const birth of birthsOf(bare.id, f)) {
             if (!persists(bare.id, f, config.closeFrames)) break;
-            if (near(birth, reference)) {
+            if (near(birth.box, reference)) {
               push("doff", f);
               gloveOn = false;
               absentStart = null;

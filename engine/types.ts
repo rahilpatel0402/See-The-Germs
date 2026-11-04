@@ -80,6 +80,13 @@ export interface FrameMask {
 // entity id; a missing entity means not visible. It is a function so the caller can decode
 // lazily: a full-frame raster per entity per frame does not fit in memory for a long clip.
 // The engine only ever walks frames in order and looks back a few frames.
+// A SAM object appearing in a frame: for the first time, or returning after a gap long enough
+// that SAM may have re-latched its id onto something else (engine/gloves.ts objectBirths).
+export interface ObjectBirth {
+  readonly box: MaskBounds;
+  readonly returning: boolean;
+}
+
 export interface Tracks {
   readonly frameSize: FrameSize;
   readonly fps: number;
@@ -96,7 +103,7 @@ export interface Tracks {
   // Optional: for each entity, the boxes of SAM objects first seen in this frame. SAM follows an
   // object through an appearance change (a hand stays "bare hand" after a glove goes on), so a
   // class change shows up as a new object being born, not as the old one vanishing.
-  objectBirthsAt?(frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]>;
+  objectBirthsAt?(frameIndex: number): ReadonlyMap<string, readonly ObjectBirth[]>;
   // Optional: for each entity, the box of every SAM object present in this frame (boundsAt gives
   // only their union). Glove handover compares hands one by one.
   objectBoundsAt?(frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]>;
@@ -123,6 +130,8 @@ export interface ContactCandidate {
   // True when the target is a resident zone and the config sends every such touch to vision
   // review: hands rubbing in front of a resident look exactly like a touch.
   readonly residentContact?: boolean;
+  // True when the target is a dispenser and the config sends every such touch to vision review.
+  readonly dispenserContact?: boolean;
 }
 
 export type Verdict = "touching" | "passing_in_front" | "unclear";

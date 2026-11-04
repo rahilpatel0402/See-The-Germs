@@ -36,6 +36,10 @@ export interface ContactConfig {
   // ones a caregiver rubbing hands in front of the resident fakes most easily (shoot clips B and
   // C, Nov 3). They are reviewed outside the per-clip cap.
   readonly reviewResidentContacts: boolean;
+  // Clinical weighting choice: every dispenser touch goes to vision review as well. A hygiene
+  // event clears contamination, so a false one (a gloved hand pressing a call button beside the
+  // bottle, clip C) does more damage than a missed surface. Reviewed outside the cap.
+  readonly reviewDispenserContacts: boolean;
 }
 
 export const CONTACT_CONFIG: ContactConfig = {
@@ -48,6 +52,7 @@ export const CONTACT_CONFIG: ContactConfig = {
   reviewLongerThanFraction: 0.2,
   reviewLongerThanMinFrames: 50,
   reviewResidentContacts: true,
+  reviewDispenserContacts: true,
 };
 
 // The frame size the pixel constants above were chosen at.

@@ -83,12 +83,14 @@ function newState(): PairState {
 function finish(run: OpenRun, handId: string, target: Entity, fps: number, config: ContactConfig, floor: number, frameCount: number): ContactCandidate {
   const entityId = target.id;
   const residentContact = config.reviewResidentContacts && target.class === "resident_zone";
+  const dispenserContact = config.reviewDispenserContacts && target.class === "dispenser";
+  const reviewed = residentContact || dispenserContact;
   // Confidence rests only on frames where the camera saw the object. A contact that would not
   // stand on seen frames alone, and leaned on gap-filled masks, is marked inferred so vision
   // review decides. A long seen grip with a few filled frames inside it stays confident.
   const longContact = run.hits >= config.reviewLongerThanMinFrames && run.hits >= config.reviewLongerThanFraction * frameCount;
-  const confident = !longContact && !residentContact && run.seenPeak >= config.confidentIntersectionFactor * floor && run.seenHits >= config.confidentDwellFrames;
-  const inferredObject = run.inferred && !confident && !longContact && !residentContact;
+  const confident = !longContact && !reviewed && run.seenPeak >= config.confidentIntersectionFactor * floor && run.seenHits >= config.confidentDwellFrames;
+  const inferredObject = run.inferred && !confident && !longContact && !reviewed;
   return {
     id: `${handId}:${entityId}:${run.startFrame}`,
     handId,
@@ -103,6 +105,7 @@ function finish(run: OpenRun, handId: string, target: Entity, fps: number, confi
     ...(inferredObject ? { inferredObject: true } : {}),
     ...(longContact ? { longContact: true } : {}),
     ...(residentContact ? { residentContact: true } : {}),
+    ...(dispenserContact ? { dispenserContact: true } : {}),
   };
 }
 

@@ -35,6 +35,8 @@ function tracks(frames: Array<[FrameMask | null, FrameMask | null]>): Tracks {
 }
 
 const near = blob(5, 3);
+// A fresh object birth at a mask's box, for objectBirthsAt stubs.
+const b = (m: FrameMask, returning = false) => ({ box: bbox(m)!, returning });
 const far = blob(15, 3);
 
 test("gloved track appearing where the bare track was is a don, the reverse is a doff", () => {
@@ -136,7 +138,7 @@ test("a bare-hand object born on the gloved hand is a doff even though the glove
   for (let f = 0; f < 10; f++) frames.push([near, null]);
   for (let f = 10; f < 40; f++) frames.push([f >= 25 ? near : null, near]);
   const base = tracks(frames);
-  const births = (bareAt: FrameMask) => (f: number) => (f === 10 ? new Map([[gloved.id, [bbox(near)!]]]) : f === 25 ? new Map([[bare.id, [bbox(bareAt)!]]]) : new Map());
+  const births = (bareAt: FrameMask) => (f: number) => (f === 10 ? new Map([[gloved.id, [b(near)]]]) : f === 25 ? new Map([[bare.id, [b(bareAt)]]]) : new Map());
   const withBirths: Tracks = { ...base, objectBirthsAt: births(near) };
   assert.deepEqual(detectGloveEvents(withBirths, GLOVE_CONFIG), [
     { handId: "bare_hand", t: 1.0, type: "don", source: "detected" },
@@ -150,7 +152,7 @@ test("a bare-hand object born on the gloved hand is a doff even though the glove
 test("gloves already on at the start can still come off: a bare object born on the hand is the doff", () => {
   const frames: Array<[FrameMask | null, FrameMask | null]> = [];
   for (let f = 0; f < 40; f++) frames.push([f >= 20 ? near : null, near]);
-  const t: Tracks = { ...tracks(frames), objectBirthsAt: (f) => (f === 0 ? new Map([[gloved.id, [bbox(near)!]]]) : f === 20 ? new Map([[bare.id, [bbox(near)!]]]) : new Map()) };
+  const t: Tracks = { ...tracks(frames), objectBirthsAt: (f) => (f === 0 ? new Map([[gloved.id, [b(near)]]]) : f === 20 ? new Map([[bare.id, [b(near)]]]) : new Map()) };
   assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG), [
     { handId: "bare_hand", t: 0, type: "don", source: "detected" },
     { handId: "bare_hand", t: 2.0, type: "doff", source: "detected" },
@@ -163,7 +165,7 @@ test("a fresh gloved object born on the bare hand is a don even while the old gl
   for (let f = 0; f < 10; f++) frames.push([near, null]);
   for (let f = 10; f < 60; f++) frames.push([f >= 25 ? near : null, near]);
   const births = (f: number) =>
-    f === 10 ? new Map([[gloved.id, [bbox(near)!]]]) : f === 25 ? new Map([[bare.id, [bbox(near)!]]]) : f === 40 ? new Map([[gloved.id, [bbox(near)!]]]) : new Map();
+    f === 10 ? new Map([[gloved.id, [b(near)]]]) : f === 25 ? new Map([[bare.id, [b(near)]]]) : f === 40 ? new Map([[gloved.id, [b(near)]]]) : new Map();
   const t: Tracks = { ...tracks(frames), objectBirthsAt: births };
   assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 1.0], ["doff", 2.5], ["don", 4.0]]);
 });
@@ -172,7 +174,7 @@ test("a bare object born during a one frame gloved dropout still counts as the d
   const frames: Array<[FrameMask | null, FrameMask | null]> = [];
   for (let f = 0; f < 10; f++) frames.push([near, null]);
   for (let f = 10; f < 40; f++) frames.push([f >= 25 ? near : null, f === 25 ? null : near]);
-  const births = (f: number) => (f === 10 ? new Map([[gloved.id, [bbox(near)!]]]) : f === 25 ? new Map([[bare.id, [bbox(near)!]]]) : new Map());
+  const births = (f: number) => (f === 10 ? new Map([[gloved.id, [b(near)]]]) : f === 25 ? new Map([[bare.id, [b(near)]]]) : new Map());
   const t: Tracks = { ...tracks(frames), objectBirthsAt: births };
   assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 1.0], ["doff", 2.5]]);
 });
@@ -187,7 +189,7 @@ test("with per-object boxes, a bare hand born on one of two gloved hands is a do
   const t: Tracks = {
     ...base,
     objectBoundsAt: () => new Map([[gloved.id, [bbox(left)!, bbox(right)!]]]),
-    objectBirthsAt: (f) => (f === 0 ? new Map([[gloved.id, [bbox(left)!, bbox(right)!]]]) : f === 15 ? new Map([[bare.id, [bbox(left)!]]]) : new Map()),
+    objectBirthsAt: (f) => (f === 0 ? new Map([[gloved.id, [b(left), b(right)]]]) : f === 15 ? new Map([[bare.id, [b(left)]]]) : new Map()),
   };
   assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 0], ["doff", 1.5]]);
 });
@@ -197,7 +199,8 @@ test("objectBirths: first sighting and any return after the gap count as births"
   const records = [rec(0, "a", 0), rec(1, "a", 1), rec(2, "a", 2), rec(8, "a", 8), rec(30, "a", 30), rec(5, "b", 50)];
   const births = objectBirths(records, 10);
   assert.deepEqual([...births.keys()].sort((x, y) => x - y), [0, 5, 30]);
-  assert.equal(births.get(30)![0]!.left, 30);
+  assert.equal(births.get(30)![0]!.box.left, 30);
+  assert.deepEqual([births.get(0)![0]!.returning, births.get(30)![0]!.returning], [false, true]);
 });
 
 test("a glove appearing right after the bare hands left view is a don, even far from where they were last seen", () => {
@@ -207,11 +210,25 @@ test("a glove appearing right after the bare hands left view is a don, even far 
   for (let f = 0; f < 8; f++) frames.push([far, null]);
   frames.push([null, null], [null, null]);
   for (let f = 10; f < 30; f++) frames.push([null, near]);
-  const t: Tracks = { ...tracks(frames), objectBirthsAt: (f) => (f === 10 ? new Map([[gloved.id, [bbox(near)!]]]) : new Map()) };
+  const t: Tracks = { ...tracks(frames), objectBirthsAt: (f) => (f === 10 ? new Map([[gloved.id, [b(near)]]]) : new Map()) };
   assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 1.0]]);
   // A glove appearing while a bare hand is still visible elsewhere is another person's: no don.
   const other: Array<[FrameMask | null, FrameMask | null]> = [];
   for (let f = 0; f < 30; f++) other.push([far, f >= 10 ? near : null]);
-  const t2: Tracks = { ...tracks(other), objectBirthsAt: (f) => (f === 10 ? new Map([[gloved.id, [bbox(near)!]]]) : new Map()) };
+  const t2: Tracks = { ...tracks(other), objectBirthsAt: (f) => (f === 10 ? new Map([[gloved.id, [b(near)]]]) : new Map()) };
   assert.deepEqual(detectGloveEvents(t2, GLOVE_CONFIG), []);
+});
+
+test("a glove object that returns after a gap never dons: it is a removed glove's id on bare skin", () => {
+  // Gloves on at 10, off at 30 (skin back), then the old glove id returns on the bare hands at
+  // 40 during the rub; a fresh pair (new object) goes on at 60.
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 10; f++) frames.push([near, null]);
+  for (let f = 10; f < 30; f++) frames.push([null, near]);
+  for (let f = 30; f < 60; f++) frames.push([near, f >= 40 ? near : null]);
+  for (let f = 60; f < 80; f++) frames.push([null, near]);
+  const births = (f: number) =>
+    f === 10 ? new Map([[gloved.id, [b(near)]]]) : f === 30 ? new Map([[bare.id, [b(near, true)]]]) : f === 40 ? new Map([[gloved.id, [b(near, true)]]]) : f === 60 ? new Map([[gloved.id, [b(near)]]]) : new Map();
+  const t: Tracks = { ...tracks(frames), objectBirthsAt: births };
+  assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 1.0], ["doff", 3.0], ["don", 6.0]]);
 });

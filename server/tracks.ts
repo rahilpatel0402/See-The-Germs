@@ -10,7 +10,7 @@ import { fillObjectGaps } from "../engine/persistence.ts";
 import { isHand, objectBirths } from "../engine/gloves.ts";
 import { GLOVE_CONFIG, PERSON_CONFIG } from "../engine/config.ts";
 import { assignHandObjects, labelPersons, RESIDENT_PERSON, splitHandsByPerson } from "../engine/persons.ts";
-import type { Entity, FrameMask, MaskBounds, MaskRecord, Tracks } from "../engine/types.ts";
+import type { Entity, FrameMask, MaskBounds, MaskRecord, ObjectBirth, Tracks } from "../engine/types.ts";
 import { type ClipMeta, readMeta } from "./clips.ts";
 import { passesConfidence, readEntities, type EntityConfig } from "./entities.ts";
 import { readTrack } from "./sam.ts";
@@ -132,6 +132,7 @@ export interface LoadedTracks {
 const EMPTY_FRAME: ReadonlyMap<string, FrameMask> = new Map();
 const EMPTY_SET: ReadonlySet<string> = new Set();
 const EMPTY_BIRTHS: ReadonlyMap<string, readonly MaskBounds[]> = new Map();
+const EMPTY_OBJECT_BIRTHS: ReadonlyMap<string, readonly ObjectBirth[]> = new Map();
 
 export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   const meta = await readMeta(clipId);
@@ -147,7 +148,7 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   // Hands only, for glove handover: frame index -> entity id -> boxes of SAM objects first seen
   // in that frame (from the raw track, before the confidence gate, so a confidence dip never
   // manufactures a birth), and frame index -> entity id -> every object's box.
-  const birthsByFrame = new Map<number, Map<string, MaskBounds[]>>();
+  const birthsByFrame = new Map<number, Map<string, ObjectBirth[]>>();
   const objectBoxesByFrame = new Map<number, Map<string, MaskBounds[]>>();
   const getOrInit = <K, V>(map: Map<K, V>, key: K, init: () => V): V => {
     const hit = map.get(key);
@@ -168,8 +169,8 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
       // restricted to the objects this entity kept.
       const rawRecords = resolved.rawByPhrase.get(entity.samPhrase) ?? [];
       const mine = new Set(records.map((r) => r.objectId));
-      for (const [frame, boxes] of objectBirths(rawRecords.filter((r) => mine.has(r.objectId)), GLOVE_CONFIG.rebirthGapFrames)) {
-        getOrInit(getOrInit(birthsByFrame, frame, () => new Map<string, MaskBounds[]>()), entity.id, () => []).push(...boxes);
+      for (const [frame, births] of objectBirths(rawRecords.filter((r) => mine.has(r.objectId)), GLOVE_CONFIG.rebirthGapFrames)) {
+        getOrInit(getOrInit(birthsByFrame, frame, () => new Map<string, ObjectBirth[]>()), entity.id, () => []).push(...births);
       }
     }
     byEntity.set(entity.id, perFrame);
@@ -213,7 +214,7 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
   };
 
   const inferredAt = (frameIndex: number): ReadonlySet<string> => inferredByFrame.get(frameIndex) ?? EMPTY_SET;
-  const objectBirthsAt = (frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]> => birthsByFrame.get(frameIndex) ?? EMPTY_BIRTHS;
+  const objectBirthsAt = (frameIndex: number): ReadonlyMap<string, readonly ObjectBirth[]> => birthsByFrame.get(frameIndex) ?? EMPTY_OBJECT_BIRTHS;
   const objectBoundsAt = (frameIndex: number): ReadonlyMap<string, readonly MaskBounds[]> => objectBoxesByFrame.get(frameIndex) ?? EMPTY_BIRTHS;
 
   const effective = resolved.tracks.map((t) => t.entity);

@@ -275,3 +275,12 @@ test("a touch of a resident zone is always sent to vision review, and is marked 
   // The same grip on an object is confident.
   assert.equal(detectContacts(tracks([hand, rail], seq(hits, handGrip)), CONTACT_CONFIG)[0]!.confidence, "confident");
 });
+
+test("a touch of a dispenser is always sent to vision review, and is marked so", () => {
+  const hits = Array.from({ length: 20 }, (_, f) => f >= 3 && f < 12);
+  const perFrame = hits.map((hit) => ({ pump: railMask, h1: hit ? handGrip : handAway }));
+  const out = detectContacts(tracks([hand, pump], perFrame), CONTACT_CONFIG);
+  assert.equal(out.length, 1);
+  assert.equal(out[0]!.confidence, "ambiguous");
+  assert.equal(out[0]!.dispenserContact, true);
+});
