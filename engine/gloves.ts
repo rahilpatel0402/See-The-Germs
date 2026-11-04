@@ -6,7 +6,7 @@
 
 import type { GloveConfig } from "./config.ts";
 import { bbox } from "./masks.ts";
-import type { Entity, GloveEvent, MaskBounds, Tracks } from "./types.ts";
+import type { Entity, GloveEvent, MaskBounds, MaskRecord, Tracks } from "./types.ts";
 
 interface Point {
   readonly x: number;
@@ -29,6 +29,26 @@ function centerOfBounds(box: MaskBounds | null | undefined): Point | undefined {
 
 function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+// Boxes of objects first seen in each frame, where "first seen" includes a return after at
+// least gapFrames without a record: SAM reuses ids for a hand that leaves and comes back, and
+// skin reappearing after a glove comes off is such a return. Pure; the server feeds the result
+// to Tracks.objectBirthsAt.
+export function objectBirths(records: readonly MaskRecord[], gapFrames: number): Map<number, MaskBounds[]> {
+  const sorted = [...records].sort((a, b) => a.frameIndex - b.frameIndex || a.objectId.localeCompare(b.objectId));
+  const lastSeen = new Map<string, number>();
+  const out = new Map<number, MaskBounds[]>();
+  for (const r of sorted) {
+    const prev = lastSeen.get(r.objectId);
+    if (prev === undefined || r.frameIndex - prev > gapFrames) {
+      const list = out.get(r.frameIndex);
+      if (list) list.push(r.bounds);
+      else out.set(r.frameIndex, [r.bounds]);
+    }
+    lastSeen.set(r.objectId, r.frameIndex);
+  }
+  return out;
 }
 
 export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEvent[] {
@@ -108,9 +128,17 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
       if (f > 0) {
         for (const birth of birthsOf(gloved.id, f)) {
           if (!persists(gloved.id, f, config.openFrames)) break;
+          // The bare hand was seen beside the new glove within the window, or it left view just
+          // before the glove appeared (the hands dipped out of frame to glove, clip C of the shoot)
+          // and no bare hand is visible now.
           let bareSeen = false;
-          for (let j = f - config.handoverWindowFrames; j <= f && !bareSeen; j++) bareSeen = near(birth, boxesOf(bare.id, j));
-          if (!bareSeen) continue;
+          let bareRecently = false;
+          for (let j = f - config.handoverWindowFrames; j <= f && !bareSeen; j++) {
+            const boxes = boxesOf(bare.id, j);
+            if (boxes.length > 0 && j < f) bareRecently = true;
+            bareSeen = near(birth, boxes);
+          }
+          if (!bareSeen && !(bareRecently && !presentAt(bare.id, f))) continue;
           if (!gloveOn) {
             push("don", f);
             gloveOn = true;

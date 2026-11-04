@@ -17,3 +17,5 @@ Ideas that appeared during the build and were not in the ladder. Written down so
 
 
 - Hygiene without a visible dispenser: a sustained two-hand rub with no object contact could be offered as "rub seen, agent unknown" for the user to confirm. Seen on the CNA skills clip, Nov 3.
+
+- Read the coaching note aloud for the CNA (English and Spanish). The browser speech API costs nothing; ElevenLabs would sound better but is a new vendor in the product. Nov 3.

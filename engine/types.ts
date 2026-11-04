@@ -120,6 +120,9 @@ export interface ContactCandidate {
   // True when the contact lasted most of the clip, so it was sent to vision review even though
   // the overlap was thick: a prop in front of the hands looks exactly like a long hold.
   readonly longContact?: boolean;
+  // True when the target is a resident zone and the config sends every such touch to vision
+  // review: hands rubbing in front of a resident look exactly like a touch.
+  readonly residentContact?: boolean;
 }
 
 export type Verdict = "touching" | "passing_in_front" | "unclear";

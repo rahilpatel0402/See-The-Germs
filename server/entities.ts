@@ -7,7 +7,8 @@ import { entitiesPath } from "./paths.ts";
 
 // The one place that decides whether a SAM record counts for an entity. Used by the engine
 // input, the overlay payload, and the adjudication images, so they can never disagree.
-export function passesConfidence(entity: { readonly minConfidence?: number }, record: MaskRecord): boolean {
+export function passesConfidence(entity: { readonly minConfidence?: number; readonly samObjectIds?: readonly string[] }, record: MaskRecord): boolean {
+  if (entity.samObjectIds !== undefined && !entity.samObjectIds.includes(record.objectId)) return false;
   return entity.minConfidence === undefined || record.confidence === undefined || record.confidence >= entity.minConfidence;
 }
 
@@ -15,6 +16,9 @@ export interface EntityConfig extends Entity {
   // Records below this SAM confidence are dropped when tracks are loaded. Used for the gloved
   // hand class, which fired at low confidence on bare skin in the feasibility clip.
   readonly minConfidence?: number;
+  // When a phrase matches several things (two sheets of paper), the SAM object ids this entity
+  // is: records of other objects are dropped. Set by hand from the track file.
+  readonly samObjectIds?: readonly string[];
 }
 
 // Defaults for the clip A scenario with household props (docs/DEV_CLIP_SHOOT.md). Phrases
@@ -58,6 +62,9 @@ export function validateEntities(entities: unknown): asserts entities is EntityC
     if (typeof e["samPhrase"] !== "string" || !e["samPhrase"].trim()) throw new Error(`entity ${e["id"]} needs a samPhrase`);
     if (e["minConfidence"] !== undefined && (typeof e["minConfidence"] !== "number" || e["minConfidence"] < 0 || e["minConfidence"] > 1)) {
       throw new Error(`entity ${e["id"]} minConfidence must be 0 to 1`);
+    }
+    if (e["samObjectIds"] !== undefined && (!Array.isArray(e["samObjectIds"]) || e["samObjectIds"].some((x) => typeof x !== "string"))) {
+      throw new Error(`entity ${e["id"]} samObjectIds must be a list of SAM object ids`);
     }
     if (e["person"] !== undefined && (typeof e["person"] !== "string" || !e["person"])) throw new Error(`entity ${e["id"]} person must be a non-empty string`);
     if (e["class"] === "dispenser" && !AGENTS.has(String(e["agent"]))) throw new Error(`dispenser ${e["id"]} needs agent alcohol_rub, soap_water, or gloves`);

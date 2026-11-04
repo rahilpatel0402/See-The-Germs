@@ -7,8 +7,8 @@
 import { GAP_FILL_CONFIG } from "../engine/config.ts";
 import { fromRecord, union } from "../engine/masks.ts";
 import { fillObjectGaps } from "../engine/persistence.ts";
-import { isHand } from "../engine/gloves.ts";
-import { PERSON_CONFIG } from "../engine/config.ts";
+import { isHand, objectBirths } from "../engine/gloves.ts";
+import { GLOVE_CONFIG, PERSON_CONFIG } from "../engine/config.ts";
 import { assignHandObjects, labelPersons, RESIDENT_PERSON, splitHandsByPerson } from "../engine/persons.ts";
 import type { Entity, FrameMask, MaskBounds, MaskRecord, Tracks } from "../engine/types.ts";
 import { type ClipMeta, readMeta } from "./clips.ts";
@@ -164,16 +164,13 @@ export async function loadTracks(clipId: string): Promise<LoadedTracks> {
       else if (isHand(entity)) getOrInit(getOrInit(objectBoxesByFrame, record.frameIndex, () => new Map<string, MaskBounds[]>()), entity.id, () => []).push(record.bounds);
     }
     if (isHand(entity)) {
-      // Births from the raw track of the phrase, restricted to the objects this entity kept.
+      // Births from the raw track of the phrase (first sighting, or a return after a gap),
+      // restricted to the objects this entity kept.
       const rawRecords = resolved.rawByPhrase.get(entity.samPhrase) ?? [];
       const mine = new Set(records.map((r) => r.objectId));
-      const firstFrame = new Map<string, MaskRecord>();
-      for (const record of rawRecords) {
-        if (!mine.has(record.objectId)) continue;
-        const seen = firstFrame.get(record.objectId);
-        if (seen === undefined || record.frameIndex < seen.frameIndex) firstFrame.set(record.objectId, record);
+      for (const [frame, boxes] of objectBirths(rawRecords.filter((r) => mine.has(r.objectId)), GLOVE_CONFIG.rebirthGapFrames)) {
+        getOrInit(getOrInit(birthsByFrame, frame, () => new Map<string, MaskBounds[]>()), entity.id, () => []).push(...boxes);
       }
-      for (const record of firstFrame.values()) getOrInit(getOrInit(birthsByFrame, record.frameIndex, () => new Map<string, MaskBounds[]>()), entity.id, () => []).push(record.bounds);
     }
     byEntity.set(entity.id, perFrame);
   }

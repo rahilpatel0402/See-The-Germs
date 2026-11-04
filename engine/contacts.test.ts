@@ -263,3 +263,15 @@ test("a contact lasting most of the clip goes to vision review even when thick, 
   assert.equal(out2[0]!.confidence, "confident");
   assert.equal(out2[0]!.longContact, undefined);
 });
+
+test("a touch of a resident zone is always sent to vision review, and is marked so", () => {
+  const resident: Entity = { id: "res", label: "resident A", class: "resident_zone", zone: "patient_zone_A", samPhrase: "pillow" };
+  const hits = Array.from({ length: 20 }, (_, f) => f >= 3 && f < 12);
+  const perFrame = hits.map((hit) => ({ res: railMask, h1: hit ? handGrip : handAway }));
+  const out = detectContacts(tracks([hand, resident], perFrame), CONTACT_CONFIG);
+  assert.equal(out.length, 1);
+  assert.equal(out[0]!.confidence, "ambiguous");
+  assert.equal(out[0]!.residentContact, true);
+  // The same grip on an object is confident.
+  assert.equal(detectContacts(tracks([hand, rail], seq(hits, handGrip)), CONTACT_CONFIG)[0]!.confidence, "confident");
+});

@@ -31,6 +31,11 @@ export interface ContactConfig {
   // Heuristic: and at least this many hit frames (5 s at 10 fps), so a short clip is not sent
   // to review for an ordinary grip.
   readonly reviewLongerThanMinFrames: number;
+  // Clinical weighting choice: every touch of a resident zone goes to vision review, however
+  // thick. Resident contacts carry the most weight (exposures, Moments 1 and 4) and are the
+  // ones a caregiver rubbing hands in front of the resident fakes most easily (shoot clips B and
+  // C, Nov 3). They are reviewed outside the per-clip cap.
+  readonly reviewResidentContacts: boolean;
 }
 
 export const CONTACT_CONFIG: ContactConfig = {
@@ -42,6 +47,7 @@ export const CONTACT_CONFIG: ContactConfig = {
   confidentDwellFrames: 6,
   reviewLongerThanFraction: 0.2,
   reviewLongerThanMinFrames: 50,
+  reviewResidentContacts: true,
 };
 
 // The frame size the pixel constants above were chosen at.
@@ -91,6 +97,10 @@ export interface GloveConfig {
   // Heuristic: the bare and gloved tracks must be within this fraction of frame width for the
   // handover to be the same hand.
   readonly maxHandoverDistanceFraction: number;
+  // Heuristic: SAM reuses an object id when a hand comes back into view, so a hand object seen
+  // again after this many frames without a record (1 s at 10 fps) counts as born again. That is
+  // how skin reappearing after a glove comes off is seen when SAM keeps the old id (clip C).
+  readonly rebirthGapFrames: number;
 }
 
 export const GLOVE_CONFIG: GloveConfig = {
@@ -98,6 +108,7 @@ export const GLOVE_CONFIG: GloveConfig = {
   closeFrames: 3,
   handoverWindowFrames: 10,
   maxHandoverDistanceFraction: 0.15,
+  rebirthGapFrames: 10,
 };
 
 // Clinical rule, confirmed by Rahil Oct 27: whether the bare hand is contaminated on doff

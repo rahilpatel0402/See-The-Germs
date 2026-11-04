@@ -62,3 +62,21 @@ test("a dispenser without an agent is an error, an unknown entity is an error", 
   assert.throws(() => splitHygiene([contact("bare_hand", "mystery", 0, 2)], entities, PATHOGENS.mrsa, HYGIENE_CONFIG, 60));
   assert.throws(() => splitHygiene([contact("bare_hand", "nope", 0, 2)], CLIP_A_ENTITIES, PATHOGENS.mrsa, HYGIENE_CONFIG, 60));
 });
+
+test("going back to the same bottle during one rub is one hygiene event, timed from the first squeeze", () => {
+  // Clip B of the shoot: three squeezes of 0.8 s each inside a 21 s rub. One event, adequate,
+  // its dwell the sum of the visits so the one second minimum is met.
+  const contacts = [
+    contact("bare_hand", "rail_A", 1.0, 3.8),
+    contact("bare_hand", "sanitizer", 7.7, 8.5),
+    contact("bare_hand", "sanitizer", 14.5, 15.3),
+    contact("bare_hand", "sanitizer", 25.5, 26.3),
+    contact("bare_hand", "phone", 28.5, 29.3),
+  ];
+  const split = splitHygiene(contacts, CLIP_A_ENTITIES, PATHOGENS.mrsa, HYGIENE_CONFIG, 40);
+  assert.deepEqual(split.hygieneEvents.map((h) => [h.t, h.durationS, h.adequate, h.effective]), [[7.7, 20.8, true, true]]);
+  assert.deepEqual(split.contacts.map((c) => c.entityId), ["rail_A", "phone"]);
+  // A touch of something else between two visits keeps them separate rubs.
+  const twoRubs = [contact("bare_hand", "sanitizer", 1.0, 2.2), contact("bare_hand", "rail_A", 5.0, 6.0), contact("bare_hand", "sanitizer", 8.0, 9.2), contact("bare_hand", "phone", 30.0, 31.0)];
+  assert.deepEqual(splitHygiene(twoRubs, CLIP_A_ENTITIES, PATHOGENS.mrsa, HYGIENE_CONFIG, 40).hygieneEvents.map((h) => h.t), [1.0, 8.0]);
+});

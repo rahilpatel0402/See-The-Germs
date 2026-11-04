@@ -80,13 +80,15 @@ function newState(): PairState {
   return { pendingHits: 0, pendingStart: 0, pendingPeak: 0, pendingSeenHits: 0, pendingSeenPeak: 0, pendingInferred: false, run: null, misses: 0 };
 }
 
-function finish(run: OpenRun, handId: string, entityId: string, fps: number, config: ContactConfig, floor: number, frameCount: number): ContactCandidate {
+function finish(run: OpenRun, handId: string, target: Entity, fps: number, config: ContactConfig, floor: number, frameCount: number): ContactCandidate {
+  const entityId = target.id;
+  const residentContact = config.reviewResidentContacts && target.class === "resident_zone";
   // Confidence rests only on frames where the camera saw the object. A contact that would not
   // stand on seen frames alone, and leaned on gap-filled masks, is marked inferred so vision
   // review decides. A long seen grip with a few filled frames inside it stays confident.
   const longContact = run.hits >= config.reviewLongerThanMinFrames && run.hits >= config.reviewLongerThanFraction * frameCount;
-  const confident = !longContact && run.seenPeak >= config.confidentIntersectionFactor * floor && run.seenHits >= config.confidentDwellFrames;
-  const inferredObject = run.inferred && !confident && !longContact;
+  const confident = !longContact && !residentContact && run.seenPeak >= config.confidentIntersectionFactor * floor && run.seenHits >= config.confidentDwellFrames;
+  const inferredObject = run.inferred && !confident && !longContact && !residentContact;
   return {
     id: `${handId}:${entityId}:${run.startFrame}`,
     handId,
@@ -100,6 +102,7 @@ function finish(run: OpenRun, handId: string, entityId: string, fps: number, con
     dwellFrames: run.hits,
     ...(inferredObject ? { inferredObject: true } : {}),
     ...(longContact ? { longContact: true } : {}),
+    ...(residentContact ? { residentContact: true } : {}),
   };
 }
 
@@ -187,7 +190,7 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
         } else if (state.run !== null) {
           state.misses++;
           if (state.misses >= config.closeFrames) {
-            out.push(finish(state.run, hand.id, target.id, fps, config, floor, tracks.frameCount));
+            out.push(finish(state.run, hand.id, target, fps, config, floor, tracks.frameCount));
             state.run = null;
             state.misses = 0;
           }
@@ -206,7 +209,7 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
   for (const hand of hands) {
     for (const target of targets) {
       const state = states.get(`${hand.id}|${target.id}`);
-      if (state?.run) out.push(finish(state.run, hand.id, target.id, fps, config, floor, tracks.frameCount));
+      if (state?.run) out.push(finish(state.run, hand.id, target, fps, config, floor, tracks.frameCount));
     }
   }
 
