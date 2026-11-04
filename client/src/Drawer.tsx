@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Analysis, Narrative } from "../../engine/types.ts";
-import { SCORE_WEIGHTS } from "../../engine/config.ts";
+import { HYGIENE_CONFIG, SCORE_WEIGHTS } from "../../engine/config.ts";
+import { SHARED_CITATIONS } from "../../engine/pathogens.ts";
 import type { NarrativeLanguage } from "./api.ts";
 import { ChainGraph } from "./ChainGraph.tsx";
 
@@ -28,7 +29,7 @@ const fmt = (t: number): string => `${t.toFixed(1)} s`;
 function sourceName(url: string): string {
   try {
     const u = new URL(url);
-    const host = u.hostname.replace(/^www./, "");
+    const host = u.hostname.replace(/^www\./, "");
     const who = host.includes("who.int") ? "WHO" : host.includes("cdc.gov") ? "CDC" : host.includes("epa.gov") ? "EPA" : host;
     const parts = u.pathname.split("/").filter((x) => x && x !== "index.html");
     const tail = parts.length > 0 ? (parts[parts.length - 1] as string).replace(/[-_]/g, " ") : "";
@@ -100,6 +101,13 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
   const momentsSection = analysis ? (
     <section>
       <h2>Five Moments</h2>
+      <p className="muted">
+        Source:{" "}
+        <a href={SHARED_CITATIONS.whoGuidelines2009} target="_blank" rel="noreferrer">
+          WHO Guidelines on Hand Hygiene in Health Care, 2009
+        </a>
+        .
+      </p>
       {analysis.momentMisses.length === 0 ? (
         <p className="muted">No missed moments detected in this clip.</p>
       ) : (
@@ -167,6 +175,13 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
           {analysis.hygieneEvents.some((h) => !h.adequate) ? (
             <section>
               <h2>Rub time</h2>
+              <p className="muted">
+                Source:{" "}
+                <a href={SHARED_CITATIONS.whoTechnicalReferenceManual} target="_blank" rel="noreferrer">
+                  WHO Hand Hygiene Technical Reference Manual, 2009
+                </a>{" "}
+                (alcohol rub 20 to 30 seconds, soap and water 40 to 60).
+              </p>
               <ul className="plain">
                 {analysis.hygieneEvents
                   .filter((h) => !h.adequate)
@@ -175,7 +190,7 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
                       <button type="button" className="link" onClick={() => onSeek(h.t)}>
                         {fmt(h.t)}
                       </button>{" "}
-                      {h.durationS.toFixed(0)} s. Rub for the full {h.agent === "alcohol_rub" ? "20" : "40"} seconds before touching anything.
+                      {h.durationS.toFixed(0)} s. Rub for the full {HYGIENE_CONFIG.minRubS[h.agent]} seconds before touching anything.
                     </li>
                   ))}
               </ul>
@@ -242,7 +257,7 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
                     {h.effective ? (
                       <span className="ok">Counted.</span>
                     ) : !h.adequate ? (
-                      <span className="warn">Too short: WHO calls for {h.agent === "alcohol_rub" ? "20 to 30" : "40 to 60"} seconds.</span>
+                      <span className="warn">Too short: WHO calls for at least {HYGIENE_CONFIG.minRubS[h.agent]} seconds.</span>
                     ) : (
                       <span className="warn">Does not clear {analysis.pathogen.label}.</span>
                     )}
@@ -395,11 +410,17 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
             <section>
               <h2>Vision reviewed</h2>
               <ul className="plain">
-                {analysis.adjudications.map((a) => (
-                  <li key={a.candidateId}>
-                    <strong>{a.verdict.replace("_", " ")}</strong>: {a.reasoning}
-                  </li>
-                ))}
+                {analysis.adjudications
+                  .map((a) => ({ a, c: analysis.candidates.find((c) => c.id === a.candidateId) }))
+                  .filter((x): x is { a: (typeof analysis.adjudications)[number]; c: (typeof analysis.candidates)[number] } => x.c !== undefined)
+                  .map(({ a, c }) => (
+                    <li key={a.candidateId}>
+                      <button type="button" className="link" onClick={() => onSeek(c.startT)}>
+                        {fmt(c.startT)}
+                      </button>{" "}
+                      {name(c.handId)} and {name(c.entityId)}: <strong>{a.verdict.replace("_", " ")}</strong>. {a.reasoning}
+                    </li>
+                  ))}
               </ul>
               <p className="muted">Muse Spark voted only on these perception edge cases. The engine decided everything else.</p>
             </section>

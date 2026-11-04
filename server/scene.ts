@@ -13,7 +13,7 @@ import { type EntityConfig, readEntities, validateEntities, writeEntities } from
 import { rawFramePath } from "./frames.ts";
 import { clipDir, trackPath } from "./paths.ts";
 import { isBoxPhrase, segmentImage } from "./sam.ts";
-import { estimateSparkCost, type SparkBackend, type SparkRequest, type SparkResult } from "./spark.ts";
+import { costLabel, type SparkBackend, type SparkRequest, type SparkResult } from "./spark.ts";
 
 // Heuristic: two verified props whose found objects cover the same area of the test frame (same
 // object count, union boxes overlapping at this IoU or more) are one prop named twice.
@@ -183,8 +183,8 @@ export async function proposeScene(clipId: string, spark: SparkBackend): Promise
     schema: SCENE_SCHEMA,
     maxOutputTokens: 8000,
   });
-  if (!proposalCached) cost += estimateSparkCost(proposal.usage);
-  console.log(`spark   | ${clipId} | scene proposal${proposalCached ? " (cached)" : ""} | in=${proposal.usage.inputTokens} out=${proposal.usage.outputTokens} (reasoning ${proposal.usage.reasoningTokens}) | ${proposal.elapsedMs} ms | $${proposalCached ? "0.0000" : estimateSparkCost(proposal.usage).toFixed(4)}`);
+  if (!proposalCached) cost += spark.costUsd(proposal.usage) ?? 0;
+  console.log(`spark   | ${clipId} | scene proposal${proposalCached ? " (cached)" : ""} | in=${proposal.usage.inputTokens} out=${proposal.usage.outputTokens} (reasoning ${proposal.usage.reasoningTokens}) | ${proposal.elapsedMs} ms | ${proposalCached ? "$0.0000" : costLabel(spark, proposal.usage)}`);
   const raw = (proposal.json as { entities?: unknown })?.entities;
   if (!Array.isArray(raw)) throw new Error("scene: Spark returned no entities");
   const proposed: Proposed[] = raw
@@ -246,7 +246,7 @@ export async function proposeScene(clipId: string, spark: SparkBackend): Promise
         schema: RETRY_SCHEMA,
         maxOutputTokens: 4000,
       });
-      if (!retryCached) cost += estimateSparkCost(retry.usage);
+      if (!retryCached) cost += spark.costUsd(retry.usage) ?? 0;
       const more = ((retry.json as { phrases?: unknown })?.phrases as unknown[] | undefined)?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).slice(0, 3) ?? [];
       await tryPhrases(more);
     }

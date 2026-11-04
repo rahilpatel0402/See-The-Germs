@@ -10,7 +10,7 @@ import { runAnalysis } from "../analysis.ts";
 import { narrateClip } from "../narrate.ts";
 import { clipDir } from "../paths.ts";
 import { readAdjudications } from "../scenario.ts";
-import { createSparkBackend, estimateSparkCost, type SparkBackend } from "../spark.ts";
+import { createSparkBackend, type SparkBackend } from "../spark.ts";
 
 const clipId = process.argv[2];
 const a = process.argv[3] ?? "meta";
@@ -37,7 +37,7 @@ interface BackendReport {
   backend: string;
   model: string;
   narrative: { top_fix: string; coaching_note: string; audit_summary: string; usage: unknown; elapsedMs?: number };
-  adjudications: Array<{ candidateId: string; verdict: string; reasoning: string; usage: unknown; elapsedMs: number; cost: number }>;
+  adjudications: Array<{ candidateId: string; verdict: string; reasoning: string; usage: unknown; elapsedMs: number; cost: number | null }>;
 }
 
 async function run(name: string): Promise<BackendReport> {
@@ -58,7 +58,7 @@ async function run(name: string): Promise<BackendReport> {
       const result = await backend.completeJson({ instructions: adjudicatePrompt, text, images, schemaName: "adjudication", schema: VERDICT_SCHEMA, maxOutputTokens: 1500 });
       const v = result.json as { verdict?: string; reasoning?: string };
       console.log(`adjudicate ${cached.candidateId}: ${v.verdict} (cached meta verdict: ${cached.verdict}) | ${result.elapsedMs} ms`);
-      adjudications.push({ candidateId: cached.candidateId, verdict: v.verdict ?? "invalid", reasoning: v.reasoning ?? "", usage: result.usage, elapsedMs: result.elapsedMs, cost: estimateSparkCost(result.usage) });
+      adjudications.push({ candidateId: cached.candidateId, verdict: v.verdict ?? "invalid", reasoning: v.reasoning ?? "", usage: result.usage, elapsedMs: result.elapsedMs, cost: backend.costUsd(result.usage) });
     } catch (err) {
       console.log(`adjudicate ${cached.candidateId}: FAILED ${(err as Error).message}`);
       adjudications.push({ candidateId: cached.candidateId, verdict: "failed", reasoning: (err as Error).message, usage: null, elapsedMs: 0, cost: 0 });

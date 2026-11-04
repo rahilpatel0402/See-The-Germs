@@ -8,7 +8,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Analysis, Counterfactual, Narrative } from "../engine/types.ts";
 import { clipDir } from "./paths.ts";
-import { estimateSparkCost, type SparkBackend, type SparkUsage } from "./spark.ts";
+import { costLabel, type SparkBackend, type SparkUsage } from "./spark.ts";
 
 const NARRATIVE_SCHEMA = {
   type: "object",
@@ -40,7 +40,7 @@ const EXPLAIN_MAX_OUTPUT = 4000;
 // Anything that reads as patient-facing or clinical advice fails validation. Phrases, not bare
 // nouns: a prop can legitimately be labelled "medication cart", and labels are exempted below.
 // English and Spanish forms.
-const DISALLOWED = /\b(diagnos\w*|diagn[oó]s\w*|prescri\w*|recet\w+|(take|give|adjust|stop|start) (the |your |their )?(medication|medicine|antibiotic)s?|(tom\w+|d[eé]|ajust\w+|suspend\w+) (el |la |los |las |su |sus )?(medicament\w+|medicin\w+|antibi[oó]tic\w+)|treat(ment)? plan|plan de tratamiento|see a doctor|consult\w+ (a|al) (m[eé]dico|doctor)|call (the|a) (doctor|physician)|should be (treated|tested|isolated|medicated)|debe(r[ií]a)? ser (tratad|aislad|medicad)\w*|the (resident|patient) (should|needs|must|requires)|(el|la) (residente|paciente) (debe|necesita|requiere))\b/i;
+const DISALLOWED = /\b(diagnos\w*|diagn[oó]s\w*|prescri\w*|recet\w+|(take|give|adjust|stop|start) (the |your |their )?(medication|medicine|antibiotic)s?|(tom\w+|d[eé]le|d[eé]les|dé|ajust\w+|suspend\w+) (el |la |los |las |su |sus )?(medicament\w+|medicin\w+|antibi[oó]tic\w+)|treat(ment)? plan|plan de tratamiento|see a doctor|consult\w+ (a|al) (m[eé]dico|doctor)|call (the|a) (doctor|physician)|should be (treated|tested|isolated|medicated)|debe(r[ií]a)? ser (tratad|aislad|medicad)\w*|the (resident|patient) (should|needs|must|requires)|(el|la) (residente|paciente) (debe|necesita|requiere))\b/i;
 
 export type NarrativeLanguage = "en" | "es";
 
@@ -150,7 +150,7 @@ const words = (s: string): number => s.trim().split(/\s+/).filter(Boolean).lengt
 // a comma, a dash at a sentence start is dropped. Facts and words are untouched.
 export function withoutDashes(text: string): string {
   return text
-    .replace(/\s*[—–]+\s*/g, ", ")
+    .replace(/\s*[\u2014\u2013]+\s*/g, ", ")
     .replace(/([.!?])\s*,\s*/g, "$1 ")
     .replace(/^,\s*/, "")
     .replace(/\s+,/g, ",")
@@ -215,7 +215,7 @@ export async function narrateClip(clipId: string, analysis: Analysis, backend: S
     }
     const checked = validateNarrative(result.json, analysis.entities.map((e) => e.label));
     console.log(
-      `spark   | ${clipId} | narrate ${language} attempt ${attempt + 1} | ${checked.ok ? "valid" : `INVALID: ${checked.reason}`} | in=${result.usage.inputTokens} (cached ${result.usage.cachedTokens}) out=${result.usage.outputTokens} (reasoning ${result.usage.reasoningTokens}) | ${String(result.elapsedMs).padStart(5)} ms | $${estimateSparkCost(result.usage).toFixed(4)}`,
+      `spark   | ${clipId} | narrate ${language} attempt ${attempt + 1} | ${checked.ok ? "valid" : `INVALID: ${checked.reason}`} | in=${result.usage.inputTokens} (cached ${result.usage.cachedTokens}) out=${result.usage.outputTokens} (reasoning ${result.usage.reasoningTokens}) | ${String(result.elapsedMs).padStart(5)} ms | ${costLabel(backend, result.usage)}`,
     );
     if (checked.ok) {
       const file: NarrativeFile = { hash, language, model: backend.model, backend: backend.name, createdAt: new Date().toISOString(), usage: result.usage, narrative: checked.narrative };
@@ -246,7 +246,7 @@ export async function explainCounterfactual(analysis: Analysis, cf: Counterfactu
   const result = await backend.completeJson({ instructions: prompt, text: JSON.stringify(input, null, 2), images: [], schemaName: "counterfactual_explanation", schema: EXPLAIN_SCHEMA, maxOutputTokens: EXPLAIN_MAX_OUTPUT });
   const text = (result.json as { counterfactual_explanation?: unknown })?.counterfactual_explanation;
   if (typeof text !== "string" || !text.trim() || findDisallowed(text, analysis.entities.map((e) => e.label)) !== null) throw new Error("counterfactual explanation failed validation");
-  console.log(`spark   | ${analysis.clipId} | explain counterfactual at ${cf.inserted.t}s | in=${result.usage.inputTokens} out=${result.usage.outputTokens} | $${estimateSparkCost(result.usage).toFixed(4)}`);
+  console.log(`spark   | ${analysis.clipId} | explain counterfactual at ${cf.inserted.t}s | in=${result.usage.inputTokens} out=${result.usage.outputTokens} | ${costLabel(backend, result.usage)}`);
   const file: ExplanationFile = { hash, model: backend.model, backend: backend.name, createdAt: new Date().toISOString(), usage: result.usage, explanation: withoutDashes(text).trim() };
   await writeJson(explanationPath(analysis.clipId, hash), file);
   return file;

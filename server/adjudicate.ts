@@ -13,7 +13,7 @@ import { readAdjudications } from "./scenario.ts";
 import { renderAnnotatedFrame, type Outline } from "./frames.ts";
 import { adjudicationsPath, clipDir } from "./paths.ts";
 import { perceptionFor } from "./pipeline.ts";
-import { estimateSparkCost, type SparkBackend } from "./spark.ts";
+import { costLabel, type SparkBackend } from "./spark.ts";
 import { type EntityTrack, loadEntityTracks } from "./tracks.ts";
 
 const VERDICTS: readonly Verdict[] = ["touching", "passing_in_front", "unclear"];
@@ -128,7 +128,7 @@ export async function adjudicateClip(clipId: string, backend: SparkBackend, opti
         const result = await backend.completeJson({ instructions: prompt, text, images, schemaName: "adjudication", schema: SCHEMA, maxOutputTokens: MAX_OUTPUT_TOKENS });
         const parsed = parseVerdict(result.json);
         console.log(
-          `spark   | ${clipId} | adjudicate ${candidate.id.padEnd(28)} | ${parsed ? parsed.verdict.padEnd(16) : "INVALID JSON    "} | in=${result.usage.inputTokens} (cached ${result.usage.cachedTokens}) out=${result.usage.outputTokens} (reasoning ${result.usage.reasoningTokens}) | ${String(result.elapsedMs).padStart(5)} ms | $${estimateSparkCost(result.usage).toFixed(4)}`,
+          `spark   | ${clipId} | adjudicate ${candidate.id.padEnd(28)} | ${parsed ? parsed.verdict.padEnd(16) : "INVALID JSON    "} | in=${result.usage.inputTokens} (cached ${result.usage.cachedTokens}) out=${result.usage.outputTokens} (reasoning ${result.usage.reasoningTokens}) | ${String(result.elapsedMs).padStart(5)} ms | ${costLabel(backend, result.usage)}`,
         );
         if (parsed) adjudication = { candidateId: candidate.id, ...parsed };
         else lastError = `invalid verdict: ${JSON.stringify(result.json).slice(0, 120)}`;

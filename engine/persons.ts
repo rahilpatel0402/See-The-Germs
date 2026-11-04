@@ -127,6 +127,8 @@ export function assignHandObjects(
 export interface EntityRecords {
   readonly entity: Entity;
   readonly records: MaskRecord[];
+  // The stored entity this one came from (itself unless it is a per-person copy of a hand).
+  readonly baseId: string;
 }
 
 function slug(text: string): string {
@@ -152,7 +154,7 @@ export function splitHandsByPerson(entities: readonly Entity[], recordsByEntity:
   for (const entity of entities) {
     const records = recordsByEntity.get(entity.id) ?? [];
     if (!isHand(entity)) {
-      out.push({ entity, records: [...records] });
+      out.push({ entity, records: [...records], baseId: entity.id });
       continue;
     }
     const base = entity.person ?? "P1";
@@ -169,8 +171,8 @@ export function splitHandsByPerson(entities: readonly Entity[], recordsByEntity:
     for (const person of [base, ...[...byPerson.keys()].filter((k) => k !== base).sort()]) {
       const personRecords = byPerson.get(person) as MaskRecord[];
       const label = several ? `${entity.label} (${caregiverName(person)})` : entity.label;
-      if (person === base) out.push({ entity: { ...entity, label, person }, records: personRecords });
-      else out.push({ entity: { ...entity, id: `${entity.id}_${slug(person)}`, label, person }, records: personRecords });
+      if (person === base) out.push({ entity: { ...entity, label, person }, records: personRecords, baseId: entity.id });
+      else out.push({ entity: { ...entity, id: `${entity.id}_${slug(person)}`, label, person }, records: personRecords, baseId: entity.id });
     }
   }
   return out;

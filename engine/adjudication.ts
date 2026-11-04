@@ -30,15 +30,16 @@ export function planAdjudication(
 ): AdjudicationPlan {
   // Only verdicts on candidates that still exist count: a retune or a phrase change can leave
   // stale ids behind, and those must not eat the cap forever.
-  const currentIds = new Set(candidates.map((c) => c.id));
-  const done = new Set(existing.filter((a) => currentIds.has(a.candidateId)).map((a) => a.candidateId));
+  const byId = new Map(candidates.map((c) => [c.id, c]));
+  const done = new Set(existing.filter((a) => byId.has(a.candidateId)).map((a) => a.candidateId));
   const eligible = candidates.filter((c) => c.confidence === "ambiguous" && !done.has(c.id));
-  // Live verdicts count against the cap, so a clip never exceeds it across runs.
-  const budget = Math.max(0, config.capPerClip - done.size);
-  // Long contacts are always reviewed, outside the cap: a prop in front of the hands or a real
-  // hold that long changes the whole analysis, and there are never more than a few. The cap
-  // then buys the thinnest of the rest, the ones most worth a second look.
+  // Long, resident, dispenser, and stacked contacts are always reviewed, outside the cap: each
+  // changes the whole analysis and there are never more than a few. The cap then buys the
+  // thinnest of the rest, the ones most worth a second look. Live verdicts on capped candidates
+  // count against the cap across runs; verdicts on the always-reviewed ones do not.
   const alwaysReviewed = (c: ContactCandidate): boolean => c.longContact === true || c.residentContact === true || c.dispenserContact === true || c.stackedContact === true;
+  const spent = [...done].filter((id) => !alwaysReviewed(byId.get(id) as ContactCandidate)).length;
+  const budget = Math.max(0, config.capPerClip - spent);
   const long = eligible.filter(alwaysReviewed);
   const byOverlap = eligible
     .filter((c) => !alwaysReviewed(c))

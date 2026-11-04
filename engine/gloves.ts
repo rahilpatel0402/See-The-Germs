@@ -220,6 +220,7 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
       // glove was within the handover window, the glove came off there.
       if (gBoxes.length > 0) {
         absentRun = 0;
+        absentStart = null;
         lastGlovedBoxes = gBoxes;
         lastGlovedFrame = f;
       } else if (gloveOn) {

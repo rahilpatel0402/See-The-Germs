@@ -21,15 +21,15 @@ const initialAgent: HygieneAgent = params.get("agent") === "soap_water" ? "soap_
 let deepLinkUsed = false;
 
 export function CounterfactualBar({ clipId, analysis, duration, override, onResult, request }: Props) {
+  const [active, setActive] = useState(false);
+  const [t, setT] = useState(0);
+  const [agent, setAgent] = useState<HygieneAgent>(initialAgent);
   useEffect(() => {
     if (!request) return;
     setT(Number(request.t.toFixed(1)));
     if (request.agent) setAgent(request.agent);
     setActive(true);
   }, [request]);
-  const [active, setActive] = useState(false);
-  const [t, setT] = useState(0);
-  const [agent, setAgent] = useState<HygieneAgent>(initialAgent);
   // One hand entity per person; the slider cleans that person's hands.
   const persons = useMemo(() => {
     const seen = new Map<string, { id: string; label: string }>();
@@ -41,7 +41,8 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
     return [...seen.values()];
   }, [analysis]);
   const [handId, setHandId] = useState<string | undefined>(undefined);
-  const effectiveHand = handId ?? persons[0]?.id;
+  // A hand picked on another clip is dropped silently: the first caregiver is the default.
+  const effectiveHand = handId !== undefined && persons.some((p) => p.id === handId) ? handId : persons[0]?.id;
   const [result, setResult] = useState<Counterfactual | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
@@ -61,6 +62,8 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
     setActive(false);
     setResult(null);
     setExplanation(null);
+    setError(null);
+    setHandId(undefined);
     onResult(null);
   }, [clipId, analysis, onResult]);
 
@@ -69,6 +72,7 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
     setActive(false);
     setResult(null);
     setExplanation(null);
+    setError(null);
     onResult(null);
   };
 

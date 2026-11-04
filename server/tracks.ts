@@ -77,9 +77,8 @@ export async function loadEntityTracks(clipId: string, meta: ClipMeta, entities:
   const split = splitHandsByPerson(plainEntities(present), prepared, owner);
   const configByBase = new Map(present.map((e) => [e.id, e]));
   const tracks: EntityTrack[] = split.map((t) => {
-    // Keep the per-clip config (minConfidence) of the entity each split came from.
-    const baseId = present.find((e) => t.entity.id === e.id || t.entity.id.startsWith(`${e.id}_`))?.id ?? t.entity.id;
-    const base = configByBase.get(baseId);
+    // Keep the per-clip config (minConfidence, samObjectIds) of the entity each split came from.
+    const base = configByBase.get(t.baseId);
     return { entity: { ...(base ?? {}), ...t.entity } as EntityConfig, records: t.records };
   });
   return { tracks, missingPhrases: missing, rawByPhrase };

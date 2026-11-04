@@ -72,3 +72,11 @@ test("long contacts are selected before thin ones when the cap bites", () => {
   assert.deepEqual(spent.selected.map((c) => c.id), [long.id]);
   assert.deepEqual(spent.skipped.map((c) => c.id), [thin.id, other.id]);
 });
+
+test("verdicts on always-reviewed candidates do not spend the cap on later runs", () => {
+  const residents: ContactCandidate[] = Array.from({ length: 3 }, (_, i) => ({ ...cand(i + 1, "ambiguous", 5000), residentContact: true }));
+  const thin = cand(9, "ambiguous", 10);
+  const existing: Adjudication[] = residents.map((c) => ({ candidateId: c.id, verdict: "touching", reasoning: "x" }));
+  const plan = planAdjudication([...residents, thin], existing, { capPerClip: 2 });
+  assert.deepEqual(plan.selected.map((c) => c.id), [thin.id]);
+});

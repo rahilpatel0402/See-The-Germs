@@ -1,4 +1,5 @@
 import { useMemo, useState, type MouseEvent } from "react";
+import { HYGIENE_CONFIG } from "../../engine/config.ts";
 import type { Adjudication, Analysis, ContactCandidate } from "../../engine/types.ts";
 
 interface Props {
@@ -106,7 +107,7 @@ export function Timeline({ clipId, analysis, duration, currentTime, onSeek, onHo
               className={`tick hygiene ${h.effective ? "effective" : "ineffective"}`}
               style={{ left: pct(h.t) }}
               title={`${fmt(h.t)}: ${h.agent.replace("_", " ")}, ${Number.isFinite(h.durationS) ? `${h.durationS.toFixed(0)} s` : "to the end"}. ${
-                h.effective ? "Counted." : !h.adequate ? `Too short for WHO (${h.agent === "alcohol_rub" ? "20 to 30" : "40 to 60"} s).` : `Not effective against ${analysis.pathogen.label}.`
+                h.effective ? "Counted." : !h.adequate ? `Too short for WHO (at least ${HYGIENE_CONFIG.minRubS[h.agent]} s).` : `Not effective against ${analysis.pathogen.label}.`
               }`}
             >
               {!h.adequate ? "short" : ""}

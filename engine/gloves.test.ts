@@ -244,3 +244,12 @@ test("contacts are relabelled to the hand class the glove state says was on", ()
   // No glove events: every hand contact is bare.
   assert.deepEqual(relabelContactsByGloveState([contact("gloved_hand", 5)], [], [bare, gloved]).map((c) => c.handId), ["bare_hand"]);
 });
+
+test("a gloved track that drops out and comes back is still the same glove: a later second-glove birth is not a doff and don", () => {
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 5; f++) frames.push([near, null]);
+  for (let f = 5; f < 40; f++) frames.push([f >= 20 ? near : null, f >= 10 && f < 14 ? null : near]);
+  const births = (f: number) => (f === 5 ? new Map([[gloved.id, [b(near)]]]) : f === 20 ? new Map([[gloved.id, [b(near)]]]) : new Map());
+  const t: Tracks = { ...tracks(frames), objectBirthsAt: births };
+  assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 0.5]]);
+});

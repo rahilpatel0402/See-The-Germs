@@ -121,6 +121,14 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
 
   const states = new Map<string, PairState>();
   const out: ContactCandidate[] = [];
+  // Seen-frame overlap per candidate, for the stacked-prop check: a reference must stand on
+  // seen frames at confident thickness and dwell whatever review flags it carries.
+  const seen = new Map<string, { peak: number; strong: boolean }>();
+  const emit = (run: OpenRun, handId: string, target: Entity): void => {
+    const c = finish(run, handId, target, fps, config, floor, tracks.frameCount);
+    seen.set(c.id, { peak: run.seenPeak, strong: run.seenPeak >= config.confidentIntersectionFactor * floor && run.seenHits >= config.confidentDwellFrames });
+    out.push(c);
+  };
 
   for (let f = 0; f < tracks.frameCount; f++) {
     const frame = tracks.masksAt(f);
@@ -193,7 +201,7 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
         } else if (state.run !== null) {
           state.misses++;
           if (state.misses >= config.closeFrames) {
-            out.push(finish(state.run, hand.id, target, fps, config, floor, tracks.frameCount));
+            emit(state.run, hand.id, target);
             state.run = null;
             state.misses = 0;
           }
@@ -212,7 +220,7 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
   for (const hand of hands) {
     for (const target of targets) {
       const state = states.get(`${hand.id}|${target.id}`);
-      if (state?.run) out.push(finish(state.run, hand.id, target, fps, config, floor, tracks.frameCount));
+      if (state?.run) emit(state.run, hand.id, target);
     }
   }
 
@@ -221,9 +229,10 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
   // reviewed; the thicker one stays as it is.
   const stacked = out.map((c) => {
     if (c.confidence !== "confident") return c;
-    const thicker = out.some(
-      (o) => o !== c && o.handId === c.handId && o.entityId !== c.entityId && o.startFrame <= c.endFrame && c.startFrame <= o.endFrame && c.peakIntersectionPx < config.stackedPeakFraction * o.peakIntersectionPx,
-    );
+    const thicker = out.some((o) => {
+      const ref = seen.get(o.id);
+      return o !== c && ref !== undefined && ref.strong && o.handId === c.handId && o.entityId !== c.entityId && o.startFrame <= c.endFrame && c.startFrame <= o.endFrame && c.peakIntersectionPx < config.stackedPeakFraction * ref.peak;
+    });
     return thicker ? { ...c, confidence: "ambiguous" as const, stackedContact: true } : c;
   });
   stacked.sort((a, b) => a.startFrame - b.startFrame || a.handId.localeCompare(b.handId) || a.entityId.localeCompare(b.entityId));

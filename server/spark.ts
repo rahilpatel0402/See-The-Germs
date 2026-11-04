@@ -33,6 +33,15 @@ export interface SparkBackend {
   readonly name: string;
   readonly model: string;
   completeJson(request: SparkRequest): Promise<SparkResult>;
+  // Dollars for one call at this backend's published prices, or null when the backend's
+  // prices are not known here (partner inference bills on its own terms).
+  costUsd(usage: SparkUsage): number | null;
+}
+
+// "$0.0123" or "n/a" for a log line.
+export function costLabel(backend: SparkBackend, usage: SparkUsage): string {
+  const c = backend.costUsd(usage);
+  return c === null ? "n/a" : `${c.toFixed(4)}`;
 }
 
 // Published Standard mode prices per token.
@@ -74,6 +83,10 @@ export class OpenAICompatSparkBackend implements SparkBackend {
   // Muse Spark Open reasons inside the completion budget and spends more of it than the hosted
   // model does, so the cap never goes below this on an open-weight backend.
   private static readonly MIN_OUTPUT_TOKENS = 6000;
+
+  costUsd(): number | null {
+    return null;
+  }
 
   async completeJson(request: SparkRequest): Promise<SparkResult> {
     const started = Date.now();
@@ -160,6 +173,10 @@ export function createSparkBackend(name: string = optionalEnv("SPARK_BACKEND", "
 export class MetaSparkBackend implements SparkBackend {
   readonly name = "meta-model-api";
   readonly model = "muse-spark-1.3";
+
+  costUsd(usage: SparkUsage): number {
+    return estimateSparkCost(usage);
+  }
 
   async completeJson(request: SparkRequest): Promise<SparkResult> {
     const started = Date.now();

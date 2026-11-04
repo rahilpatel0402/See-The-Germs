@@ -1,3 +1,5 @@
+import type { HygieneAgent, PathogenId, PathogenProfile } from "./types.ts";
+
 // Pathogen rules table, values exactly as PLAN.md 6.3. Do not add a pathogen or change an
 // effectiveness rule without Rahil confirming it. Every citation below was opened on Nov 4,
 // 2026 and the statement the rule rests on was read on the page; the quoted phrase is in the
@@ -15,7 +17,6 @@ export const SHARED_CITATIONS = {
   epaDisinfectantLists: "https://www.epa.gov/pesticide-registration/selected-epa-registered-disinfectants",
 } as const;
 
-import type { HygieneAgent, PathogenId, PathogenProfile } from "./types.ts";
 
 // All four persist on surfaces far longer than any clip, so no surface decay inside a clip.
 export const EFFECTIVELY_FOREVER_S = 1_000_000_000;
