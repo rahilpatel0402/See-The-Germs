@@ -84,7 +84,7 @@ Contacts in each demo clip are hand-labeled with a stopwatch into `labels.json`.
 | feasibility (Oct 26, 24 s, bare and clear-gloved hand, rail, remote, phone) | 6 | 7 | 0.86 | 1.00 | 1 false alarm: an open palm shown above the rail after the glove came off, 1.8 s, thick overlap, which 2D cannot separate from a touch |
 | A, the chain (Nov 3, 33 s, bare hands, rail, call button, phone, resident) | 4 | 5 | 0.80 | 1.00 | the phone sits directly behind the call button along the table's depth, so it registers 4 s early |
 | B, the rub (Nov 3, 49 s, one 30 s alcohol rub) | 4 | 6 | 0.67 | 1.00 | two squeeze moments beside the resident judged as touches by vision review |
-| C, gloves done right (Nov 3, 88 s, three rubs, two glove changes) | 6 | 7 | 0.71 | 0.83 | one touch counted under the wrong hand class after a glove came off; glove on and off detected 4 of 4 within 1.3 s |
+| C, gloves done right (Nov 3, 88 s, three rubs, two glove changes) | 6 | 7 | 0.86 | 1.00 | the call button registers 1.7 s before the label; glove on and off detected 4 of 4 within 1.3 s |
 
 On the feasibility clip every real contact was found with the right hand class within 0.2 s of the stopwatch label. The clip stages two deliberate non-contacts: a 0.5 s brush of the rail while holding the remote below it, which the engine routes to vision review and which Muse Spark vision correctly called "passing in front", and an open palm held above the rail for 1.8 s, which the engine counts because the overlap is thick and long, the one false alarm in the table. The labels were written from frame sheets before looking at the engine's candidates.
 
