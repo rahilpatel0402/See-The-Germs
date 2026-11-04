@@ -1,0 +1,18 @@
+{
+  "hash": "a9982679bd140879",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:20:51.308Z",
+  "usage": {
+    "inputTokens": 2221,
+    "cachedTokens": 0,
+    "outputTokens": 2319,
+    "reasoningTokens": 1929
+  },
+  "narrative": {
+    "coaching_note": "Wash your hands with soap and water for a full 40 seconds after you leave the bedside area, alcohol rub does not kill C. difficile spores. You touched bed rail A starting at 0.5 seconds, and that contamination moved with your bare hand to call button at 3.4 seconds and then to phone at 6.6 seconds. That left a Moment 5 opportunity at 5.8 seconds that was missed, and later another Moment 5 at 18.7 seconds with your gloved hand after touching call button. Next time, wash with soap and water before you put gloves on at 10.9 seconds and take gloves off before touching phone in the healthcare area. Keeping that wash after the bedside contact protects the next surfaces you touch.",
+    "audit_summary": "Staged clip with C. difficile source bed rail A. Compliance 0 of 2 opportunities overall, all Moment 5 (0 of 2); Moments 1,2,4 had 0 opportunities. Missed Moment 5 at 5.8s (bare hand) after bed rail A to call button transfer at 3.4s and at 18.7s (gloved hand) after call button contact. No hand hygiene events; alcohol rub would not clear spores, adequate soap and water wash would. Glove issues: no effective hygiene before donning at 10.9s and gloved hand contact with healthcare-area phone at 19.3s. Contaminated at end: bare hand, gloved hand, bed rail A, call button, phone. Disinfect bed rail A, call button, phone with EPA List K sporicidal disinfectant.",
+    "top_fix": "The highest-impact single change in this clip was washing with soap and water at 5.8 seconds."
+  }
+}

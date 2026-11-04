@@ -1,0 +1,18 @@
+{
+  "hash": "7582c31d778b2d2f",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:26:44.447Z",
+  "usage": {
+    "inputTokens": 1896,
+    "cachedTokens": 0,
+    "outputTokens": 2604,
+    "reasoningTokens": 2173
+  },
+  "narrative": {
+    "coaching_note": "Siga manteniendo la higiene de manos con alcohol rub después de tocar bed rail A como lo hizo a los 10.1 segundos. Usted tocó bed rail A con bare hand de 0.2 a 5.4 segundos y la contaminación pasó a bare hand. Después usted tocó call button a los 6.1 segundos y la contaminación pasó a call button. Usted usó sanitizer bottle a los 10.1 segundos con alcohol rub por 29.9 segundos, que es efectivo contra MRSA y cumple el tiempo recomendado. Después usted tocó resident A a los 13.5 segundos y de nuevo de 40 a 48 segundos sin que hubiera exposición adicional registrada. No se registraron momentos perdidos de higiene de manos y no se usaron guantes en este fragmento. Siga limpiando sus manos de esta forma cada vez que toque superficies de la zona del residente.",
+    "audit_summary": "This staged training clip identified bed rail A as the MRSA source. Bare hand contacted bed rail A at 0.2 seconds with transfer to bare hand, then call button at 6.1 seconds with onward transfer. One alcohol rub at 10.1 seconds for 29.9 seconds met WHO duration and is effective against MRSA. No WHO Five Moments opportunities were identified for Moments 1, 2, 4, or 5, with compliance 0 met over 0 opportunities and no moments missed. No glove use issues were recorded. No resident exposures occurred. Contaminated at end were bed rail A and call button. Disinfect bed rail A and call button using an EPA List H registered disinfectant (effective against MRSA).",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "hash": "cfa1bce8c68cf61c",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:21:14.414Z",
+  "usage": {
+    "inputTokens": 2278,
+    "cachedTokens": 0,
+    "outputTokens": 2715,
+    "reasoningTokens": 2298
+  },
+  "narrative": {
+    "coaching_note": "Lávese las manos con agua y jabón después de tocar la zona del residente, porque el alcohol no mata este microbio. Usted tocó bed rail A a los 0.5 segundos y luego tocó call button a los 3.4 segundos, y lo que estaba en bed rail A pasó a su mano y después a call button. Luego tocó phone a los 6.6 segundos y también pasó la contaminación a phone, que está fuera de la zona del residente. Se perdió el Momento 5 a los 5.8 segundos y otra vez a los 18.7 segundos con gloved hand. La próxima vez, lávese con agua y jabón antes de ponerse los guantes y quítese los guantes antes de tocar phone. Recuerde frotar con agua y jabón por los 40 segundos completos.",
+    "audit_summary": "Staged clip with source bed rail A and pathogen C. difficile. Bare hand contacted bed rail A at 0.5 s, transferring contamination to bare hand, then to call button at 3.4 s and to phone at 6.6 s; gloved hand contacted bed rail A at 11.1 s. Two Moment 5 opportunities were missed at 5.8 s (bare hand) and 18.7 s (gloved hand), with overall hand hygiene compliance 0 met over 2 opportunities (Moment 5: 0/2; Moments 1, 2, 4: no opportunities). No hygiene events occurred. Glove use showed no effective hand hygiene before donning at 10.9 s and a gloved hand touching healthcare-area phone at 19.3 s. Disinfect bed rail A, call button, and phone using an EPA List K sporicidal disinfectant.",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene for Moment 5 at 5.8 seconds."
+  }
+}

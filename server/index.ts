@@ -8,7 +8,7 @@ import multer from "multer";
 import { complianceFrom, personMapper } from "../engine/compliance.ts";
 import type { Analysis } from "../engine/types.ts";
 import { readScenario, runAnalysis, runCounterfactualFor, validateScenario, writeScenario } from "./analysis.ts";
-import { explainCounterfactual, narrateClip, readNarrative } from "./narrate.ts";
+import { explainCounterfactual, narrateClip, readExplanation, readNarrative } from "./narrate.ts";
 import { buildPipeline, parseScenarioOverride } from "./pipeline.ts";
 import { createClipFromUpload, deleteClip, ensureClip, listClipIds, readMeta, updateClipInfo } from "./clips.ts";
 import { optionalEnv } from "./env.ts";
@@ -29,6 +29,19 @@ const PORT = Number(optionalEnv("PORT", "8787"));
 const MAX_UPLOAD_SECONDS = 45;
 const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
 const MAX_UPLOADS_PER_DAY = Number(optionalEnv("MAX_UPLOADS_PER_DAY", "20"));
+// Narratives and what-if explanations that miss the cache call Spark text. This in-memory
+// counter caps what one day on a public server can spend; cached answers never count.
+const MAX_TEXT_CALLS_PER_DAY = Number(optionalEnv("MAX_TEXT_CALLS_PER_DAY", "300"));
+const textCalls = { day: "", n: 0 };
+function chargeTextCall(): void {
+  const day = new Date().toISOString().slice(0, 10);
+  if (textCalls.day !== day) {
+    textCalls.day = day;
+    textCalls.n = 0;
+  }
+  if (textCalls.n >= MAX_TEXT_CALLS_PER_DAY) throw new HttpError(429, `the daily limit of ${MAX_TEXT_CALLS_PER_DAY} new narratives and explanations is reached; cached ones still work`);
+  textCalls.n++;
+}
 // Comma-separated clip ids that are precomputed and served offline from cache.
 // The staged demo clips ship in the repo and are read only: served from cache, never sent to a
 // model. Override with DEMO_CLIPS to serve a different set or none.
@@ -85,17 +98,17 @@ app.get("/api/clips", wrap(async (_req, res) => {
   res.json({ clips: ordered, demo, details });
 }));
 
-// Title and story for the clip card. Allowed on demo clips too: it is presentation, not data.
+// Title and story for the clip card. Demo clips ship with theirs in the repo and stay read only.
 app.put("/api/clips/:id/info", wrap(async (req, res) => {
   const meta = await readMeta(String(req.params["id"]));
+  assertEditable(meta.id);
   const body = (req.body ?? {}) as { title?: unknown; story?: unknown; multiPerson?: unknown };
   const info = {
     ...(typeof body.title === "string" ? { title: body.title } : {}),
     ...(typeof body.story === "string" ? { story: body.story } : {}),
     ...(typeof body.multiPerson === "boolean" ? { multiPerson: body.multiPerson } : {}),
   };
-  // Title and story are presentation; the person flag changes the analysis, so demo clips keep theirs.
-  if (info.multiPerson !== undefined) assertEditable(meta.id);
+  if (info.title !== undefined && info.title.trim() === "") throw new HttpError(400, "title cannot be empty");
   res.json({ clip: await updateClipInfo(meta.id, info) });
 }));
 
@@ -239,7 +252,7 @@ app.post("/api/clips/:id/track-box", wrap(async (req, res) => {
   });
   if (!track) throw new HttpError(422, "SAM could not track anything from that box; try a tighter box on a clearer frame");
   const frames = new Set(track.records.map((r) => r.frameIndex)).size;
-  const analysis = existsSync(analysisPath(meta.id)) ? await runAnalysis(meta.id) : null;
+  const analysis = existsSync(analysisPath(meta.id)) ? await runAnalysis(meta.id, {}, !isDemo(meta.id)) : null;
   res.json({ entity: next.find((e) => e.id === entityId), frames, objects: new Set(track.records.map((r) => r.objectId)).size, analysis });
 }));
 
@@ -321,7 +334,7 @@ app.post("/api/analyze", wrap(async (req, res) => {
   const body = (req.body ?? {}) as { clipId?: unknown; pathogen?: unknown; sourceEntityId?: unknown };
   const clipId = String(body.clipId ?? "");
   await readMeta(clipId);
-  res.json(await runAnalysis(clipId, parseScenarioOverride(body)));
+  res.json(await runAnalysis(clipId, parseScenarioOverride(body), !isDemo(clipId)));
 }));
 
 // Body: { clipId, t, handId?, agent?, pathogen?, sourceEntityId? }. Pure rerun, no model call.
@@ -414,8 +427,13 @@ app.post("/api/narrate", wrap(async (req, res) => {
   const clipId = String(body.clipId ?? "");
   await readMeta(clipId);
   const language = body.language === "es" ? "es" : "en";
-  const analysis = await runAnalysis(clipId, parseScenarioOverride(body));
-  res.json(await narrateClip(clipId, analysis, spark, language));
+  const analysis = await runAnalysis(clipId, parseScenarioOverride(body), !isDemo(clipId));
+  res.json(await withClipLock(clipId, async () => {
+    const cached = await readNarrative(clipId, analysis, language, spark.model);
+    if (cached) return cached;
+    chargeTextCall();
+    return narrateClip(clipId, analysis, spark, language);
+  }));
 }));
 
 // Two sentences on one counterfactual, cached per clip, scenario, time, and agent.
@@ -431,7 +449,12 @@ app.post("/api/counterfactual/explain", wrap(async (req, res) => {
     ...(typeof body.agent === "string" ? { agent: body.agent } : {}),
   };
   const cf = await runCounterfactualFor(clipId, insert, override, pipeline);
-  const file = await explainCounterfactual(pipeline.analysis, cf, spark);
+  const file = await withClipLock(clipId, async () => {
+    const cached = await readExplanation(pipeline.analysis, cf, spark.model);
+    if (cached) return cached;
+    chargeTextCall();
+    return explainCounterfactual(pipeline.analysis, cf, spark);
+  });
   res.json({ explanation: file.explanation, cached: file });
 }));
 
@@ -441,7 +464,7 @@ app.post("/api/adjudicate", wrap(async (req, res) => {
   await readMeta(clipId);
   // Demo clips work offline from cache and never trigger live vision calls.
   if (isDemo(clipId)) {
-    res.json({ added: [], failed: [], skipped: [], adjudications: await readAdjudications(clipId), analysis: await runAnalysis(clipId) });
+    res.json({ added: [], failed: [], skipped: [], adjudications: await readAdjudications(clipId), analysis: await runAnalysis(clipId, {}, false) });
     return;
   }
   const run = await withClipLock(clipId, () => adjudicateClip(clipId, spark));
@@ -477,13 +500,20 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     res.destroy();
     return;
   }
-  let status = err instanceof HttpError ? err.status : 500;
+  const own = err as { status?: unknown; statusCode?: unknown };
+  const ownStatus = [own.status, own.statusCode].find((s) => typeof s === "number" && s >= 400 && s < 600) as number | undefined;
+  let status = err instanceof HttpError ? err.status : ownStatus ?? 500;
   let message = err instanceof Error ? err.message : "unknown error";
   if (err instanceof multer.MulterError) {
     status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
     message = err.code === "LIMIT_FILE_SIZE" ? `the file is larger than ${Math.round(MAX_UPLOAD_BYTES / 1048576)} MB` : err.message;
   }
-  if (status === 500) console.error(err);
+  if (status === 500) {
+    console.error(err);
+    // Internals stay in the log. A missing model key is the one 500 a judge can cause on a
+    // keyless clone, so it gets a plain explanation instead.
+    message = /is not set/.test(message) ? "no model key is configured on this server, so this text cannot be written; cached narratives still work" : "internal error, see the server log";
+  }
   res.status(status).json({ error: message });
 });
 

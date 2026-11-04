@@ -1,0 +1,18 @@
+{
+  "hash": "3cf98a04abff966f",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:29:28.040Z",
+  "usage": {
+    "inputTokens": 2104,
+    "cachedTokens": 0,
+    "outputTokens": 2776,
+    "reasoningTokens": 2296
+  },
+  "narrative": {
+    "coaching_note": "El cambio más importante es que usted se lave las manos con agua y jabón en vez de usar el sanitizer cuando hay Norovirus. Usted tocó bed rail A con bare hand a los 0.2 segundos y la contaminación pasó a esa mano. A los 6.1 segundos esa contaminación pasó de bare hand a call button. A los 10.1 segundos pasó de bare hand a resident A. Usted usó sanitizer bottle a los 10.1 segundos y se frotó por 29.9 segundos, pero el alcohol rub no elimina Norovirus, solo el lavado con agua y jabón lo elimina. Por eso bare hand siguió contaminada y hubo más contactos con resident A a los 13.5 segundos y a los 40 segundos. La próxima vez lávese con agua y jabón por 40 segundos completos después de tocar bed rail A.",
+    "audit_summary": "Analysis for Norovirus with source bed rail A. Transfers: bed rail A to bare hand at 0.2 seconds, bare hand to call button at 6.1 seconds, bare hand to resident A at 10.1 seconds, with further resident A exposures at 13.5 and 40 seconds. No WHO Five Moments opportunities were identified (0 met / 0 opportunities for Moments 1,2,4,5 and overall), so no moments missed. Hygiene event at 10.1 seconds with alcohol rub for 29.9 seconds met WHO duration but was not effective against Norovirus; soap and water wash would be effective. No glove use issues were identified. Contaminated at end: bare hand, gloved hand, bed rail A, call button, resident A. Disinfect resident A's bedside zone (linen and surfaces), bed rail A, and call button with EPA List G registered disinfectant.",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

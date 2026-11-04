@@ -11,7 +11,7 @@ test("clip A: every contaminated surface and the resident, source flagged, ranke
   const list = cleaningList(propagation, CLIP_A_CONTACTS, CLIP_A_ENTITIES, scenario, PATHOGENS.c_difficile);
   assert.deepEqual(
     list.items.map((i) => [i.label, i.isSource, i.contactCount, i.firstContaminatedT]),
-    [["bed rail A", true, 1, 0], ["IV pole", false, 1, 4], ["phone", false, 1, 7], ["blanket B", false, 1, 12], ["resident B", false, 1, 15]],
+    [["bed rail A", true, 1, 0], ["IV pole", false, 1, 4], ["phone", false, 1, 7], ["blanket B", false, 1, 12], ["resident B's bedside zone (linen and surfaces)", false, 1, 15]],
   );
   assert.match(list.disinfectantNote, /List K/);
   // Hands and dispensers never appear.

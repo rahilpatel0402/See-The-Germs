@@ -154,10 +154,14 @@ button {
   cursor: default;
 }
 
+.track {
+  position: relative;
+  margin: 0 12px 0 120px;
+}
+
 .lane {
   position: relative;
   height: 26px;
-  margin: 0 12px 0 120px;
   border-bottom: 1px dashed var(--line);
 }
 
@@ -196,6 +200,7 @@ button {
   top: -6px;
   width: 10px;
   height: 10px;
+  padding: 0;
   border-radius: 50%;
   background: #fff;
   border: 2px solid var(--hot);
@@ -242,7 +247,7 @@ button {
   top: 0;
   bottom: 0;
   width: 2px;
-  margin-left: 119px;
+  margin-left: -1px;
   background: #fff;
   pointer-events: none;
   opacity: 0.9;
@@ -345,7 +350,7 @@ button {
   .main.with-drawer {
     grid-template-columns: 1fr;
   }
-  .lane {
+  .track {
     margin-left: 96px;
   }
   .lane-label {
@@ -353,7 +358,7 @@ button {
     width: 86px;
   }
   .cursor {
-    margin-left: 95px;
+    margin-left: -1px;
   }
 }
 
@@ -632,22 +637,37 @@ button {
     font-size: 12px;
   }
   .stage-column {
-    padding: 8px 10px;
+    padding: 8px 16px;
   }
   .stage video {
     max-height: 60vh;
   }
-  .lane {
+  .track {
     margin-left: 72px;
+  }
+  .lane {
     height: 24px;
   }
   .lane-label {
     left: -70px;
     width: 66px;
     font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .cursor {
-    margin-left: 71px;
+    margin-left: -1px;
+  }
+  .main:not(.with-drawer) .drawer {
+    position: static;
+    padding: 0 16px 8px;
+  }
+  .badge {
+    position: sticky;
+    bottom: 0;
+    background: var(--panel);
+    z-index: 3;
   }
   .review-card {
     width: calc(100vw - 40px);

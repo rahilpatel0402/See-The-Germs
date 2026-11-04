@@ -378,7 +378,7 @@
       },
       {
         "entityId": "resident_A",
-        "label": "resident A",
+        "label": "resident A's bedside zone (linen and surfaces)",
         "zone": "patient_zone_A",
         "isSource": false,
         "firstContaminatedT": 21.4,

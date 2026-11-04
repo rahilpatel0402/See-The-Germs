@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SAMPLE_FPS } from "../../engine/config.ts";
 import { DISPENSER_AGENTS, PROP_CLASSES, ZONE_TAGS, type DispenserAgent, type EntityClass, type ZoneTag } from "../../engine/types.ts";
 import { api, ApiError, segmentStream, uploadClip, type EntityConfig, type SceneResult, type SegmentLine } from "./api.ts";
 import { TASK_PRESETS } from "./presets.ts";
@@ -188,8 +189,8 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
             {s.id === "uploading" && step === "uploading" ? <span className="muted"> {Math.round(progress * 100)}%</span> : null}
             {s.id === "segmenting" && lines.length > 0 ? (
               <ul className="plain muted small">
-                {lines.map((l) => (
-                  <li key={l.phrase} className={l.frames === 0 ? "warn" : ""}>
+                {lines.map((l, i) => (
+                  <li key={`${l.phrase}-${i}`} className={l.frames === 0 ? "warn" : ""}>
                     {l.phrase}: {l.objects} object{l.objects === 1 ? "" : "s"} in {l.frames} frames
                     {l.frames === 0 ? ". This phrase passed the still-frame check but SAM found nothing in the video. Try a plainer appearance phrase, or draw a box on it with Mark an object once the clip opens." : null}
                   </li>
@@ -234,7 +235,7 @@ export function Upload({ resumeClipId, onDone, onClose }: Props) {
         <div className="entities-editor">
           {cuts.length > 0 ? (
             <p className="status warn">
-              This clip changes shot {cuts.length} time{cuts.length === 1 ? "" : "s"} (at {cuts.map((f) => `${(f / 10).toFixed(1)} s`).join(", ")}). Props are not carried across a cut and touches near one are unreliable.
+              This clip changes shot {cuts.length} time{cuts.length === 1 ? "" : "s"} (at {cuts.map((f) => `${(f / SAMPLE_FPS).toFixed(1)} s`).join(", ")}). Props are not carried across a cut and touches near one are unreliable.
               One continuous take from a fixed camera works best.
             </p>
           ) : null}

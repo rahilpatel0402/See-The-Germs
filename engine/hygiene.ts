@@ -1,7 +1,8 @@
 // Turns dispenser contacts into hygiene events and glove box touches, and returns the remaining
 // contacts. Dispenser contacts never count as contamination transfer. A hygiene event is
 // effective only if the agent clears the pathogen and the rub lasted the WHO duration: the time
-// from reaching the dispenser to the next touch is the time the hands were being rubbed. A hand
+// from reaching the dispenser to the first touch that starts after the hand leaves it is the time
+// the hands were being rubbed, and the hand counts as clean from the moment it reached the dispenser. A hand
 // that goes back to the same dispenser during that rub (a second squeeze, clip B of the shoot)
 // is still the same rub: those contacts fold into one event whose dwell is their sum.
 
@@ -67,22 +68,28 @@ export function splitHygiene(
       rest.push(contact);
       continue;
     }
-    if ((dwellOf.get(contact) ?? contact.endT - contact.startT) < config.minDwellS) continue;
+    // Times are frame counts over fps, so a 10 frame dwell can come out as 0.9999999; compare on
+    // the rounded value the UI shows.
+    if (Number((dwellOf.get(contact) ?? contact.endT - contact.startT).toFixed(2)) < config.minDwellS) continue;
     if (entity.agent === undefined) throw new Error(`splitHygiene: dispenser ${entity.id} has no agent`);
     if (entity.agent === "gloves") {
       gloveBoxTouches.push({ handId: contact.handId, t: contact.startT });
       continue;
     }
     const person = personOfHand(contact.handId);
+    // The rub ends at the first touch that starts after the hand leaves the dispenser. A touch
+    // that starts while the hand is still on it is part of the same squeeze, not the end of the rub.
     const next = merged.find((c) => c.startT > contact.endT && c.entityId !== contact.entityId && personOfHand(c.handId) === person);
-    const durationS = Math.max(0, (next ? next.startT : clipDurationS) - contact.startT);
+    const rawDuration = Math.max(0, (next ? next.startT : clipDurationS) - contact.startT);
+    // A 200 frame rub is 20 s, not 19.999999996: the WHO threshold is tested on the rounded value.
+    const durationS = Number.isFinite(rawDuration) ? Number(rawDuration.toFixed(2)) : rawDuration;
     const adequate = durationS >= config.minRubS[entity.agent];
     const clears = agentClearsHands(profile, entity.agent);
     hygieneEvents.push({
       handId: contact.handId,
       t: contact.startT,
       agent: entity.agent,
-      durationS: Number.isFinite(durationS) ? Number(durationS.toFixed(2)) : durationS,
+      durationS,
       adequate,
       effective: clears && (adequate || !config.inadequateIsIneffective),
     });

@@ -1,0 +1,18 @@
+{
+  "hash": "69181a436403e041",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:23:30.403Z",
+  "usage": {
+    "inputTokens": 2057,
+    "cachedTokens": 0,
+    "outputTokens": 3160,
+    "reasoningTokens": 2689
+  },
+  "narrative": {
+    "coaching_note": "El cambio más importante es que usted haga higiene de manos a los 11 segundos, después de tocar el entorno y antes de tocar phone. Usted tocó bed rail A a los 1.6 segundos con bare hand y la contaminación pasó a sus manos desde ese momento. Luego usted tocó phone a los 12.4 segundos y la contaminación llegó a phone. Después usted tocó a resident A a los 21.4 segundos sin higiene previa, y la contaminación llegó a resident A, lo que corresponde al Momento 1 y al Momento 5 perdido. Hacer higiene a los 11 segundos habría interrumpido esa cadena antes de salir del entorno. Si usted hubiera hecho higiene a los 11 segundos, se habrían mantenido limpios bare hand, gloved hand, phone y resident A.",
+    "audit_summary": "Staged clip with MRSA source bed rail A. Sequence: bare hand contacted bed rail A at 1.6 s, acquiring contamination, then call button at 7.6 s, phone at 12.4 s, and resident A at 21.4 s, with onward transfers to call button, phone, and resident A. Hand hygiene compliance 0/2 overall; Moment 1: 0/1 missed at 21.4 s before touching resident A; Moment 5: 0/1 missed at 11 s after patient-zone contact. No hygiene events performed and no glove use issues were recorded. Resident A exposed at 21.4 s. End-state contamination included bare hand, gloved hand, bed rail A, call button, phone, and resident A. Disinfect bed rail A, call button, phone, and resident A's bedside zone (linen and surfaces) with an EPA List H registered disinfectant (effective against MRSA).",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene at 11 seconds."
+  }
+}

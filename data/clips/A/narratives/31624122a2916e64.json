@@ -1,0 +1,18 @@
+{
+  "hash": "31624122a2916e64",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:24:16.672Z",
+  "usage": {
+    "inputTokens": 2108,
+    "cachedTokens": 753,
+    "outputTokens": 2273,
+    "reasoningTokens": 1859
+  },
+  "narrative": {
+    "coaching_note": "Lávese las manos con agua y jabón antes de tocar a resident A a los 21.4 segundos, porque el alcohol no mata las esporas de C. difficile. Usted tocó bed rail A desde los 1.6 segundos y esa contaminación pasó a su bare hand. Después usted tocó call button a los 7.6 segundos y phone a los 12.4 segundos, y luego tocó a resident A a los 21.4 segundos. Faltó la higiene después de tocar el entorno a los 11 segundos y antes de tocar al residente a los 21.4 segundos. Usted trabajó con bare hand todo el tiempo sin hacer higiene de manos durante el video. Lavarse con agua y jabón a los 11 segundos hubiera mantenido limpios bare hand, gloved hand, phone y resident A.",
+    "audit_summary": "Source was bed rail A. Bare hand contacted bed rail A at 1.6 seconds with transfer to bare hand, then to call button at 7.6 seconds, to phone at 12.4 seconds, and to resident A at 21.4 seconds, producing one resident exposure at 21.4 seconds. Hand hygiene compliance was 0 of 2 opportunities overall, including Moment 1: 0 of 1 and Moment 5: 0 of 1. No hygiene events and no glove events occurred. No glove use issues were recorded. For C. difficile, alcohol rub does not clear hands; soap and water is required. Surfaces to disinfect are bed rail A, call button, phone, and resident A's bedside zone (linen and surfaces). Use an EPA List K sporicidal disinfectant (effective against C. difficile spores); standard disinfectants do not kill spores.",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene with soap and water for Moment 1 before touching resident A at 21.4 seconds."
+  }
+}

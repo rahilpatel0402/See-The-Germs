@@ -1,0 +1,18 @@
+{
+  "hash": "a12a8620f5e5936c",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:32:50.689Z",
+  "usage": {
+    "inputTokens": 2441,
+    "cachedTokens": 0,
+    "outputTokens": 2604,
+    "reasoningTokens": 2116
+  },
+  "narrative": {
+    "coaching_note": "Lávese con agua y jabón antes de tocar a resident A a los 55.2 segundos, porque el sanitizer no elimina el Norovirus. Usted tocó bed rail A con gloved hand a los 22 segundos y esa contaminación pasó a call button a los 26.3 segundos. Después usted tocó a resident A a los 55.2 segundos sin una higiene de manos efectiva antes, que es el Momento 1 antes del contacto con el residente. Los tres usos de sanitizer bottle duraron más de 20 segundos, pero con Norovirus necesita agua y jabón para que las manos queden limpias. La próxima vez lávese con agua y jabón después de quitarse los guantes y antes de ponerse guantes nuevos haga esto cada vez que cambie de tarea.",
+    "audit_summary": "Staged clip with Norovirus source bed rail A. Hand hygiene compliance 0/1 overall; Moment 1 0/1, with no opportunities in Moments 2, 4, 5. Missed Moment 1 at 55.2 seconds when gloved hand touched resident A without effective prior hygiene. Three alcohol rubs at 0.2, 32.3, and 64.1 seconds met WHO duration (>20 seconds) but were not effective against Norovirus, which requires handwashing with soap and water; contaminated_at_end included bare hand and gloved hand. Glove issues included no effective hygiene after doffing at 32.3 seconds and before donning at 54.8 seconds. Transfer chain: bed rail A to gloved hand at 22 seconds, then to call button at 26.3 seconds; no resident exposures listed. Disinfect call button (2 contaminated contacts) and bed rail A (source) using an EPA List G registered disinfectant effective against norovirus.",
+    "top_fix": "The highest-impact single change in this clip was effective hand hygiene with soap and water before Moment 1 at 55.2 seconds."
+  }
+}

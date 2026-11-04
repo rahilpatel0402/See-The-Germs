@@ -253,3 +253,10 @@ test("a gloved track that drops out and comes back is still the same glove: a la
   const t: Tracks = { ...tracks(frames), objectBirthsAt: births };
   assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 0.5]]);
 });
+
+test("gloves on from the first frame with the bare class firing through them stay on", () => {
+  const frames: Array<[FrameMask | null, FrameMask | null]> = [];
+  for (let f = 0; f < 30; f++) frames.push([near, near]);
+  const events = detectGloveEvents(tracks(frames), GLOVE_CONFIG);
+  assert.deepEqual(events.map((e) => [e.type, e.t]), [["don", 0]]);
+});

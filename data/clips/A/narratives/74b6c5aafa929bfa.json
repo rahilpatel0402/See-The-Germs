@@ -1,0 +1,18 @@
+{
+  "hash": "74b6c5aafa929bfa",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:24:37.944Z",
+  "usage": {
+    "inputTokens": 2035,
+    "cachedTokens": 0,
+    "outputTokens": 2418,
+    "reasoningTokens": 2035
+  },
+  "narrative": {
+    "coaching_note": "Clean your hands right after you touch bed rail A and call button and before you touch anything else like your phone. You touched bed rail A from 1.6 to 7.1 seconds and then call button from 7.6 to 11 seconds, so C. auris moved from the rail to your bare hand and then to the call button. You then touched phone at 12.4 seconds and resident A at 21.4 seconds, which carried it to the phone and to resident A. Cleaning hands after the bedside contact and again before touching resident A would have broken that chain. Next time, use alcohol rub or soap and water and rub for the full 20 seconds before you touch resident A. Cleaning at 11 seconds would have kept bare hand, gloved hand, phone, and resident A clean.",
+    "audit_summary": "Staged clip with C. auris source bed rail A. Bare hand contacted bed rail A at 1.6 seconds, transferring contamination to bare hand, then to call button at 7.6 seconds, phone at 12.4 seconds, and resident A at 21.4 seconds, with 1 resident exposure. Hand hygiene compliance 0/2 overall, including Moment 1: 0/1 and Moment 5: 0/1; no hygiene events occurred. No glove use issues noted. Alcohol rub and soap and water are effective against C. auris. Surfaces to disinfect: bed rail A, call button, phone, and resident A's bedside zone (linen and surfaces). Use an EPA List P registered disinfectant (effective against Candida auris); routine quaternary ammonium products are not reliable.",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene for Moment 5 at 11 seconds."
+  }
+}

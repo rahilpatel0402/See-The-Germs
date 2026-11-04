@@ -1,0 +1,18 @@
+{
+  "hash": "5ab8c043f43e53e6",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:30:07.163Z",
+  "usage": {
+    "inputTokens": 2142,
+    "cachedTokens": 0,
+    "outputTokens": 3329,
+    "reasoningTokens": 2931
+  },
+  "narrative": {
+    "coaching_note": "Keep cleaning your hands with alcohol rub for the full 20 seconds before you touch resident A.\n\nYou touched bed rail A with your gloved hand at 22 seconds, and contamination from bed rail A moved to your glove. Your gloved hand then touched the call button at 26.3 seconds, so contamination moved to the call button. You cleaned your hands with alcohol rub at 0.2 seconds for 21.8 seconds, at 32.3 seconds for 22.9 seconds, and at 64.1 seconds for 24.2 seconds, which covered the time before and after you touched resident A from 55.2 to 63.6 seconds. Because of that timing, resident A did not pick up contamination from your hands.\n\nKeep that same timing every time so your hands are clean right before resident contact.",
+    "audit_summary": "Analysis of MRSA scenario sourced to bed rail A shows transfer from bed rail A to gloved hand at 22 seconds and from gloved hand to call button at 26.3 seconds. No resident A exposure occurred. Hand hygiene compliance was 1 met over 1 opportunity overall, with Moment 1 at 1 met over 1 opportunity; Moments 2,4,5 had no opportunities. Three alcohol rub events at 0.2, 32.3 and 64.1 seconds lasted 21.8, 22.9 and 24.2 seconds respectively, meeting WHO 20-second duration and effective against MRSA. No glove use issues were identified, with donning at 22 and 54.8 seconds and doffing at 32.3 and 63.6 seconds. Disinfect call button and bed rail A using an EPA List H registered disinfectant (effective against MRSA).",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

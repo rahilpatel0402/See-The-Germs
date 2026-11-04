@@ -1,0 +1,18 @@
+{
+  "hash": "5194d39a639b0224",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:31:43.150Z",
+  "usage": {
+    "inputTokens": 2177,
+    "cachedTokens": 0,
+    "outputTokens": 2708,
+    "reasoningTokens": 2308
+  },
+  "narrative": {
+    "coaching_note": "Keep cleaning your hands before touching resident A just like you did in this clip. You used the sanitizer bottle at 0.2 seconds with a full 21.8-second rub, so you started with clean hands. When your gloved hand touched bed rail A at 22 seconds, contamination moved to your gloved hand and then to the call button at 26.3 seconds. You then used the sanitizer bottle again at 32.3 seconds and again at 64.1 seconds, both with full rubs that work against C. auris. Your contact with resident A from 55.2 to 63.6 seconds was protected by clean hands and gloves, and resident A did not become exposed. Keep that timing of cleaning before resident contact every time to keep everyone safer.",
+    "audit_summary": "Staged clip with source bed rail A. Transfer chain: bed rail A to gloved hand at 22 seconds, then gloved hand to call button at 26.3 seconds. Hand hygiene compliance 1/1 overall; Moment 1 1/1 met, Moments 2,4,5 0 opportunities. Three alcohol rubs at 0.2s (21.8s), 32.3s (22.9s), and 64.1s (24.2s), all meeting WHO duration and effective against C. auris. No glove use issues were observed, with donning at 22s and 54.8s and doffing at 32.3s and 63.6s. No resident A exposure occurred. Contaminated at end: bed rail A and call button. Disinfect call button and bed rail A using an EPA List P registered disinfectant effective against Candida auris; routine quaternary ammonium products are not reliable.",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

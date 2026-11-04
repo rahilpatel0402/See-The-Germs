@@ -153,3 +153,10 @@ test("the first touch of a resident in a clip is a Moment 1 opportunity when the
   const early = detectMomentOpportunities({ contacts: [contact("bare_hand", "resident_B", 1, 2)], hygieneEvents: [], entities: CLIP_A_ENTITIES });
   assert.deepEqual(early.filter((o) => o.moment === 1), []);
 });
+
+test("a rub begun while the hand was still on the rail is a missed departure with nothing downstream", () => {
+  // Propagation counts the 8.5 s rub as cleaning (contacts act at their start), so the phone
+  // stays clean; the Moment is still missed because hygiene came before the zone was left.
+  const misses = run([contact("bare_hand", "rail_A", 1, 9), contact("bare_hand", "phone", 30, 31)], [rub(8.5)]);
+  assert.deepEqual(misses.map((m) => [m.moment, m.t, [...m.downstream]]), [[5, 9, []]]);
+});

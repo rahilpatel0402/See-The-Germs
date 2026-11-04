@@ -1,0 +1,18 @@
+{
+  "hash": "e2e26e19bc30598f",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:27:57.358Z",
+  "usage": {
+    "inputTokens": 1874,
+    "cachedTokens": 0,
+    "outputTokens": 2547,
+    "reasoningTokens": 2172
+  },
+  "narrative": {
+    "coaching_note": "Keep cleaning your bare hand with alcohol rub after touching bed rail A and call button and before touching resident A. You touched bed rail A from 0.2 seconds to 5.4 seconds and that moved contamination to your bare hand at 0.2 seconds. You then touched call button from 6.1 seconds to 10.1 seconds and contamination moved to call button at 6.1 seconds. You used sanitizer bottle starting at 10.1 seconds with an alcohol rub for 29.9 seconds, which is effective against C. auris, and then you touched resident A at 13.5 seconds and again at 40 seconds with no resident exposure listed. Keep that timing every time you move from bedside surfaces to the resident. This habit keeps your hands clean for the next contact.",
+    "audit_summary": "Staged training clip, source bed rail A, pathogen C. auris. Transfers: bed rail A to bare hand at 0.2 seconds, bare hand to call button at 6.1 seconds. Hygiene: one alcohol rub of bare hand at 10.1 seconds for 29.9 seconds, meeting WHO duration and effective for this pathogen. Hand hygiene compliance: 0 opportunities, 0 met overall; Moments 1, 2, 4, 5 each 0/0; no moments missed. No glove use, with no glove use issues identified. Resident exposures: none listed. Contaminated at end: bed rail A (source) and call button. Surfaces to disinfect: bed rail A and call button. Use an EPA List P registered disinfectant (effective against Candida auris); routine quaternary ammonium products are not reliable.",
+    "top_fix": "This clip showed no missed moments."
+  }
+}

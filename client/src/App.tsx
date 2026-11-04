@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SAMPLE_FPS } from "../../engine/config.ts";
 import { PATHOGEN_IDS, PATHOGENS } from "../../engine/pathogens.ts";
 import type { Analysis, Counterfactual, HygieneAgent, MaskBounds, MomentMiss, Narrative, PathogenId } from "../../engine/types.ts";
 import { api, ApiError, type ClipDetail, type NarrativeLanguage, type ScenarioOverride, type TracksPayload } from "./api.ts";
@@ -43,6 +44,8 @@ function topMissFor(misses: readonly MomentMiss[], topFix: string | undefined): 
 export function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const seekedOnLoad = useRef(false);
+  // Bumped on every clip load so a rerun or narrative that resolves after a clip switch is dropped.
+  const loadGeneration = useRef(0);
   const [clips, setClips] = useState<string[]>([]);
   const [details, setDetails] = useState<ClipDetail[]>([]);
   const [demoClips, setDemoClips] = useState<string[]>([]);
@@ -99,6 +102,7 @@ export function App() {
   useEffect(() => {
     if (!clipId || !listReady || !knownClips.current.includes(clipId)) return;
     let cancelled = false;
+    loadGeneration.current++;
     setBusy(true);
     setError(null);
     setTracks(null);
@@ -150,6 +154,10 @@ export function App() {
     () => (analysis ? { pathogen: analysis.scenario.pathogen, sourceEntityId: analysis.scenario.sourceEntityId } : {}),
     [analysis],
   );
+  const languageRef = useRef(language);
+  languageRef.current = language;
+  const scenarioRef = useRef(scenario);
+  scenarioRef.current = scenario;
 
   // The one place that fetches a cached narrative: on clip open, on a scenario rerun, and on a
   // language switch. If none is cached in that language, the drawer waits for a click.
@@ -180,12 +188,15 @@ export function App() {
     setError(null);
     setNarrative(null);
     setNarrativeState("idle");
+    const generation = loadGeneration.current;
     try {
-      setAnalysis(await api.analyze(clipId, merged));
+      const a = await api.analyze(clipId, merged);
+      if (generation !== loadGeneration.current) return;
+      setAnalysis(a);
     } catch (e) {
-      setError((e as Error).message);
+      if (generation === loadGeneration.current) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (generation === loadGeneration.current) setBusy(false);
     }
   };
 
@@ -193,13 +204,18 @@ export function App() {
     if (!clipId) return;
     setNarrativeState("loading");
     setNarrativeError(null);
+    const generation = loadGeneration.current;
+    const asked = { clipId, language, scenario };
+    const stale = () => generation !== loadGeneration.current || asked.language !== languageRef.current || asked.scenario !== scenarioRef.current;
     api
       .narrate(clipId, scenario, language)
       .then((n) => {
+        if (stale()) return;
         setNarrative(n.narrative);
         setNarrativeState("ready");
       })
       .catch((e: Error) => {
+        if (stale()) return;
         setNarrativeError(e.message);
         setNarrativeState("error");
       });
@@ -229,27 +245,34 @@ export function App() {
   );
 
   // Arrow keys step one frame, space toggles play, when the focus is not in a form control.
+  // Capture phase, then stopPropagation: the video's own controls must not act a second time.
   useEffect(() => {
-    const fps = tracks?.fps ?? 10;
+    const fps = tracks?.fps ?? SAMPLE_FPS;
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && ["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(target.tagName)) return;
+      if (target && ["INPUT", "SELECT", "TEXTAREA", "BUTTON", "A"].includes(target.tagName)) return;
       const v = videoRef.current;
       if (!v) return;
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         e.preventDefault();
+        e.stopPropagation();
         v.pause();
         const step = (e.key === "ArrowRight" ? 1 : -1) * (e.shiftKey ? 10 : 1);
         v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + step / fps));
       } else if (e.key === " ") {
         e.preventDefault();
+        e.stopPropagation();
         if (v.paused) void v.play();
         else v.pause();
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [tracks]);
+
+  // Stable session props: a new array on every render would refetch the report while playing.
+  const analyzedIds = useMemo(() => details.filter((d) => d.analyzed).map((d) => d.id), [details]);
+  const clipTitles = useMemo(() => Object.fromEntries(details.map((d) => [d.id, d.title])), [details]);
 
   const sources = (analysis?.entities ?? []).filter((e) => e.class === "object" || e.class === "resident_zone");
   const topMiss = useMemo(() => topMissFor(analysis?.momentMisses ?? [], narrative?.top_fix), [analysis, narrative]);
@@ -339,8 +362,8 @@ export function App() {
       {sessionOpen ? (
         <Session
           clips={clips}
-          analyzed={details.filter((d) => d.analyzed).map((d) => d.id)}
-          titles={Object.fromEntries(details.map((d) => [d.id, d.title]))}
+          analyzed={analyzedIds}
+          titles={clipTitles}
           onClose={() => setSessionOpen(false)}
           onOpenClip={(id) => {
             setSessionOpen(false);

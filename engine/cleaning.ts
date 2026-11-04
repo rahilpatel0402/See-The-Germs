@@ -22,7 +22,10 @@ export function cleaningList(
     if (!e || e.class === "bare_hand" || e.class === "gloved_hand" || e.class === "dispenser") continue;
     const firstT = firstContaminated.get(id) ?? 0;
     const contactCount = contacts.filter((c) => c.entityId === id && c.startT >= firstT).length;
-    items.push({ entityId: id, label: e.label, zone: e.zone, isSource: id === scenario.sourceEntityId, firstContaminatedT: firstT, contactCount });
+    // A resident zone on this list means the bed linen and bedside surfaces, never the person:
+    // the label says so, because the list is read as a disinfection handoff.
+    const label = e.class === "resident_zone" ? `${e.label}'s bedside zone (linen and surfaces)` : e.label;
+    items.push({ entityId: id, label, zone: e.zone, isSource: id === scenario.sourceEntityId, firstContaminatedT: firstT, contactCount });
   }
   items.sort((a, b) => b.contactCount - a.contactCount || a.firstContaminatedT - b.firstContaminatedT || a.label.localeCompare(b.label));
   return { items, disinfectantNote: profile.disinfectantNote };

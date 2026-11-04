@@ -44,6 +44,8 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
   // A hand picked on another clip is dropped silently: the first caregiver is the default.
   const effectiveHand = handId !== undefined && persons.some((p) => p.id === handId) ? handId : persons[0]?.id;
   const [result, setResult] = useState<Counterfactual | null>(null);
+  const resultRef = useRef<Counterfactual | null>(null);
+  resultRef.current = result;
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -168,10 +170,17 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
                   disabled={explaining}
                   onClick={() => {
                     setExplaining(true);
+                    // The answer belongs to this what-if; a moved slider makes it stale.
+                    const asked = result.inserted;
+                    const fresh = () => resultRef.current?.inserted.t === asked.t && resultRef.current?.inserted.agent === asked.agent;
                     api
-                      .explainCounterfactual(clipId, result.inserted.t, result.inserted.agent, result.inserted.handId, override)
-                      .then((r) => setExplanation(r.explanation))
-                      .catch((e: Error) => setError(e.message))
+                      .explainCounterfactual(clipId, asked.t, asked.agent, asked.handId, override)
+                      .then((r) => {
+                        if (fresh()) setExplanation(r.explanation);
+                      })
+                      .catch((e: Error) => {
+                        if (fresh()) setError(e.message);
+                      })
                       .finally(() => setExplaining(false));
                   }}
                 >

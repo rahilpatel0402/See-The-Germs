@@ -1,0 +1,18 @@
+{
+  "hash": "32e810b0b11f9681",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:22:14.617Z",
+  "usage": {
+    "inputTokens": 2184,
+    "cachedTokens": 0,
+    "outputTokens": 2383,
+    "reasoningTokens": 1971
+  },
+  "narrative": {
+    "coaching_note": "Wash with soap and water after you leave the bedside area before you touch anything else. At 0.5 seconds your bare hand picked up contamination from bed rail A, and at 3.4 seconds that moved to call button and at 6.6 seconds to phone. That was a Moment 5 after touching the patient surroundings, missed at 5.8 seconds, and a second Moment 5 was missed at 18.7 seconds after gloved hand touched call button. Next time wash with soap and water for the full 40 seconds before you put gloves on, since hand sanitizer does not work well against Norovirus and your hands were still contaminated from phone at 10.9 seconds. Also keep gloved hands off healthcare-area items like phone, which you touched at 19.3 seconds.",
+    "audit_summary": "Norovirus clip sourced from bed rail A with transfers from bed rail A to bare hand at 0.5 seconds, then to call button at 3.4 seconds and to phone at 6.6 seconds, plus bed rail A to gloved hand at 11.1 seconds. Hand hygiene compliance 0 of 2 opportunities overall, all Moment 5 at 0 of 2, missed at 5.8 seconds (bare hand) and 18.7 seconds (gloved hand); Moments 1, 2 and 4 had no opportunities. No hygiene events occurred; against Norovirus only soap and water is effective, alcohol rub is not. Glove use showed no effective hygiene before donning at 10.9 seconds with prior phone contamination and gloved contact with healthcare-area phone at 19.3 seconds. Disinfect bed rail A, call button and phone using an EPA List G registered disinfectant effective against norovirus.",
+    "top_fix": "The highest-impact single change in this clip was wash with soap and water for Moment 5 at 5.8 seconds."
+  }
+}

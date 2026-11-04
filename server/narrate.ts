@@ -40,7 +40,7 @@ const EXPLAIN_MAX_OUTPUT = 4000;
 // Anything that reads as patient-facing or clinical advice fails validation. Phrases, not bare
 // nouns: a prop can legitimately be labelled "medication cart", and labels are exempted below.
 // English and Spanish forms.
-const DISALLOWED = /\b(diagnos\w*|diagn[oó]s\w*|prescri\w*|recet\w+|(take|give|adjust|stop|start) (the |your |their )?(medication|medicine|antibiotic)s?|(tom\w+|d[eé]le|d[eé]les|dé|ajust\w+|suspend\w+) (el |la |los |las |su |sus )?(medicament\w+|medicin\w+|antibi[oó]tic\w+)|treat(ment)? plan|plan de tratamiento|see a doctor|consult\w+ (a|al) (m[eé]dico|doctor)|call (the|a) (doctor|physician)|should be (treated|tested|isolated|medicated)|debe(r[ií]a)? ser (tratad|aislad|medicad)\w*|the (resident|patient) (should|needs|must|requires)|(el|la) (residente|paciente) (debe|necesita|requiere))\b/i;
+const DISALLOWED = /\b(diagnos\w*|diagn[oó]s\w*|prescri\w*|recet\w+|(take|give|adjust|stop|start) (the |your |their )?(medication|medicine|antibiotic)s?|(tom\w+|d[eé]le|d[eé]les|dé|ajust\w+|suspend\w+) (el |la |los |las |su |sus )?(medicament\w+|medicin\w+|antibi[oó]tic\w+)|treat(ment)? plan|plan de tratamiento|see a doctor|consult\w+ (a|al) (m[eé]dico|doctor)|call (the|a) (doctor|physician)|should be (treated|tested|isolated|medicated)|debe(r[ií]a)? ser (tratad|aislad|medicad)\w*|the (resident|patient) (should|needs|must|requires)|(el|la) (residente|paciente) (debe|necesita|requiere)|(the )?(residents|patients) (should|need|must|require)|(los|las) (residentes|pacientes) (deben|necesitan|requieren)|llam\w+ (al|a la|a un|a una) (m[eé]dic\w|doctor\w?)|aisl\w+ (al|a la) (residente|paciente)|(a |the )?(doctor|physician|nurse practitioner) should be (called|consulted|notified))\b/i;
 
 export type NarrativeLanguage = "en" | "es";
 
@@ -90,6 +90,15 @@ export function explanationPath(clipId: string, hash: string): string {
 }
 
 // The subset of the analysis Spark gets: labels instead of ids, no masks, no candidates.
+// Glove issues count only hygiene that works for the chosen pathogen, so "no hygiene" can mean
+// a rub happened but could not clear this germ; the text the model sees says so.
+const GLOVE_ISSUE_MEANING: Record<string, string> = {
+  no_hygiene_before_don: "no hand hygiene effective against this pathogen before the gloves went on (either no rub, or a rub with an agent that does not clear this pathogen)",
+  no_hygiene_after_doff: "no hand hygiene effective against this pathogen after the gloves came off (either no rub, or a rub with an agent that does not clear this pathogen)",
+  glove_across_residents: "one pair of gloves worn across two residents",
+  gloved_healthcare_area_contact: "a gloved hand touched a healthcare-area object",
+};
+
 export function trimForNarrative(analysis: Analysis): object {
   const label = new Map(analysis.entities.map((e) => [e.id, e.label]));
   const name = (id: string): string => label.get(id) ?? id;
@@ -113,13 +122,14 @@ export function trimForNarrative(analysis: Analysis): object {
       effective_for_this_pathogen: h.effective,
     })),
     glove_events: analysis.gloveEvents.map((g) => ({ hand: name(g.handId), at_s: g.t, type: g.type })),
-    glove_use_issues: analysis.gloveIssues.map((i) => ({ issue: i.type, hand: name(i.handId), at_s: i.t, involving: i.entityIds.map(name) })),
+    glove_use_issues: analysis.gloveIssues.map((i) => ({ issue: i.type, meaning: GLOVE_ISSUE_MEANING[i.type] ?? i.type, hand: name(i.handId), at_s: i.t, involving: i.entityIds.map(name) })),
     hand_hygiene_compliance: {
       overall: analysis.compliance.overall,
       by_moment: analysis.compliance.byMoment,
     },
     surfaces_to_disinfect: analysis.cleaning.items.map((i) => ({ surface: i.label, contacts_while_contaminated: i.contactCount, is_source: i.isSource })),
-    disinfectant: analysis.cleaning.disinfectantNote,
+    surfaces_note: "A resident's bedside zone on this list means the bed linen and bedside surfaces, never the person.",
+    disinfectant_guidance: analysis.cleaning.disinfectantNote,
     resident_exposures: analysis.propagation.residentExposures.map((x) => ({ resident: name(x.residentId), hand: name(x.handId), at_s: x.t })),
     moments_missed: analysis.momentMisses.map((m) => ({ moment: m.moment, hand: name(m.handId), at_s: m.t, hygiene_here_would_have_kept_clean: m.downstream.map(name) })),
     contaminated_at_end: analysis.propagation.contaminated.map(name),
@@ -150,7 +160,8 @@ const words = (s: string): number => s.trim().split(/\s+/).filter(Boolean).lengt
 // a comma, a dash at a sentence start is dropped. Facts and words are untouched.
 export function withoutDashes(text: string): string {
   return text
-    .replace(/\s*[\u2014\u2013]+\s*/g, ", ")
+    .replace(/(\d)\s*[\u2012-\u2015]\s*(\d)/g, "$1 to $2")
+    .replace(/\s*[\u2012-\u2015]+\s*/g, ", ")
     .replace(/([.!?])\s*,\s*/g, "$1 ")
     .replace(/^,\s*/, "")
     .replace(/\s+,/g, ",")
@@ -228,7 +239,7 @@ export async function narrateClip(clipId: string, analysis: Analysis, backend: S
 }
 
 // Two sentences on a counterfactual, cached per clip, scenario, time, and agent.
-export async function explainCounterfactual(analysis: Analysis, cf: Counterfactual, backend: SparkBackend): Promise<ExplanationFile> {
+async function explanationKey(analysis: Analysis, cf: Counterfactual, model: string): Promise<{ input: object; prompt: string; hash: string }> {
   const label = new Map(analysis.entities.map((e) => [e.id, e.label]));
   const name = (id: string): string => label.get(id) ?? id;
   const input = {
@@ -240,7 +251,17 @@ export async function explainCounterfactual(analysis: Analysis, cf: Counterfactu
     kept_clean: cf.keptClean.map(name),
   };
   const prompt = `${await loadPrompt()}\n\nFor this request, write exactly two sentences explaining the before and after numbers for the inserted hand hygiene event. Plain language. If the agent is not effective against the pathogen, say that is why nothing changed.`;
-  const hash = hashInput({ prompt, model: backend.model, input });
+  return { input, prompt, hash: hashInput({ prompt, model, input }) };
+}
+
+// The cached explanation for this exact what-if, or null; never calls a model.
+export async function readExplanation(analysis: Analysis, cf: Counterfactual, model: string): Promise<ExplanationFile | null> {
+  const { hash } = await explanationKey(analysis, cf, model);
+  return readJson<ExplanationFile>(explanationPath(analysis.clipId, hash));
+}
+
+export async function explainCounterfactual(analysis: Analysis, cf: Counterfactual, backend: SparkBackend): Promise<ExplanationFile> {
+  const { input, prompt, hash } = await explanationKey(analysis, cf, backend.model);
   const cached = await readJson<ExplanationFile>(explanationPath(analysis.clipId, hash));
   if (cached) return cached;
   const result = await backend.completeJson({ instructions: prompt, text: JSON.stringify(input, null, 2), images: [], schemaName: "counterfactual_explanation", schema: EXPLAIN_SCHEMA, maxOutputTokens: EXPLAIN_MAX_OUTPUT });

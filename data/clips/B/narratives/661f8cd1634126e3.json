@@ -1,0 +1,18 @@
+{
+  "hash": "661f8cd1634126e3",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:29:02.569Z",
+  "usage": {
+    "inputTokens": 2047,
+    "cachedTokens": 0,
+    "outputTokens": 3636,
+    "reasoningTokens": 3270
+  },
+  "narrative": {
+    "coaching_note": "Next time wash with soap and water for the full 40 seconds instead of using sanitizer after touching the bedside area. You touched bed rail A from 0.2 to 5.4 seconds and picked up contamination on your bare hand. That contamination then moved to call button at 6.1 seconds and to resident A at 10.1 seconds. You used the sanitizer bottle starting at 10.1 seconds for about 30 seconds, but sanitizer does not work well against norovirus, so your bare hand stayed contaminated even after rubbing. Only soap and water clears this germ from hands, so washing right then would have made a real difference before touching resident A. This one switch keeps your hands truly clean when you move from the surroundings to resident A and helps protect the bedside area you touch.",
+    "audit_summary": "Staged clip with Norovirus source bed rail A. Bare hand contacted bed rail A at 0.2 s, transferring contamination to bare hand, then to call button at 6.1 s and to resident A at 10.1 s, with further resident A exposures at 13.5 s and 40 s. One hygiene event at 10.1 s used alcohol rub for 29.9 s, which met WHO duration but is not effective against norovirus; soap and water would work and would have been required. No WHO Moments 1,2,4,5 opportunities were identified for compliance calculation, and no glove use issues were recorded. Disinfect resident A's bedside zone (linen and surfaces), bed rail A, and call button using an EPA List G registered disinfectant effective against norovirus.",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

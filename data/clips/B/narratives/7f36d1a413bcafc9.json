@@ -1,0 +1,18 @@
+{
+  "hash": "7f36d1a413bcafc9",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:27:08.814Z",
+  "usage": {
+    "inputTokens": 2084,
+    "cachedTokens": 625,
+    "outputTokens": 2718,
+    "reasoningTokens": 2328
+  },
+  "narrative": {
+    "coaching_note": "The one change to make next time is to wash your hands with soap and water for the full 40 seconds instead of using alcohol rub after contact with bed rail A. You touched bed rail A with your bare hand from 0.2 to 5.4 seconds, and that contamination moved to your bare hand at 0.2 seconds. It then moved to call button at 6.1 seconds and to resident A at 10.1 seconds. You used alcohol rub on your bare hand at 10.1 seconds for 29.9 seconds, but alcohol rub does not kill C. difficile spores, so your bare hand stayed contaminated for later contacts with resident A at 13.5 seconds and 40 seconds. Next time use soap and water right after the contact at 10.1 seconds to clear spores from your hands.",
+    "audit_summary": "Staged clip with C. difficile source bed rail A. Transfer chain: bed rail A to bare hand at 0.2 s, to call button at 6.1 s, to resident A at 10.1 s, with additional resident A exposures at 13.5 s and 40 s. One alcohol rub at 10.1 s for 29.9 s met WHO duration but was not effective against C. difficile spores; soap and water would work. No WHO Five Moments opportunities were identified (0/0 overall; Moments 1,2,4,5 0/0), and no moments were missed. No glove use issues were identified. Hands and bedside zone remained contaminated at end. Disinfect resident A's bedside zone (linen and surfaces), bed rail A (source), and call button using an EPA List K sporicidal disinfectant effective against C. difficile spores.",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

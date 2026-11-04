@@ -1,0 +1,18 @@
+{
+  "hash": "dccf8648ba298272",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:32:25.955Z",
+  "usage": {
+    "inputTokens": 2384,
+    "cachedTokens": 0,
+    "outputTokens": 2181,
+    "reasoningTokens": 1801
+  },
+  "narrative": {
+    "coaching_note": "The one change to make next time is to wash your hands with soap and water before you touch resident A. At 22 seconds your gloved hand touched bed rail A, which passed contamination to the glove, and at 26.3 seconds that glove passed it to call button. You then touched resident A with gloved hand at 55.2 seconds without a Moment 1 hand hygiene that works for this germ. The hand rubs you used at 0.2, 32.3 and 64.1 seconds were alcohol rub, and alcohol rub does not clear Norovirus, only soap and water with a full 40-second wash does. Next time wash with soap and water for the full 40 seconds before you put gloves on and after you take them off.",
+    "audit_summary": "Norovirus scenario with source bed rail A. Gloved hand contacted bed rail A at 22 seconds, acquiring contamination, with onward transfer to call button at 26.3 seconds. One Moment 1 opportunity before contact with resident A at 55.2 seconds was missed; compliance 0/1 overall and 0/1 for Moment 1. Three alcohol rubs at 0.2, 32.3 and 64.1 seconds met WHO duration but were not effective against Norovirus, which requires soap and water. Glove use showed no effective hygiene before donning at 54.8 seconds and after doffing at 32.3 seconds. No resident exposures listed. Disinfect call button and bed rail A using an EPA List G registered disinfectant (effective against norovirus).",
+    "top_fix": "The highest-impact single change in this clip was effective hand hygiene for Moment 1 at 55.2 seconds."
+  }
+}

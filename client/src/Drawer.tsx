@@ -42,8 +42,8 @@ function sourceName(url: string): string {
 const pct = (rate: number | null): string => (rate === null ? "n/a" : `${Math.round(rate * 100)}%`);
 
 const GLOVE_ISSUE_TEXT: Record<string, string> = {
-  no_hygiene_before_don: "gloves put on without hand hygiene first",
-  no_hygiene_after_doff: "no hand hygiene after taking gloves off",
+  no_hygiene_before_don: "gloves put on without hand hygiene that works for this germ first",
+  no_hygiene_after_doff: "no hand hygiene that works for this germ after taking gloves off",
   glove_across_residents: "one pair of gloves used across two residents",
   gloved_healthcare_area_contact: "gloved hand touched a healthcare-area object",
 };
@@ -180,7 +180,7 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
                 <a href={SHARED_CITATIONS.whoTechnicalReferenceManual} target="_blank" rel="noreferrer">
                   WHO Hand Hygiene Technical Reference Manual, 2009
                 </a>{" "}
-                (the engine counts a rub from 20 seconds for alcohol rub and 40 for soap and water, the WHO minimums).
+                (the engine counts a rub from {HYGIENE_CONFIG.minRubS.alcohol_rub} seconds for alcohol rub and {HYGIENE_CONFIG.minRubS.soap_water} for soap and water, the WHO minimums).
               </p>
               <ul className="plain">
                 {analysis.hygieneEvents
@@ -190,7 +190,7 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
                       <button type="button" className="link" onClick={() => onSeek(h.t)}>
                         {fmt(h.t)}
                       </button>{" "}
-                      {h.durationS.toFixed(0)} s. Rub for the full {HYGIENE_CONFIG.minRubS[h.agent]} seconds before touching anything.
+                      {Number.isFinite(h.durationS) ? `${h.durationS.toFixed(0)} s. ` : ""}Rub for the full {HYGIENE_CONFIG.minRubS[h.agent]} seconds before touching anything.
                     </li>
                   ))}
               </ul>
@@ -288,7 +288,10 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
                   </li>
                 ))}
               </ul>
-              <p className="muted">Gloves do not replace hand hygiene (WHO glove use leaflet, CDC hand hygiene guidance).</p>
+              <p className="muted">
+                Gloves do not replace hand hygiene (<a href={SHARED_CITATIONS.whoGuidelines2009} target="_blank" rel="noreferrer">WHO Guidelines on Hand Hygiene in Health Care, 2009</a>,{" "}
+                <a href={SHARED_CITATIONS.cdcHandHygiene} target="_blank" rel="noreferrer">CDC hand hygiene guidance</a>).
+              </p>
             </section>
           ) : null}
 
@@ -399,7 +402,7 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
             <h2>What this does not do</h2>
             <ul className="plain muted">
               <li>Contact is a 2D overlap heuristic from a fixed camera. Hovers that look like touches, and contacts on an object the camera could not see, go to vision review; the review is fallible and, apart from resident, dispenser, long, and stacked touches, capped per clip; every reviewed contact is marked.</li>
-              <li>Rub duration is measured from reaching the dispenser to the next touch, not from watching the hands.</li>
+              <li>Rub duration is measured from reaching the dispenser to the first touch after the hand leaves it, not from watching the hands, and the hand counts as clean from the moment it reached the dispenser.</li>
               <li>Glove removal technique is not visible, so the bare hand is assumed exposed on doff.</li>
               <li>Moment 3 (after body fluid exposure) is out of scope. The score weights are a heuristic.</li>
               <li>Staged synthetic footage only. No diagnosis, no treatment, no advice about any person.</li>

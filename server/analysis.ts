@@ -11,9 +11,11 @@ export { readAdjudications, readScenario, validateScenario, writeScenario } from
 
 // Writes analysis.json only for the stored scenario. Overrides are per run and never persisted,
 // so a reload always shows the stored scenario and the cached file never lies.
-export async function runAnalysis(clipId: string, override: ScenarioOverride = {}): Promise<Analysis> {
+// persist=false leaves analysis.json alone: demo clips ship with theirs committed, and a
+// request must never rewrite them on the host.
+export async function runAnalysis(clipId: string, override: ScenarioOverride = {}, persist = true): Promise<Analysis> {
   const { analysis } = await buildPipeline(clipId, override);
-  if (!hasOverride(override)) await writeFile(analysisPath(clipId), JSON.stringify(analysis, null, 2));
+  if (persist && !hasOverride(override)) await writeFile(analysisPath(clipId), JSON.stringify(analysis, null, 2));
   return analysis;
 }
 

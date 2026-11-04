@@ -1,5 +1,7 @@
 # Saturday shoot script (Sat Oct 31)
 
+This is the plan as written before the shoot. The clips actually shot on Nov 3 use a smaller set (bed rail, call button, phone, a teddy bear as resident A, a small sanitizer bottle); the README describes them.
+
 Three clips, A, B, C, several takes each. One helper. Review every take on the laptop before moving on. Reshoot anything where a hand leaves frame or an object is hidden. Then a fourth short clip, any task, never shown, for the live upload test on Sunday.
 
 ## Set

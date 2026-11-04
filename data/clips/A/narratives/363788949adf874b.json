@@ -1,0 +1,18 @@
+{
+  "hash": "363788949adf874b",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:23:54.404Z",
+  "usage": {
+    "inputTokens": 2051,
+    "cachedTokens": 625,
+    "outputTokens": 2713,
+    "reasoningTokens": 2268
+  },
+  "narrative": {
+    "coaching_note": "Wash your hands with soap and water for a full 40 seconds after contact with bed rail A and before you touch anything else. You touched bed rail A from 1.6 to 7.1 seconds with your bare hand, and that moved contamination to your bare hand at 1.6 seconds. You then touched call button at 7.6 seconds and phone at 12.4 seconds, which carried it to phone. You then touched resident A at 21.4 seconds, which carried it to resident A. Cleaning your hands at 11 seconds after the patient zone and again at 21.4 seconds before touching resident A would have broken this chain, and only soap and water removes C. difficile spores. That handwash at 11 seconds would have kept clean bare hand, gloved hand, phone, and resident A.",
+    "audit_summary": "Staged clip with source bed rail A and pathogen C. difficile. Bare hand contacted bed rail A 1.6-7.1 seconds, call button 7.6-11 seconds, phone 12.4-20.7 seconds, and resident A 21.4-30.6 seconds, with transfers at 1.6, 7.6, 12.4 and 21.4 seconds resulting in resident A exposure at 21.4 seconds. Hand hygiene compliance 0/2 overall, with Moment 1 0/1 and Moment 5 0/1; Moments 2 and 4 had no opportunities. Missed Moment 5 at 11 seconds and Moment 1 at 21.4 seconds. No hygiene events to assess for agent or duration, and no glove use issue was recorded. Contamination remained on bare hand, gloved hand, bed rail A, call button, phone and resident A. Disinfect bed rail A, call button, phone, and resident A's bedside zone (linen and surfaces) with EPA List K sporicidal disinfectant.",
+    "top_fix": "The highest-impact single change in this clip was washing with soap and water at 11 seconds."
+  }
+}

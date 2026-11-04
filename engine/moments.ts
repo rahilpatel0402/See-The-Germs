@@ -79,6 +79,10 @@ export function detectMomentOpportunities(input: MomentsInput): MomentOpportunit
         if (isPatientZone(episodeZone)) {
           // The person's other hand can still be in the zone when this touch starts, so the
           // departure is the earlier of the two: hygiene had to happen before the outside touch.
+          // Strict on purpose: a rub that begins while a hand is still on the rail is not hygiene
+          // after leaving the zone, even though propagation (contacts at their start) counts it
+          // as cleaning. Such a miss carries no downstream entities. Open question for Rahil in
+          // docs/ENGINE_CONTRACTS.md.
           const left = Math.min(episodeLastEnd, c.startT);
           found.push({ moment: episodeTouchedResident ? 4 : 5, handId: episodeHandId, t: left, met: hygieneBetween(person, left, c.startT) });
         }

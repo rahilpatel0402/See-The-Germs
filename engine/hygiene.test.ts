@@ -80,3 +80,14 @@ test("going back to the same bottle during one rub is one hygiene event, timed f
   const twoRubs = [contact("bare_hand", "sanitizer", 1.0, 2.2), contact("bare_hand", "rail_A", 5.0, 6.0), contact("bare_hand", "sanitizer", 8.0, 9.2), contact("bare_hand", "phone", 30.0, 31.0)];
   assert.deepEqual(splitHygiene(twoRubs, CLIP_A_ENTITIES, PATHOGENS.mrsa, HYGIENE_CONFIG, 40).hygieneEvents.map((h) => h.t), [1.0, 8.0]);
 });
+
+test("a rub of exactly 200 frames is 20.0 s whichever frame it starts on, and a 10 frame dwell is one second", () => {
+  // Frames 123 to 135 at the dispenser, next touch at frame 323: 32.3 minus 12.3 is 19.999999999999996 in floating point.
+  const split = splitHygiene([contact("bare_hand", "sanitizer", 12.3, 13.5), contact("bare_hand", "phone", 32.3, 33.0)], CLIP_A_ENTITIES, PATHOGENS.mrsa, HYGIENE_CONFIG, 60);
+  assert.equal(split.hygieneEvents.length, 1);
+  assert.equal(split.hygieneEvents[0]!.durationS, 20);
+  assert.equal(split.hygieneEvents[0]!.adequate, true);
+  // Frames 4 to 13: 1.4 minus 0.4 is 0.9999999999999999, still a one second dwell.
+  const dwell = splitHygiene([contact("bare_hand", "sanitizer", 0.4, 1.4), contact("bare_hand", "phone", 30, 31)], CLIP_A_ENTITIES, PATHOGENS.mrsa, HYGIENE_CONFIG, 60);
+  assert.equal(dwell.hygieneEvents.length, 1);
+});

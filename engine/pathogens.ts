@@ -42,7 +42,7 @@ export const PATHOGENS: Readonly<Record<PathogenId, PathogenProfile>> = {
     alcoholRubClearsHands: true,
     soapWaterClearsHands: true,
     surfacePersistenceS: EFFECTIVELY_FOREVER_S,
-    uiNote: "Persists on surfaces for weeks; alcohol rub effective; a major NY nursing home concern.",
+    uiNote: "Persists on surfaces for months. Alcohol rub is effective. Disinfectants that rely only on quaternary ammonium compounds are not (CDC).",
     disinfectantNote: "Use an EPA List P registered disinfectant (effective against Candida auris); routine quaternary ammonium products are not reliable.",
     // CDC C. auris infection control: "Alcohol-based hand sanitizer is preferred for C. auris
     // when hands are not visibly soiled." and "See EPA's List P for a current list of
@@ -55,7 +55,7 @@ export const PATHOGENS: Readonly<Record<PathogenId, PathogenProfile>> = {
     alcoholRubClearsHands: false,
     soapWaterClearsHands: true,
     surfacePersistenceS: EFFECTIVELY_FOREVER_S,
-    uiNote: "Spores are not killed by alcohol rub. Soap and water required. Contact precautions.",
+    uiNote: "Spores are not killed by alcohol rub. CDC advises soap and water after caring for a resident with known or suspected C. difficile and during outbreaks; the engine treats an adequate wash as clearing the hands, a simplification.",
     disinfectantNote: "Use an EPA List K sporicidal disinfectant (effective against C. difficile spores); standard disinfectants do not kill spores.",
     // CDC C. diff facts for clinicians: "hand sanitizer doesn't kill C. diff." CDC Preventing
     // C. diff: "Washing your hands with soap and water is the best way to prevent the spread of
@@ -74,7 +74,7 @@ export const PATHOGENS: Readonly<Record<PathogenId, PathogenProfile>> = {
     alcoholRubClearsHands: false,
     soapWaterClearsHands: true,
     surfacePersistenceS: EFFECTIVELY_FOREVER_S,
-    uiNote: "Alcohol rub is largely ineffective. Soap and water required.",
+    uiNote: "Hand sanitizer does not work well against norovirus (CDC). Wash with soap and water.",
     disinfectantNote: "Use an EPA List G registered disinfectant (effective against norovirus).",
     // CDC How to Prevent Norovirus: "Hand sanitizer does not work well against norovirus." CDC
     // hand hygiene: soap and water during norovirus outbreaks. EPA List G: norovirus.

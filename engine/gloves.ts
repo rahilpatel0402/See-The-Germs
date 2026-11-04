@@ -153,6 +153,7 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
     let absentStart: number | null = null;
     let lastGlovedBoxes: readonly MaskBounds[] = [];
     let lastGlovedFrame = -1;
+    let lastDonFrame = -1;
 
     for (let f = 0; f <= maxFrame; f++) {
       const gBoxes = boxesOf(gloved.id, f);
@@ -161,6 +162,7 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
       if (f === 0 && gBoxes.length > 0 && persists(gloved.id, 0, config.openFrames)) {
         push("don", 0);
         gloveOn = true;
+        lastDonFrame = 0;
       }
 
       // Don: a gloved object born where a bare hand was seen within the handover window. The
@@ -186,11 +188,13 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
           if (!gloveOn) {
             push("don", f);
             gloveOn = true;
+            lastDonFrame = f;
           } else if (absentStart !== null) {
             // A fresh handover while the earlier glove had left view: that glove came off out of
             // camera, so it is closed at the start of its absence.
             push("doff", absentStart);
             push("don", f);
+            lastDonFrame = f;
           }
           // A second glove on the other hand while one is already on changes nothing.
           absentStart = null;
@@ -201,7 +205,9 @@ export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEve
       // Doff: a bare-hand object born on the gloved hand. SAM keeps following the glove after it
       // comes off, so the gloved track rarely vanishes on a real doff; the skin coming back is
       // the signal. The gloved hand's last boxes within closeFrames cover a one-frame dropout.
-      if (gloveOn) {
+      // Never in the don frame itself: at frame 0 every object is a birth, and a bare track that
+      // runs through the glove would otherwise doff it the instant it was reported on.
+      if (gloveOn && f !== lastDonFrame) {
         const reference = gBoxes.length > 0 ? gBoxes : f - lastGlovedFrame <= config.closeFrames ? lastGlovedBoxes : [];
         if (reference.length > 0) {
           for (const birth of birthsOf(bare.id, f)) {

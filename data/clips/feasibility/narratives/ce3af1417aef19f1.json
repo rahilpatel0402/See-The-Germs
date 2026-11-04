@@ -1,0 +1,18 @@
+{
+  "hash": "ce3af1417aef19f1",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:21:34.267Z",
+  "usage": {
+    "inputTokens": 2205,
+    "cachedTokens": 0,
+    "outputTokens": 2261,
+    "reasoningTokens": 1834
+  },
+  "narrative": {
+    "coaching_note": "Clean your hands right after you touch the bedside area and before you touch anything outside it. You touched bed rail A with your bare hand starting at 0.5 seconds, and that contact moved contamination to your hand. You then touched call button at 3.4 seconds and phone at 6.6 seconds, which carried it to those surfaces. After you put on gloves at 10.9 seconds without cleaning your hands first, your gloved hand touched phone at 19.3 seconds in the healthcare area. Next time, clean your hands with alcohol rub or soap and water before putting gloves on and after taking them off, and rub for the full 20 seconds for alcohol rub or 40 for soap and water. You also missed hand hygiene after the bedside contacts at 5.8 seconds and at 18.7 seconds.",
+    "audit_summary": "Staged clip with C. auris source bed rail A, which persists on surfaces for months. Transfers show bed rail A to bare hand at 0.5 seconds, then bare hand to call button at 3.4 seconds and to phone at 6.6 seconds, plus bed rail A to gloved hand at 11.1 seconds. Hand hygiene compliance 0 of 2 opportunities overall, all Moment 5 after touching patient surroundings, 0 of 2 met at 5.8 seconds and 18.7 seconds; Moments 1, 2 and 4 had no opportunities. No hygiene events recorded. Glove use issues included no effective hygiene before donning at 10.9 seconds and gloved contact with healthcare-area phone at 19.3 seconds. Contaminated at end: bare hand, gloved hand, bed rail A, call button, phone. Disinfect bed rail A, call button and phone using an EPA List P registered disinfectant effective against Candida auris.",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene after touching the surroundings at 5.8 seconds."
+  }
+}

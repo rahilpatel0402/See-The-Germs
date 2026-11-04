@@ -1,0 +1,18 @@
+{
+  "hash": "867cabd5c5f07db2",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:20:31.715Z",
+  "usage": {
+    "inputTokens": 2227,
+    "cachedTokens": 0,
+    "outputTokens": 2727,
+    "reasoningTokens": 2266
+  },
+  "narrative": {
+    "coaching_note": "El cambio más importante es que usted haga higiene de manos después de tocar bed rail A o call button antes de tocar otra superficie. Usted tocó bed rail A a los 0.5 segundos y la contaminación pasó a bare hand. Después, a los 3.4 segundos esa contaminación pasó a call button y a los 6.6 segundos pasó a phone. Se perdieron dos Momentos 5, a los 5.8 segundos y a los 18.7 segundos, por no hacer higiene después del contacto con el entorno. La próxima vez, haga higiene de manos antes de ponerse los guantes y no toque phone con gloved hand porque está fuera de la zona del residente. Hacer higiene en esos momentos corta la cadena y protege las superficies y sus manos.",
+    "audit_summary": "Source was bed rail A with MRSA, alcohol rub effective. Bare hand acquired contamination at 0.5 seconds, with onward transfer to call button at 3.4 seconds and to phone at 6.6 seconds; gloved hand acquired contamination from bed rail A at 11.1 seconds. Two Moment 5 opportunities were missed, at 5.8 seconds with bare hand and at 18.7 seconds with gloved hand, with hand hygiene compliance 0 of 2 overall and 0 of 2 for Moment 5. No hygiene events occurred. Glove use showed no hygiene before don at 10.9 seconds and gloved contact with healthcare-area phone at 19.3 seconds. End-state contamination included bare hand, gloved hand, bed rail A, call button, and phone. Disinfect bed rail A, call button, and phone. Use an EPA List H registered disinfectant (effective against MRSA).",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene for Moment 5 at 5.8 seconds."
+  }
+}

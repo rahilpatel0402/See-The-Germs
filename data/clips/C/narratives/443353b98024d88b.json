@@ -1,0 +1,18 @@
+{
+  "hash": "443353b98024d88b",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:30:30.495Z",
+  "usage": {
+    "inputTokens": 2199,
+    "cachedTokens": 0,
+    "outputTokens": 2567,
+    "reasoningTokens": 2096
+  },
+  "narrative": {
+    "coaching_note": "Siga haciendo la higiene de manos con alcohol antes de tocar a resident A como usted lo hizo en este video. A los 22 segundos su gloved hand tocó bed rail A y la contaminación pasó a su guante. A los 26.3 segundos su gloved hand tocó call button y la contaminación pasó a ese objeto. Usted se puso los guantes a los 22 segundos y se los quitó a los 32.3 segundos, y luego hizo higiene de manos con sanitizer bottle a los 32.3 segundos por 22.9 segundos. También hizo higiene antes a los 0.2 segundos y después a los 64.1 segundos. Esa higiene antes del contacto cumplió el Momento 1 y protegió a resident A, a quien usted tocó a los 55.2 segundos sin que pasara contaminación.",
+    "audit_summary": "Staged clip with MRSA source bed rail A. Transfers: bed rail A to gloved hand at 22 seconds, then gloved hand to call button at 26.3 seconds. No resident exposures; contact with resident A at 55.2 seconds occurred without contamination transfer. Hand hygiene compliance 1/1 overall; Moment 1: 1/1 met. Three alcohol rub events with bare hand at 0.2 seconds (21.8 seconds), 32.3 seconds (22.9 seconds), and 64.1 seconds (24.2 seconds); all met WHO duration and alcohol rub is effective against MRSA per record. No glove use issues noted, with donning at 22 and 54.8 seconds and doffing at 32.3 and 63.6 seconds. Contaminated at end: bed rail A and call button. Disinfect call button and bed rail A using an EPA List H registered disinfectant (effective against MRSA).",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

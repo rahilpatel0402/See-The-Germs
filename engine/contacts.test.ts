@@ -304,3 +304,9 @@ test("a thin overlap concurrent with a much thicker one on the same hand is a st
   const alone = detectContacts(tracks([hand, behind], hits.map((hit) => ({ behind: behindMask, h1: hit ? handGrip : handAway }))), CONTACT_CONFIG);
   assert.equal(alone[0]!.stackedContact, undefined);
 });
+
+test("a gloved touch followed by a bare touch of the same object is two contacts with a doff between, never one", () => {
+  const ev = (handId: string, entityId: string, startT: number, endT: number) => ({ handId, entityId, startT, endT, adjudicated: false });
+  const merged = mergeHandClassContacts([ev("h2", "rail", 20, 25), ev("h1", "rail", 25, 28)], [hand, glove, rail]);
+  assert.deepEqual(merged.map((c) => [c.handId, c.startT, c.endT]), [["h2", 20, 25], ["h1", 25, 28]]);
+});

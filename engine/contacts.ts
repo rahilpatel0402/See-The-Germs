@@ -28,7 +28,11 @@ export function mergeHandClassContacts(contacts: readonly ContactEvent[], entiti
     const sorted = [...list].sort((a, b) => a.startT - b.startT || a.endT - b.endT);
     let current: ContactEvent | null = null;
     for (const c of sorted) {
-      if (current !== null && c.startT <= current.endT) {
+      // One touch seen by both hand classes overlaps in time. Contacts arrive relabelled by glove
+      // state, so a gloved touch that merely abuts a bare touch of the same object is a doff
+      // between two real touches, and stays two contacts.
+      const sameClass = current !== null && handEntity(c.handId).class === handEntity(current.handId).class;
+      if (current !== null && (sameClass ? c.startT <= current.endT : c.startT < current.endT)) {
         const prev: ContactEvent = current;
         const prevGloved: boolean = handEntity(prev.handId).class === "gloved_hand";
         const thisGloved: boolean = handEntity(c.handId).class === "gloved_hand";

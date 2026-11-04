@@ -1,0 +1,18 @@
+{
+  "hash": "6503c4b296b031b1",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:27:33.805Z",
+  "usage": {
+    "inputTokens": 2141,
+    "cachedTokens": 753,
+    "outputTokens": 2727,
+    "reasoningTokens": 2322
+  },
+  "narrative": {
+    "coaching_note": "El cambio más importante es que usted se lave las manos con agua y jabón después de tocar bed rail A cuando hay C. difficile, porque el alcohol no mata las esporas. Usted tocó bed rail A a los 0.2 segundos con bare hand y la contaminación pasó a su mano. Después, a los 6.1 segundos, esa contaminación pasó de bare hand a call button. Luego, a los 10.1 segundos, pasó de bare hand a resident A. Usted usó sanitizer bottle a los 10.1 segundos y se frotó por 29.9 segundos, que es buen tiempo, pero el alcohol rub no limpia las esporas de C. difficile. Por eso sus manos siguieron contaminadas cuando tocó a resident A a los 13.5 segundos y a los 40 segundos. La próxima vez, lávese con agua y jabón por 40 segundos completos para protegerse y proteger a resident A.",
+    "audit_summary": "Source was bed rail A. Bare hand contacted bed rail A at 0.2 seconds, acquiring contamination, which transferred to call button at 6.1 seconds and to resident A at 10.1 seconds, with further resident A contacts at 13.5 and 40 seconds. No WHO Five Moments opportunities were identified (0 met / 0 opportunities), so compliance by Moments 1, 2, 4, 5 is not applicable and no moments were missed. One alcohol rub at 10.1 seconds for 29.9 seconds met WHO duration but is not effective against C. difficile; soap and water would work. No glove use issue was recorded. Disinfect resident A's bedside zone (linen and surfaces), bed rail A (source), and call button using an EPA List K sporicidal disinfectant.",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

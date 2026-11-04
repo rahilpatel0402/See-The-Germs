@@ -1,0 +1,18 @@
+{
+  "hash": "61f5417f547c7e3b",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:28:29.451Z",
+  "usage": {
+    "inputTokens": 1931,
+    "cachedTokens": 625,
+    "outputTokens": 3228,
+    "reasoningTokens": 2801
+  },
+  "narrative": {
+    "coaching_note": "Siga limpiándose las manos con alcohol de esta misma manera cada vez que toque superficies cercanas al residente. Usted tocó con bare hand el bed rail A de 0.2 a 5.4 segundos y la contaminación pasó de su mano al call button a los 6.1 segundos. Después usted usó el sanitizer bottle a los 10.1 segundos y se frotó con alcohol rub por 29.9 segundos, que sí cumple los 20 segundos y sí funciona contra C. auris. Gracias a esa higiene, los contactos después con resident A a los 13.5 segundos y a los 40 segundos no aparecen con exposición del residente. Siga frotándose por los 20 segundos completos y siga limpiándose antes de tocar al residente y después de tocar superficies.",
+    "audit_summary": "Staged clip with C. auris source bed rail A. Bare hand contacted bed rail A at 0.2s, acquiring contamination, with onward transfer to call button at 6.1s. Alcohol rub at 10.1s for 29.9 seconds met WHO duration and was effective for C. auris. No WHO Five Moments opportunities were identified (Moments 1,2,4,5: 0/0; overall 0/0), and no moments were missed. No resident A exposure was listed. No glove use issues were noted. Contaminated at end: bed rail A and call button. Disinfect bed rail A and call button using an EPA List P registered disinfectant effective against Candida auris; routine quaternary ammonium products are not reliable.",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

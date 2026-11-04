@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useRef, useState, type MouseEvent } from "react";
 import { HYGIENE_CONFIG } from "../../engine/config.ts";
 import type { Adjudication, Analysis, ContactCandidate } from "../../engine/types.ts";
 
@@ -22,13 +22,16 @@ interface ReviewCard {
 export function Timeline({ clipId, analysis, duration, currentTime, onSeek, onHover }: Props) {
   const labels = useMemo(() => new Map((analysis?.entities ?? []).map((e) => [e.id, e.label])), [analysis]);
   const [card, setCard] = useState<ReviewCard | null>(null);
+  // The track holds the lanes and the cursor; labels sit in the gutter to its left, so every
+  // tick, the cursor, and a click share the track's width.
+  const trackRef = useRef<HTMLDivElement | null>(null);
   const name = (id: string): string => labels.get(id) ?? id;
   const pctNumber = (t: number): number => (duration > 0 ? Math.min(100, Math.max(0, (t / duration) * 100)) : 0);
   const pct = (t: number): string => `${pctNumber(t)}%`;
   const width = (a: number, b: number): string => `${duration > 0 ? Math.max(0.4, ((b - a) / duration) * 100) : 0}%`;
 
   const seek = (e: MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = (trackRef.current ?? e.currentTarget).getBoundingClientRect();
     const x = Math.min(rect.width, Math.max(0, e.clientX - rect.left));
     if (duration > 0) onSeek((x / rect.width) * duration);
   };
@@ -48,17 +51,22 @@ export function Timeline({ clipId, analysis, duration, currentTime, onSeek, onHo
 
   const eye = (candidate: ContactCandidate | undefined, verdict: Adjudication | undefined, leftT: number) =>
     candidate && verdict ? (
-      <i
+      <button
+        type="button"
         className="eye"
         aria-label="vision reviewed"
+        onClick={(e) => e.stopPropagation()}
         onMouseEnter={() => setCard({ candidate, verdict, leftPct: pctNumber(leftT) })}
         onMouseLeave={() => setCard(null)}
+        onFocus={() => setCard({ candidate, verdict, leftPct: pctNumber(leftT) })}
+        onBlur={() => setCard(null)}
       />
     ) : null;
 
   return (
     <div className="timeline-wrap">
       <div className="timeline" onClick={seek} role="presentation">
+        <div className="track" ref={trackRef}>
         <div className="lane">
           <span className="lane-label">contacts</span>
           {analysis.contacts.map((c, i) => {
@@ -133,6 +141,7 @@ export function Timeline({ clipId, analysis, duration, currentTime, onSeek, onHo
           ))}
         </div>
         <div className="cursor" style={{ left: pct(currentTime) }} />
+        </div>
       </div>
       {card ? (
         <div className="review-card" style={{ left: `min(max(0%, ${card.leftPct}% - 160px), calc(100% - 340px))` }}>

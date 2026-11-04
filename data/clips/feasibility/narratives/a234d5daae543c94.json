@@ -1,0 +1,18 @@
+{
+  "hash": "a234d5daae543c94",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T20:22:38.286Z",
+  "usage": {
+    "inputTokens": 2241,
+    "cachedTokens": 0,
+    "outputTokens": 2751,
+    "reasoningTokens": 2154
+  },
+  "narrative": {
+    "coaching_note": "El cambio más importante es lavarse usted las manos con agua y jabón después de tocar la zona del residente, por ejemplo después de tocar bed rail A y call button. Usted tocó bed rail A con bare hand a los 0.5 segundos y la contaminación pasó a su mano. Después, a los 3.4 segundos, tocó call button y a los 6.6 segundos tocó phone, y la contaminación llegó a esos objetos. Ese momento después de tocar el entorno del residente es el Momento 5 de los Cinco Momentos. Más tarde se puso los guantes a los 10.9 segundos sin lavarse primero las manos con agua y jabón, y después tocó phone con gloved hand a los 19.3 segundos. La próxima vez, lávese con agua y jabón antes de ponerse los guantes y quíteselos antes de tocar objetos fuera de la zona del residente. Recuerde que para este virus el desinfectante de manos no funciona bien, use agua y jabón y frótese por los 40 segundos completos.",
+    "audit_summary": "Norovirus clip with source bed rail A. Two Moment 5 opportunities after contact with patient_zone_A (at 5.8s bare hand after call button, at 18.7s gloved hand after call button); compliance 0/2 overall, Moment 5 0/2, Moments 1,2,4 0 opportunities. No hand hygiene events performed; alcohol-based sanitizer is not effective against norovirus, soap and water is required. Glove issues included no effective hygiene before donning at 10.9s and gloved contact with healthcare-area phone at 19.3s. Documented transfers: bed rail A to bare hand at 0.5s, then to call button at 3.4s and phone at 6.6s, plus bed rail A to gloved hand at 11.1s; contaminated at end were bare hand, gloved hand, bed rail A, call button, phone. Disinfect bed rail A, call button, phone with an EPA List G registered disinfectant effective against norovirus.",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene with soap and water at 5.8 seconds."
+  }
+}
