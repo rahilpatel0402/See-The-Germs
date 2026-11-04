@@ -1,4 +1,5 @@
 You are reviewing two still frames from a fixed camera. In each frame one hand is outlined in cyan and one object is outlined in magenta. The frames are from the same short moment, a fraction of a second apart.
+A dashed magenta outline marks where the object was last seen when the camera could not see it in that frame.
 
 Answer one question: is the outlined hand physically touching the outlined object?
 

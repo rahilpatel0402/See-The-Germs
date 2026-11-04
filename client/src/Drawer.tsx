@@ -180,7 +180,7 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
                 <a href={SHARED_CITATIONS.whoTechnicalReferenceManual} target="_blank" rel="noreferrer">
                   WHO Hand Hygiene Technical Reference Manual, 2009
                 </a>{" "}
-                (alcohol rub 20 to 30 seconds, soap and water 40 to 60).
+                (the engine counts a rub from 20 seconds for alcohol rub and 40 for soap and water, the WHO minimums).
               </p>
               <ul className="plain">
                 {analysis.hygieneEvents
@@ -398,7 +398,7 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
           <section>
             <h2>What this does not do</h2>
             <ul className="plain muted">
-              <li>Contact is a 2D overlap heuristic from a fixed camera. Hovers that look like touches, and contacts on an object the camera could not see, go to vision review; the review is capped and fallible, and every reviewed contact is marked.</li>
+              <li>Contact is a 2D overlap heuristic from a fixed camera. Hovers that look like touches, and contacts on an object the camera could not see, go to vision review; the review is fallible and, apart from resident, dispenser, long, and stacked touches, capped per clip; every reviewed contact is marked.</li>
               <li>Rub duration is measured from reaching the dispenser to the next touch, not from watching the hands.</li>
               <li>Glove removal technique is not visible, so the bare hand is assumed exposed on doff.</li>
               <li>Moment 3 (after body fluid exposure) is out of scope. The score weights are a heuristic.</li>

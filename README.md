@@ -6,7 +6,6 @@ It is a staff training and infection-prevention audit aid for staged or consente
 
 Built during the Meta Global AI Developer Hackathon, Oct 26 to Nov 4, 2026.
 
-[GIF of the glow flip goes here after the Saturday shoot.]
 
 ## The problem
 
@@ -30,7 +29,7 @@ Record a short clip of a care task in the browser, upload one, or open a staged 
 | Model | Endpoint | Role | Why |
 | --- | --- | --- | --- |
 | SAM 3.1 (`sam-3.1`) | Meta Model API, Responses API, clip uploaded once through the Files API, one call per class | Detect, segment, and track hands, persons, and surfaces across the clip | Open vocabulary from a phrase, stable object identity across frames, no training data. Used as a contact and transmission sensor, which is not what it was built for. |
-| Muse Spark 1.3, vision | Meta Model API, Responses API, two annotated PNG frames, structured output | Adjudicate ambiguous contact candidates | Only sees perception edge cases the engine flagged. Verdicts are cached as engine input, capped at 12 per clip, and shown on the timeline. |
+| Muse Spark 1.3, vision | Meta Model API, Responses API, two annotated PNG frames, structured output | Adjudicate ambiguous contact candidates | Only sees perception edge cases the engine flagged. Verdicts are cached as engine input, capped at 12 per clip for ordinary ambiguous candidates; touches of a resident or a dispenser, long holds, and stacked props are always reviewed, and shown on the timeline. |
 | Muse Spark 1.3, text | Meta Model API, Responses API, structured output, temperature 0 | Coaching note, audit summary, top fix, counterfactual explanation from the analysis JSON | Validated against a schema, word counts, and a disallowed-language filter; retried once; the structured panels stand on their own if it fails. |
 | Muse Spark Open | Fireworks partner inference (`accounts/fireworks/models/muse-spark-open`), OpenAI-compatible chat completions, selected by `SPARK_BACKEND=fireworks` | Second backend for both Spark roles: vision adjudication and narrative, same prompts, same schemas, same validation, same caches | Open-weight path and the on-premises story. Across the feasibility clip, clip A, and clip C it agreed with the hosted model on 14 of 15 adjudications through Fireworks and 12 of 14 through Baseten (`meta-models/muse-spark-open-1026`), and wrote a valid narrative with the same top fix on each; see `npm run spark-compare`. |
 
@@ -38,7 +37,7 @@ The engine never calls a model. Same clip, same adjudications, same scenario, sa
 
 ### Open-weight backend
 
-Both Spark roles run end to end on Muse Spark Open through partner inference, Fireworks or Baseten. `SPARK_BACKEND=fireworks npm run dev:server` (or `SPARK_BACKEND=baseten`) serves narrative and adjudication from the open-weight model; `npm run spark-compare -- <clipId> meta fireworks` runs the same narrative and the same adjudication frames through both and writes the side by side to `data/clips/<id>/spark-compare.json`. On the demo clips the open-weight model matched the hosted model's verdicts on 14 of 15 adjudications through Fireworks (feasibility 2 of 2, A 2 of 2, C 10 of 11) and 12 of 14 through Baseten (A 3 of 3, C 9 of 11), and reached the same top fix on each; it is slower (about 10 to 30 s per call versus 5 to 10) and spends more tokens reasoning, so its output cap is floored at 6,000 tokens. The one disagreement was a gloved hand beside the resident during a squeeze, which the hosted model called passing in front and the open model called touching.
+Both Spark roles run end to end on Muse Spark Open through partner inference, Fireworks or Baseten. `SPARK_BACKEND=fireworks npm run dev:server` (or `SPARK_BACKEND=baseten`) serves narrative and adjudication from the open-weight model; `npm run spark-compare -- <clipId> meta fireworks` runs the same narrative and the same adjudication frames through both and writes the side by side to `data/clips/<id>/spark-compare.json`. On the demo clips the open-weight model matched the hosted model's verdicts on 14 of 15 adjudications through Fireworks (feasibility 2 of 2, A 2 of 2, C 10 of 11) and 12 of 14 through Baseten (A 3 of 3, C 9 of 11), and reached the same top fix on each; it is slower (about 10 to 30 s per call versus 5 to 10) and spends more tokens reasoning, so its output cap is floored at 6,000 tokens. The disagreements were all hands beside the resident or the bottle during a squeeze, where one model called touching and the other passing in front.
 
 ## Architecture
 
@@ -49,12 +48,12 @@ server/   Express + TypeScript. Upload, ffprobe and ffmpeg resampling to 10 fps,
 engine/   Pure TypeScript, no I/O. masks, contacts, hygiene, gloves, propagation, moments, score,
           counterfactual, adjudication selection, accuracy. node:test suite.
 data/     Per clip: source video, resampled video, mask tracks per class, adjudications, analysis,
-          narrative, labels. Gitignored. The demo clips run offline from this cache.
+          narrative, labels. Uploads are gitignored; the four demo clip caches are committed, so the demo runs offline from a clone.
 ```
 
 ## Engine rules in brief
 
-- Contact: the hand mask dilated by 1.5 percent of frame width intersects an object mask above a floor for three consecutive frames at 10 fps, closing after three misses. Confident when the peak overlap is at least twice the floor and the dwell at least five frames; otherwise ambiguous and sent to adjudication. A contact that lasts a fifth of the clip and at least five seconds is always reviewed, however thick, because a prop between the camera and the hands looks exactly like a long hold; so is every touch of a resident or a dispenser, and any thin overlap that coincides with a much thicker one on the same hand (a prop stacked behind the real touch). Ambiguous candidates become contacts only with a verdict of touching or unclear.
+- Contact: the hand mask dilated by 1.5 percent of frame width intersects an object mask above a floor for three consecutive frames at 10 fps, closing after three misses. Confident when the peak overlap is at least twice the floor and the dwell at least six frames (0.6 s); otherwise ambiguous and sent to adjudication. A contact that lasts a fifth of the clip and at least five seconds is always reviewed, however thick, because a prop between the camera and the hands looks exactly like a long hold; so is every touch of a resident or a dispenser, and any thin overlap that coincides with a much thicker one on the same hand (a prop stacked behind the real touch). Ambiguous candidates become contacts only with a verdict of touching or unclear.
 - Propagation: the scenario names a source entity contaminated at the start. On each contact, if either side is contaminated both are, with a transfer edge when the recipient was clean. A contaminated hand touching a resident other than the source logs an exposure. Surfaces do not decay inside a clip.
 - Hygiene: a dwell of at least one second at a dispenser is a hygiene event. The rub time runs from the dispenser to the next touch and must meet the WHO duration, 20 seconds for alcohol rub and 40 for soap and water, or the event is logged as too short and does not count. Whether an adequate rub cleans the hand depends on the pathogen and the agent.
 - Glove rules: gloves do not replace hand hygiene. No hygiene before donning, no hygiene after doffing, one pair across two residents, and gloved contact with a healthcare-area object are each flagged.
@@ -77,7 +76,7 @@ Shared sources: [CDC hand hygiene for healthcare workers](https://www.cdc.gov/cl
 
 ## Measured accuracy
 
-Contacts in each demo clip are hand-labeled with a stopwatch into `labels.json`. `npm run accuracy` compares the pipeline's contacts with the labels at a 1.0 s tolerance and lists every miss and false alarm.
+Contacts in each demo clip are hand-labeled from frame sheets, before looking at the engine's output, into `labels.json`. `npm run accuracy` compares the pipeline's contacts with the labels at a 1.0 s tolerance and lists every miss and false alarm.
 
 | Clip | Labels | Detected | Precision | Recall | Named failures |
 | --- | --- | --- | --- | --- | --- |
@@ -96,7 +95,7 @@ To harden the pipeline before the shoot, nine public hand-hygiene and nursing sk
 - Glove detection depends on SAM reporting a new object when a glove goes on or comes off. Blue nitrile at close range scores well above the confidence gate; in a wide shot with small hands it falls under it and the don is missed. A removed glove held in the bare fist can read as a glove again.
 - Doffing technique is not visible, so the engine assumes the bare hand is exposed on removal.
 - Moment 3 (after body fluid exposure) is out of scope.
-- One entity per SAM class: two hands of one person are tracked as one, and a second person's hands in frame merge into the same caregiver. A resident's or manikin's bare hands are read as bare hands. Hosted SAM caps at 16 objects per frame per class.
+- One entity per SAM class: two hands of one person are tracked as one. By default a second person's hands in frame merge into the same caregiver; the upload option "More than one person is in frame" assigns hands per person through a SAM person track, measured on one outside clip only. A resident's or manikin's bare hands are read as bare hands. Hosted SAM caps at 16 objects per frame per class.
 - A prop between the camera and the hands reads as a touch. Holds longer than a fifth of the clip are sent to vision review, shorter ones are not, so the shoot script keeps the space between camera and hands empty.
 - Hygiene needs a visible dispenser or bottle. A rub with gel from a pocket is not seen. The rub time runs to the next touch, so a clip that ends mid-rub counts the rub to the end.
 - Edited video is not supported. Shot changes are detected and nothing is carried across one, but a clip of one-second shots yields nothing useful.
@@ -109,7 +108,7 @@ No real patients, no real staff, no real facilities. Every clip is staged. The b
 
 ## Run it
 
-Requirements: Node 22.9 or newer, ffmpeg and ffprobe on the PATH (or `FFMPEG_DIR` in `.env`), a Meta Model API key.
+Requirements: Node 22.9 or newer, ffmpeg and ffprobe on the PATH (or `FFMPEG_DIR` in `.env`), and a Meta Model API key for uploads and new narratives (the demo runs without one).
 
 ```
 npm install
@@ -140,7 +139,6 @@ Everything in this repository was written between Oct 26 and Nov 4, 2026. First 
 
 The infection preventionist who runs the hand hygiene program, and the certified nursing assistant who gets five minutes of feedback on a staged clip of their own task. One phone camera, no sensors, no training data.
 
-[Infection preventionist quotes go here after the Thursday and Sunday sessions.]
 
 ## License
 
