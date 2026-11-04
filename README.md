@@ -32,13 +32,13 @@ Record a short clip of a care task in the browser, upload one, or open a staged 
 | SAM 3.1 (`sam-3.1`) | Meta Model API, Responses API, clip uploaded once through the Files API, one call per class | Detect, segment, and track hands, persons, and surfaces across the clip | Open vocabulary from a phrase, stable object identity across frames, no training data. Used as a contact and transmission sensor, which is not what it was built for. |
 | Muse Spark 1.3, vision | Meta Model API, Responses API, two annotated PNG frames, structured output | Adjudicate ambiguous contact candidates | Only sees perception edge cases the engine flagged. Verdicts are cached as engine input, capped at 12 per clip, and shown on the timeline. |
 | Muse Spark 1.3, text | Meta Model API, Responses API, structured output, temperature 0 | Coaching note, audit summary, top fix, counterfactual explanation from the analysis JSON | Validated against a schema, word counts, and a disallowed-language filter; retried once; the structured panels stand on their own if it fails. |
-| Muse Spark Open | Fireworks partner inference (`accounts/fireworks/models/muse-spark-open`), OpenAI-compatible chat completions, selected by `SPARK_BACKEND=fireworks` | Second backend for both Spark roles: vision adjudication and narrative, same prompts, same schemas, same validation, same caches | Open-weight path and the on-premises story. Across the feasibility clip, clip A, and clip C it agreed with the hosted model on 14 of 15 adjudications and wrote a valid narrative with the same top fix on each; see `npm run spark-compare`. Baseten is wired and awaiting key activation. |
+| Muse Spark Open | Fireworks partner inference (`accounts/fireworks/models/muse-spark-open`), OpenAI-compatible chat completions, selected by `SPARK_BACKEND=fireworks` | Second backend for both Spark roles: vision adjudication and narrative, same prompts, same schemas, same validation, same caches | Open-weight path and the on-premises story. Across the feasibility clip, clip A, and clip C it agreed with the hosted model on 14 of 15 adjudications through Fireworks and 3 of 3 through Baseten (`meta-models/muse-spark-open-1026`), and wrote a valid narrative with the same top fix on each; see `npm run spark-compare`. |
 
 The engine never calls a model. Same clip, same adjudications, same scenario, same pathogen, same output.
 
 ### Open-weight backend
 
-Both Spark roles run end to end on Muse Spark Open through partner inference. `SPARK_BACKEND=fireworks npm run dev:server` serves narrative and adjudication from the open-weight model; `npm run spark-compare -- <clipId> meta fireworks` runs the same narrative and the same adjudication frames through both and writes the side by side to `data/clips/<id>/spark-compare.json`. On the demo clips the open-weight model matched the hosted model's verdicts on 14 of 15 adjudications (feasibility 2 of 2, A 2 of 2, C 10 of 11) and reached the same top fix on each; it is slower (about 10 to 30 s per call versus 5 to 10) and spends more tokens reasoning, so its output cap is floored at 6,000 tokens. The one disagreement was a gloved hand beside the resident during a squeeze, which the hosted model called passing in front and the open model called touching.
+Both Spark roles run end to end on Muse Spark Open through partner inference, Fireworks or Baseten. `SPARK_BACKEND=fireworks npm run dev:server` (or `SPARK_BACKEND=baseten`) serves narrative and adjudication from the open-weight model; `npm run spark-compare -- <clipId> meta fireworks` runs the same narrative and the same adjudication frames through both and writes the side by side to `data/clips/<id>/spark-compare.json`. On the demo clips the open-weight model matched the hosted model's verdicts on 14 of 15 adjudications (feasibility 2 of 2, A 2 of 2, C 10 of 11) and reached the same top fix on each; it is slower (about 10 to 30 s per call versus 5 to 10) and spends more tokens reasoning, so its output cap is floored at 6,000 tokens. The one disagreement was a gloved hand beside the resident during a squeeze, which the hosted model called passing in front and the open model called touching.
 
 ## Architecture
 
@@ -66,14 +66,14 @@ data/     Per clip: source video, resampled video, mask tracks per class, adjudi
 
 ### Pathogen rules
 
-| Pathogen | Alcohol rub clears hands | Soap and water clears hands | Note shown in the UI |
-| --- | --- | --- | --- |
-| MRSA | yes | yes | Alcohol rub is effective. |
-| C. auris | yes | yes | Persists on surfaces for weeks; alcohol rub effective; a major NY nursing home concern. |
-| C. difficile | no | yes | Spores are not killed by alcohol rub. Soap and water required. Contact precautions. |
-| Norovirus | no | yes | Alcohol rub is largely ineffective. Soap and water required. |
+| Pathogen | Alcohol rub clears hands | Soap and water clears hands | Source statement | Disinfectant |
+| --- | --- | --- | --- | --- |
+| MRSA | yes | yes | CDC: "Clean hands with soap and water or an alcohol-based hand sanitizer before and after caring for every patient." ([CDC MRSA infection control](https://www.cdc.gov/mrsa/hcp/infection-control/index.html)) | EPA List H |
+| C. auris | yes | yes | CDC: "Alcohol-based hand sanitizer is preferred for C. auris when hands are not visibly soiled." ([CDC C. auris infection control](https://www.cdc.gov/candida-auris/hcp/infection-control/index.html)) | EPA List P, named on the same CDC page |
+| C. difficile | no | yes | CDC: "hand sanitizer doesn't kill C. diff." ([C. diff facts for clinicians](https://www.cdc.gov/c-diff/hcp/clinical-overview/index.html)); "Washing your hands with soap and water is the best way to prevent the spread of C. diff from person to person." ([Preventing C. diff](https://www.cdc.gov/c-diff/prevention/index.html)) | EPA List K, sporicidal |
+| Norovirus | no | yes | CDC: "Hand sanitizer does not work well against norovirus." ([How to prevent norovirus](https://www.cdc.gov/norovirus/prevention/index.html)) | EPA List G |
 
-All four persist on surfaces far longer than any clip, so there is no surface decay inside a clip. CDC and WHO citations for each row are being added by the author; the rules table lives in `engine/pathogens.ts` and changes only with a cited source.
+Shared sources: [CDC hand hygiene for healthcare workers](https://www.cdc.gov/clean-hands/hcp/clinical-safety/index.html) (alcohol-based hand sanitizer preferred in most clinical situations; soap and water during C. difficile and norovirus outbreaks), the [WHO Guidelines on Hand Hygiene in Health Care, 2009](https://www.who.int/publications/i/item/9789241597906) and the [WHO Hand Hygiene Technical Reference Manual, 2009](https://www.who.int/publications/i/item/9789241598606) for the Five Moments and the 20 to 30 second rub, and the [EPA selected registered disinfectant lists](https://www.epa.gov/pesticide-registration/selected-epa-registered-disinfectants) (G norovirus, H MRSA, K C. difficile spores, P C. auris). Every link was opened on Nov 4, 2026 and the quoted statement read on the page. All four pathogens persist on surfaces far longer than any clip, so there is no surface decay inside a clip. The rules table lives in `engine/pathogens.ts` and changes only with a cited source. The product never advises a patient; these rules decide only whether a staged hand-hygiene event counts in the replay.
 
 ## Measured accuracy
 

@@ -280,3 +280,6 @@ What the clips show, measured: A is the chain as scripted (rail, call button, ph
 
 ### Stacked props and the source label, Wed Nov 4
 A confident candidate whose peak overlap is under `CONTACT_CONFIG.stackedPeakFraction` (0.34) of a concurrent candidate's peak on the same hand is a prop stacked behind the real touch in the picture; it is marked `stackedContact`, sent to vision review outside the cap, and counted only on a touching or unclear verdict. Clip A's phone (853 px against the call button's 3416) was reviewed, judged passing in front, and now registers at 12.4 s when it is pressed: A measures 1.00 and 1.00. The overlay labels the scenario's source entity "source" so a viewer knows it is orange from the first frame by choice.
+
+### Citations and Baseten, Wed Nov 4
+Every pathogen row in `engine/pathogens.ts` now carries CDC, WHO, and EPA citations that were opened on Nov 4 and quoted in the README table; the drawer's Pathogen panel links them under "Sources" with the line that the rule decides only whether a staged hand hygiene event counts. Baseten works with the model id `meta-models/muse-spark-open-1026` (3 of 3 agreement on clip A); the "awaiting activation" caveat is gone from the README.

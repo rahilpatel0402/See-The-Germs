@@ -24,6 +24,20 @@ interface Props {
 }
 
 const fmt = (t: number): string => `${t.toFixed(1)} s`;
+// A short, honest name for a citation link: the host and the last meaningful path segment.
+function sourceName(url: string): string {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www./, "");
+    const who = host.includes("who.int") ? "WHO" : host.includes("cdc.gov") ? "CDC" : host.includes("epa.gov") ? "EPA" : host;
+    const parts = u.pathname.split("/").filter((x) => x && x !== "index.html");
+    const tail = parts.length > 0 ? (parts[parts.length - 1] as string).replace(/[-_]/g, " ") : "";
+    return tail && who !== host ? `${who} ${tail}` : who;
+  } catch {
+    return url;
+  }
+}
+
 const pct = (rate: number | null): string => (rate === null ? "n/a" : `${Math.round(rate * 100)}%`);
 
 const GLOVE_ISSUE_TEXT: Record<string, string> = {
@@ -350,6 +364,20 @@ export function Drawer({ analysis, narrative, narrativeState, narrativeError, la
             <p>
               <strong>{analysis.pathogen.label}.</strong> {analysis.pathogen.uiNote}
             </p>
+            {analysis.pathogen.citations.length > 0 ? (
+              <p className="muted">
+                Sources:{" "}
+                {analysis.pathogen.citations.map((url, i) => (
+                  <span key={url}>
+                    {i > 0 ? ", " : ""}
+                    <a href={url} target="_blank" rel="noreferrer">
+                      {sourceName(url)}
+                    </a>
+                  </span>
+                ))}
+                . The rule decides only whether a staged hand hygiene event counts in the replay.
+              </p>
+            ) : null}
           </section>
 
           <section>

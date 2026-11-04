@@ -143,7 +143,7 @@ export function createSparkBackend(name: string = optionalEnv("SPARK_BACKEND", "
         "baseten",
         optionalEnv("BASETEN_BASE_URL", "https://inference.baseten.co/v1"),
         requireEnv("BASETEN_API_KEY"),
-        optionalEnv("BASETEN_MODEL", "meta-models/muse-spark-open"),
+        optionalEnv("BASETEN_MODEL", "meta-models/muse-spark-open-1026"),
       );
     case "fireworks":
       return new OpenAICompatSparkBackend(
