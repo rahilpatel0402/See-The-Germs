@@ -1,0 +1,19 @@
+{
+  "clipId": "C",
+  "note": "Clip C2, labeled Nov 3 from 1 fps sheets before looking at the engine. Yellow gloves for the rail and call button, blue gloves for the resident, three full rubs.",
+  "contacts": [
+    { "hand": "bare", "entity": "sanitizer", "startT": 0.0, "endT": 2.0 },
+    { "hand": "gloved", "entity": "rail_A", "startT": 23.0, "endT": 27.0 },
+    { "hand": "gloved", "entity": "remote", "startT": 28.0, "endT": 31.5 },
+    { "hand": "bare", "entity": "sanitizer", "startT": 32.5, "endT": 34.0 },
+    { "hand": "gloved", "entity": "resident_A", "startT": 56.0, "endT": 62.5 },
+    { "hand": "bare", "entity": "sanitizer", "startT": 64.0, "endT": 66.0 }
+  ],
+  "gloveEvents": [
+    { "type": "don", "t": 22.0 },
+    { "type": "doff", "t": 32.0 },
+    { "type": "don", "t": 53.5 },
+    { "type": "doff", "t": 63.0 }
+  ],
+  "nonContacts": []
+}

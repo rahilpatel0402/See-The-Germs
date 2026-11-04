@@ -1,0 +1,17 @@
+[
+  {
+    "candidateId": "bare_hand:phone:124",
+    "verdict": "touching",
+    "reasoning": "In the second frame the fingertip is pressed on the phone's surface and the screen lights up, showing direct contact despite the hover in the first frame."
+  },
+  {
+    "candidateId": "bare_hand:resident_A:214",
+    "verdict": "touching",
+    "reasoning": "In the first frame the hand hovers near the teddy bear, but in the second frame the fingers press directly into the bear's fur with no visible gap."
+  },
+  {
+    "candidateId": "bare_hand:phone:81",
+    "verdict": "passing_in_front",
+    "reasoning": "The cyan-outlined hand points at a remote in the foreground while the magenta-outlined phone lies further back on the table with a clear gap and no contact."
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "hash": "b87d9ea73e4a8a49",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T05:07:05.923Z",
+  "usage": {
+    "inputTokens": 2350,
+    "cachedTokens": 881,
+    "outputTokens": 2343,
+    "reasoningTokens": 1819
+  },
+  "narrative": {
+    "coaching_note": "El cambio más importante es lavarse las manos con agua y jabón antes de tocar a resident A a los 55.2 segundos. Usted tocó bed rail A con gloved hand a los 22 segundos y esa contaminación pasó a call button a los 26.3 segundos. Los usos de sanitizer bottle con alcohol a los 0.2, 32.3 y 64.1 segundos no eliminan las esporas de C. difficile, por eso para este microbio usted necesita agua y jabón. También faltó la higiene del Momento 1 antes de tocar a resident A a los 55.2 segundos para proteger al residente. La próxima vez, haga higiene de manos con agua y jabón antes de ponerse los guantes y después de quitárselos. Al final, bare hand, gloved hand, bed rail A y call button quedaron con contaminación, así que mantener ese paso de agua y jabón a tiempo le ayuda a proteger a usted y al residente.",
+    "audit_summary": "Source was bed rail A with C. difficile spores. Transfer chain: bed rail A to gloved hand at 22 seconds, then gloved hand to call button at 26.3 seconds. One Moment 1 opportunity before gloved hand touched resident A at 55.2 seconds was missed; compliance 0/1 overall and 0/1 for Moment 1. Three alcohol rubs at 0.2, 32.3, and 64.1 seconds met WHO duration at 21.8, 22.9, and 24.2 seconds but were not effective against this pathogen; soap and water was required. Glove practice showed no hygiene after doff at 32.3 seconds and no hygiene before don at 54.8 seconds. No resident exposures were listed. Disinfect call button with 2 contacts while contaminated and bed rail A, source, using an EPA List K sporicidal disinfectant effective against C. difficile spores.",
+    "top_fix": "The highest-impact single change in this clip was performing hand hygiene with soap and water before touching resident A at 55.2 seconds."
+  }
+}

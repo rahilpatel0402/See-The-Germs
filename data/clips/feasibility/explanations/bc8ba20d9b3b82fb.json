@@ -1,0 +1,13 @@
+{
+  "hash": "bc8ba20d9b3b82fb",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T01:38:41.986Z",
+  "usage": {
+    "inputTokens": 963,
+    "cachedTokens": 0,
+    "outputTokens": 1056,
+    "reasoningTokens": 941
+  },
+  "explanation": "Before the alcohol rub on your bare hand at 18.7 seconds, the record counted 2 contaminated surfaces from bed rail A, a chain length of 4, no resident exposures, 2 missed Moment 5 opportunities, and a score of 10. After that rub, which is effective against MRSA, the record counted 2 contaminated surfaces, a chain length of 5, no resident exposures, 1 missed Moment 5 opportunity, and a score of 8."
+}

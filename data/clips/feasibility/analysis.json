@@ -1,0 +1,509 @@
+{
+  "clipId": "feasibility",
+  "scenario": {
+    "sourceEntityId": "rail_A",
+    "pathogen": "mrsa"
+  },
+  "pathogen": {
+    "id": "mrsa",
+    "label": "MRSA",
+    "alcoholRubClearsHands": true,
+    "soapWaterClearsHands": true,
+    "surfacePersistenceS": 1000000000,
+    "uiNote": "Alcohol rub is effective.",
+    "disinfectantNote": "Use an EPA List H registered disinfectant (effective against MRSA).",
+    "citations": [
+      "https://www.cdc.gov/mrsa/hcp/infection-control/index.html",
+      "https://www.cdc.gov/clean-hands/hcp/clinical-safety/index.html",
+      "https://www.epa.gov/pesticide-registration/selected-epa-registered-disinfectants"
+    ]
+  },
+  "entities": [
+    {
+      "id": "bare_hand",
+      "label": "bare hand",
+      "class": "bare_hand",
+      "zone": "healthcare_area",
+      "samPhrase": "bare hand",
+      "person": "P1"
+    },
+    {
+      "id": "gloved_hand",
+      "label": "gloved hand",
+      "class": "gloved_hand",
+      "zone": "healthcare_area",
+      "samPhrase": "gloved hand",
+      "person": "P1"
+    },
+    {
+      "id": "rail_A",
+      "label": "bed rail A",
+      "class": "object",
+      "zone": "patient_zone_A",
+      "samPhrase": "white rod"
+    },
+    {
+      "id": "remote",
+      "label": "call button",
+      "class": "object",
+      "zone": "patient_zone_A",
+      "samPhrase": "black object in plastic bag"
+    },
+    {
+      "id": "phone",
+      "label": "phone",
+      "class": "object",
+      "zone": "healthcare_area",
+      "samPhrase": "phone"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "bare_hand:rail_A:5",
+      "handId": "bare_hand",
+      "entityId": "rail_A",
+      "startT": 0.5,
+      "endT": 2.3,
+      "startFrame": 5,
+      "endFrame": 22,
+      "confidence": "confident",
+      "peakIntersectionPx": 3685,
+      "dwellFrames": 17
+    },
+    {
+      "id": "bare_hand:remote:34",
+      "handId": "bare_hand",
+      "entityId": "remote",
+      "startT": 3.4,
+      "endT": 5.8,
+      "startFrame": 34,
+      "endFrame": 57,
+      "confidence": "confident",
+      "peakIntersectionPx": 6003,
+      "dwellFrames": 24
+    },
+    {
+      "id": "bare_hand:rail_A:42",
+      "handId": "bare_hand",
+      "entityId": "rail_A",
+      "startT": 4.2,
+      "endT": 4.7,
+      "startFrame": 42,
+      "endFrame": 46,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 733,
+      "dwellFrames": 5
+    },
+    {
+      "id": "bare_hand:phone:66",
+      "handId": "bare_hand",
+      "entityId": "phone",
+      "startT": 6.6,
+      "endT": 9.9,
+      "startFrame": 66,
+      "endFrame": 98,
+      "confidence": "confident",
+      "peakIntersectionPx": 6935,
+      "dwellFrames": 33
+    },
+    {
+      "id": "bare_hand:rail_A:111",
+      "handId": "bare_hand",
+      "entityId": "rail_A",
+      "startT": 11.1,
+      "endT": 14.3,
+      "startFrame": 111,
+      "endFrame": 142,
+      "confidence": "confident",
+      "peakIntersectionPx": 3093,
+      "dwellFrames": 32
+    },
+    {
+      "id": "gloved_hand:rail_A:111",
+      "handId": "gloved_hand",
+      "entityId": "rail_A",
+      "startT": 11.1,
+      "endT": 14.3,
+      "startFrame": 111,
+      "endFrame": 142,
+      "confidence": "confident",
+      "peakIntersectionPx": 3149,
+      "dwellFrames": 32
+    },
+    {
+      "id": "bare_hand:remote:154",
+      "handId": "bare_hand",
+      "entityId": "remote",
+      "startT": 15.4,
+      "endT": 18.7,
+      "startFrame": 154,
+      "endFrame": 186,
+      "confidence": "confident",
+      "peakIntersectionPx": 5970,
+      "dwellFrames": 33
+    },
+    {
+      "id": "gloved_hand:remote:154",
+      "handId": "gloved_hand",
+      "entityId": "remote",
+      "startT": 15.4,
+      "endT": 18.7,
+      "startFrame": 154,
+      "endFrame": 186,
+      "confidence": "confident",
+      "peakIntersectionPx": 5751,
+      "dwellFrames": 33
+    },
+    {
+      "id": "bare_hand:phone:193",
+      "handId": "bare_hand",
+      "entityId": "phone",
+      "startT": 19.3,
+      "endT": 22.5,
+      "startFrame": 193,
+      "endFrame": 224,
+      "confidence": "confident",
+      "peakIntersectionPx": 5826,
+      "dwellFrames": 32
+    },
+    {
+      "id": "gloved_hand:phone:193",
+      "handId": "gloved_hand",
+      "entityId": "phone",
+      "startT": 19.3,
+      "endT": 22.5,
+      "startFrame": 193,
+      "endFrame": 224,
+      "confidence": "confident",
+      "peakIntersectionPx": 5779,
+      "dwellFrames": 32
+    },
+    {
+      "id": "gloved_hand:rail_A:229",
+      "handId": "gloved_hand",
+      "entityId": "rail_A",
+      "startT": 22.9,
+      "endT": 24.7,
+      "startFrame": 229,
+      "endFrame": 246,
+      "confidence": "confident",
+      "peakIntersectionPx": 3248,
+      "dwellFrames": 18
+    },
+    {
+      "id": "bare_hand:rail_A:230",
+      "handId": "bare_hand",
+      "entityId": "rail_A",
+      "startT": 23,
+      "endT": 24.7,
+      "startFrame": 230,
+      "endFrame": 246,
+      "confidence": "confident",
+      "peakIntersectionPx": 3153,
+      "dwellFrames": 17
+    }
+  ],
+  "adjudications": [
+    {
+      "candidateId": "bare_hand:rail_A:230",
+      "verdict": "passing_in_front",
+      "reasoning": "In the second frame the open hand hovers over the rail with the rail visible between the fingers and distinct finger shadows on the floor below, showing a gap with no contact."
+    },
+    {
+      "candidateId": "bare_hand:rail_A:42",
+      "verdict": "passing_in_front",
+      "reasoning": "The cyan hand is holding a separate black object below the magenta rail with visible wooden floor between them and no skin contact on the rail surface."
+    }
+  ],
+  "contacts": [
+    {
+      "handId": "bare_hand",
+      "entityId": "rail_A",
+      "startT": 0.5,
+      "endT": 2.3,
+      "adjudicated": false,
+      "candidateIds": [
+        "bare_hand:rail_A:5"
+      ]
+    },
+    {
+      "handId": "bare_hand",
+      "entityId": "remote",
+      "startT": 3.4,
+      "endT": 5.8,
+      "adjudicated": false,
+      "candidateIds": [
+        "bare_hand:remote:34"
+      ]
+    },
+    {
+      "handId": "bare_hand",
+      "entityId": "phone",
+      "startT": 6.6,
+      "endT": 9.9,
+      "adjudicated": false,
+      "candidateIds": [
+        "bare_hand:phone:66"
+      ]
+    },
+    {
+      "handId": "gloved_hand",
+      "entityId": "rail_A",
+      "startT": 11.1,
+      "endT": 14.3,
+      "adjudicated": false,
+      "candidateIds": [
+        "bare_hand:rail_A:111",
+        "gloved_hand:rail_A:111"
+      ]
+    },
+    {
+      "handId": "gloved_hand",
+      "entityId": "remote",
+      "startT": 15.4,
+      "endT": 18.7,
+      "adjudicated": false,
+      "candidateIds": [
+        "bare_hand:remote:154",
+        "gloved_hand:remote:154"
+      ]
+    },
+    {
+      "handId": "gloved_hand",
+      "entityId": "phone",
+      "startT": 19.3,
+      "endT": 22.5,
+      "adjudicated": false,
+      "candidateIds": [
+        "bare_hand:phone:193",
+        "gloved_hand:phone:193"
+      ]
+    },
+    {
+      "handId": "gloved_hand",
+      "entityId": "rail_A",
+      "startT": 22.9,
+      "endT": 24.7,
+      "adjudicated": false,
+      "candidateIds": [
+        "gloved_hand:rail_A:229",
+        "bare_hand:rail_A:230"
+      ]
+    }
+  ],
+  "hygieneEvents": [],
+  "gloveBoxTouches": [],
+  "gloveEvents": [
+    {
+      "handId": "bare_hand",
+      "t": 10.9,
+      "type": "don",
+      "source": "detected"
+    }
+  ],
+  "gloveIssues": [
+    {
+      "type": "no_hygiene_before_don",
+      "handId": "bare_hand",
+      "t": 10.9,
+      "entityIds": [
+        "phone"
+      ]
+    },
+    {
+      "type": "gloved_healthcare_area_contact",
+      "handId": "gloved_hand",
+      "t": 19.3,
+      "entityIds": [
+        "phone"
+      ]
+    }
+  ],
+  "propagation": {
+    "contaminated": [
+      "bare_hand",
+      "gloved_hand",
+      "rail_A",
+      "remote",
+      "phone"
+    ],
+    "hands": {
+      "P1": {
+        "contaminated": true,
+        "gloved": true
+      }
+    },
+    "transfers": [
+      {
+        "fromId": "rail_A",
+        "toId": "bare_hand",
+        "t": 0.5
+      },
+      {
+        "fromId": "bare_hand",
+        "toId": "remote",
+        "t": 3.4
+      },
+      {
+        "fromId": "bare_hand",
+        "toId": "phone",
+        "t": 6.6
+      },
+      {
+        "fromId": "rail_A",
+        "toId": "gloved_hand",
+        "t": 11.1
+      }
+    ],
+    "residentExposures": [],
+    "changes": [
+      {
+        "t": 0,
+        "entityId": "rail_A",
+        "contaminated": true,
+        "cause": "source"
+      },
+      {
+        "t": 0.5,
+        "entityId": "bare_hand",
+        "contaminated": true,
+        "cause": "transfer"
+      },
+      {
+        "t": 3.4,
+        "entityId": "remote",
+        "contaminated": true,
+        "cause": "transfer"
+      },
+      {
+        "t": 6.6,
+        "entityId": "phone",
+        "contaminated": true,
+        "cause": "transfer"
+      },
+      {
+        "t": 10.9,
+        "entityId": "bare_hand",
+        "contaminated": false,
+        "cause": "glove_don"
+      },
+      {
+        "t": 11.1,
+        "entityId": "gloved_hand",
+        "contaminated": true,
+        "cause": "transfer"
+      }
+    ],
+    "hops": {
+      "rail_A": 0,
+      "person:P1": 1,
+      "remote": 2,
+      "phone": 2
+    }
+  },
+  "opportunities": [
+    {
+      "moment": 5,
+      "handId": "bare_hand",
+      "t": 5.8,
+      "met": false
+    },
+    {
+      "moment": 5,
+      "handId": "gloved_hand",
+      "t": 18.7,
+      "met": false
+    }
+  ],
+  "momentMisses": [
+    {
+      "moment": 5,
+      "handId": "bare_hand",
+      "t": 5.8,
+      "downstream": []
+    },
+    {
+      "moment": 5,
+      "handId": "gloved_hand",
+      "t": 18.7,
+      "downstream": []
+    }
+  ],
+  "compliance": {
+    "overall": {
+      "opportunities": 2,
+      "met": 0,
+      "rate": 0
+    },
+    "byMoment": {
+      "1": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      },
+      "2": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      },
+      "4": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      },
+      "5": {
+        "opportunities": 2,
+        "met": 0,
+        "rate": 0
+      }
+    },
+    "byPerson": {
+      "P1": {
+        "opportunities": 2,
+        "met": 0,
+        "rate": 0
+      }
+    }
+  },
+  "cleaning": {
+    "items": [
+      {
+        "entityId": "rail_A",
+        "label": "bed rail A",
+        "zone": "patient_zone_A",
+        "isSource": true,
+        "firstContaminatedT": 0,
+        "contactCount": 3
+      },
+      {
+        "entityId": "remote",
+        "label": "call button",
+        "zone": "patient_zone_A",
+        "isSource": false,
+        "firstContaminatedT": 3.4,
+        "contactCount": 2
+      },
+      {
+        "entityId": "phone",
+        "label": "phone",
+        "zone": "healthcare_area",
+        "isSource": false,
+        "firstContaminatedT": 6.6,
+        "contactCount": 2
+      }
+    ],
+    "disinfectantNote": "Use an EPA List H registered disinfectant (effective against MRSA)."
+  },
+  "score": {
+    "contaminatedSurfaces": 2,
+    "chainLength": 4,
+    "residentExposures": {},
+    "momentsMissed": {
+      "1": 0,
+      "2": 0,
+      "4": 0,
+      "5": 2
+    },
+    "score": 10
+  }
+}

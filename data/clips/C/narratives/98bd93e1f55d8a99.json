@@ -1,0 +1,18 @@
+{
+  "hash": "98bd93e1f55d8a99",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T05:02:55.334Z",
+  "usage": {
+    "inputTokens": 2352,
+    "cachedTokens": 0,
+    "outputTokens": 2105,
+    "reasoningTokens": 1638
+  },
+  "narrative": {
+    "coaching_note": "Lávese las manos con agua y jabón antes de tocar a resident A a los 55.2 segundos. Usted tocó bed rail A a los 22 segundos y la contaminación pasó a gloved hand. A los 26.3 segundos esa contaminación pasó de gloved hand a call button. A los 55.2 segundos usted tocó a resident A sin la higiene del Momento 1 antes del contacto, y eso dejó sus manos y guantes contaminados al final. Usted usó el alcohol de sanitizer bottle a los 0.2, 32.3 y 64.1 segundos por más de 20 segundos, pero con C. difficile el alcohol no mata las esporas y por eso necesita usar agua y jabón. La próxima vez quítese los guantes usados, lávese con agua y jabón por 40 segundos, y póngase guantes nuevos antes de tocar al residente. Ese cambio protege a resident A y evita llevar lo de las superficies a su piel.",
+    "audit_summary": "Training clip with C. difficile from source bed rail A. Transfer chain: bed rail A to gloved hand at 22 seconds, then gloved hand to call button at 26.3 seconds. One WHO Moment 1 opportunity before touching resident A at 55.2 seconds was missed; compliance 0 of 1 overall and 0 of 1 for Moment 1. Three alcohol rubs at 0.2, 32.3 and 64.1 seconds met WHO duration at 21.8, 22.9 and 24.2 seconds but were not effective against this pathogen, as alcohol rub does not kill C. difficile spores; soap and water was required. Glove issues were no hygiene after doff at 32.3 seconds and no hygiene before don at 54.8 seconds. No resident exposures listed. Disinfect call button and bed rail A with an EPA List K sporicidal disinfectant effective against C. difficile spores.",
+    "top_fix": "The highest-impact single change in this clip was perform Moment 1 hand hygiene with soap and water before touching resident A at 55.2 seconds."
+  }
+}

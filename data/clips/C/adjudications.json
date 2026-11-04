@@ -1,0 +1,57 @@
+[
+  {
+    "candidateId": "bare_hand:resident_A:2",
+    "verdict": "passing_in_front",
+    "reasoning": "The cyan hand is held in the foreground with a clear visible gap to the magenta teddy bear lying on the table behind it, showing no skin-to-surface contact."
+  },
+  {
+    "candidateId": "gloved_hand:remote:263",
+    "verdict": "touching",
+    "reasoning": "In the second frame the yellow-gloved fingers cover the magenta-outlined remote with no visible gap and appear pressed down onto it."
+  },
+  {
+    "candidateId": "bare_hand:resident_A:323",
+    "verdict": "passing_in_front",
+    "reasoning": "The cyan-outlined hands hover over the small bottle in the foreground while the magenta-outlined teddy bear lies behind them with a visible gap and no skin-to-fur contact."
+  },
+  {
+    "candidateId": "gloved_hand:resident_A:552",
+    "verdict": "touching",
+    "reasoning": "The gloved hand hovers above the teddy bear in the first frame then rests directly on its fur with no visible gap in the second frame."
+  },
+  {
+    "candidateId": "bare_hand:resident_A:641",
+    "verdict": "passing_in_front",
+    "reasoning": "In both frames the cyan hand stays to the right and in front of the magenta teddy with a visible gap, grasping at the bottle in front rather than contacting the fur with no press or occlusion by the teddy."
+  },
+  {
+    "candidateId": "gloved_hand:resident_A:641",
+    "verdict": "passing_in_front",
+    "reasoning": "The cyan hand reaches toward the bottle in front of the magenta teddy with a visible gap and the teddy shows no contact, press, or movement between frames."
+  },
+  {
+    "candidateId": "bare_hand:sanitizer:2",
+    "verdict": "touching",
+    "reasoning": "The cyan-outlined fingers are wrapped around the magenta bottle with direct contact on the cap and sides and no visible gap in both frames."
+  },
+  {
+    "candidateId": "gloved_hand:sanitizer:278",
+    "verdict": "passing_in_front",
+    "reasoning": "The yellow-gloved hand is extended toward the remote in the foreground while the sanitizer bottle sits undisturbed in the background with a clear gap and no contact."
+  },
+  {
+    "candidateId": "bare_hand:sanitizer:323",
+    "verdict": "touching",
+    "reasoning": "In the middle frame the fingers are wrapped around the sides of the bottle with no visible gap, showing direct contact."
+  },
+  {
+    "candidateId": "bare_hand:sanitizer:641",
+    "verdict": "touching",
+    "reasoning": "In the second frame the fingers wrap around and occlude the sides of the bottle cap with no visible gap, showing direct contact."
+  },
+  {
+    "candidateId": "gloved_hand:sanitizer:641",
+    "verdict": "touching",
+    "reasoning": "In the second frame the fingers close around the bottle with no visible gap and occlude its sides, showing direct contact."
+  }
+]

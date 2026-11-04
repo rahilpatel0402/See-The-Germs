@@ -1,0 +1,25 @@
+{
+  "id": "B",
+  "createdAt": "2026-11-04T04:35:16.604Z",
+  "originalName": "source.mp4",
+  "sourceFile": "source.mp4",
+  "source": {
+    "width": 1024,
+    "height": 576,
+    "codec": "h264",
+    "fps": 31.57894736842105,
+    "frames": 1478,
+    "durationS": 49.273333
+  },
+  "sampled": {
+    "width": 1280,
+    "height": 720,
+    "codec": "h264",
+    "fps": 10,
+    "frames": 493,
+    "durationS": 49.3
+  },
+  "fps": 10,
+  "title": "Clip B: the rub",
+  "story": "Rail and call button, then a 20 second alcohol rub, then resident A. Effective for MRSA, not for C. difficile."
+}

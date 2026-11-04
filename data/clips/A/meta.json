@@ -1,0 +1,25 @@
+{
+  "id": "A",
+  "createdAt": "2026-11-04T04:18:02.161Z",
+  "originalName": "source.mp4",
+  "sourceFile": "source.mp4",
+  "source": {
+    "width": 1024,
+    "height": 576,
+    "codec": "h264",
+    "fps": 31.57894736842105,
+    "frames": 983,
+    "durationS": 32.775
+  },
+  "sampled": {
+    "width": 1280,
+    "height": 720,
+    "codec": "h264",
+    "fps": 10,
+    "frames": 328,
+    "durationS": 32.8
+  },
+  "fps": 10,
+  "title": "Clip A: the chain",
+  "story": "Rail, call button, phone, then resident A. No hand hygiene. The pathogen rides the hand across the room."
+}

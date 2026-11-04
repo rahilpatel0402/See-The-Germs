@@ -1,0 +1,28 @@
+{
+  "id": "C",
+  "createdAt": "2026-11-04T04:48:25.993Z",
+  "originalName": "source.mp4",
+  "sourceFile": "source.mp4",
+  "source": {
+    "width": 1024,
+    "height": 576,
+    "codec": "h264",
+    "fps": 31.57894736842105,
+    "frames": 2647,
+    "durationS": 88.255
+  },
+  "sampled": {
+    "width": 1280,
+    "height": 720,
+    "codec": "h264",
+    "fps": 10,
+    "frames": 883,
+    "durationS": 88.3
+  },
+  "fps": 10,
+  "cuts": [
+    877
+  ],
+  "title": "Clip C: gloves done right",
+  "story": "Rub, gloves for the rail and call button, gloves off, rub, fresh gloves for resident A, gloves off, rub. Nothing lights up but the rail."
+}

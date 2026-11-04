@@ -1,0 +1,38 @@
+[
+  {
+    "id": "bare_hand",
+    "label": "bare hand",
+    "class": "bare_hand",
+    "zone": "healthcare_area",
+    "samPhrase": "bare hand"
+  },
+  {
+    "id": "gloved_hand",
+    "label": "gloved hand",
+    "class": "gloved_hand",
+    "zone": "healthcare_area",
+    "samPhrase": "gloved hand",
+    "minConfidence": 0.85
+  },
+  {
+    "id": "rail_A",
+    "label": "bed rail A",
+    "class": "object",
+    "zone": "patient_zone_A",
+    "samPhrase": "white rod"
+  },
+  {
+    "id": "remote",
+    "label": "call button",
+    "class": "object",
+    "zone": "patient_zone_A",
+    "samPhrase": "black object in plastic bag"
+  },
+  {
+    "id": "phone",
+    "label": "phone",
+    "class": "object",
+    "zone": "healthcare_area",
+    "samPhrase": "phone"
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "hash": "66f3eac6a6c3d7ca",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-03T17:55:50.122Z",
+  "usage": {
+    "inputTokens": 2113,
+    "cachedTokens": 0,
+    "outputTokens": 2138,
+    "reasoningTokens": 1740
+  },
+  "narrative": {
+    "coaching_note": "Clean your hands right after you touch bed rail A or call button before you touch anything else. You touched bed rail A with your bare hand starting at 0.5 seconds, and that moved contamination to your hand. You then touched call button at 3.4 seconds and phone at 6.6 seconds, which carried it from the patient area to your phone in the healthcare area. Later you put on gloves at 10.9 seconds without cleaning your hands first, and you touched phone with your gloved hand at 19.3 seconds. Next time clean your hands before putting gloves on and change gloves if you need to touch the phone. Also rub for the full 20 seconds with alcohol rub to clear C. auris.",
+    "audit_summary": "Staged C. auris transfer originating from bed rail A. Bare hand contacted bed rail A at 0.5 seconds, then call button at 3.4 seconds and phone at 6.6 seconds, with modeled transfers to call button and phone. Compliance 0/2 overall, all Moment 5 (0/2), with missed Moment 5 after bare-hand contact at 5.8 seconds and after gloved-hand contact at 18.7 seconds. No hand hygiene events recorded; alcohol rub and soap and water would clear hands for this pathogen. Glove use involved donning at 10.9 seconds without prior hygiene and touching phone with gloved hand at 19.3 seconds. End-state contamination included bare hand, gloved hand, bed rail A, call button, and phone. Disinfect bed rail A, call button, and phone with an EPA List P registered disinfectant effective against Candida auris; routine quaternary ammonium products are not reliable.",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene after patient-zone contact at 5.8 seconds."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "hash": "839f212b757534d0",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T05:02:40.593Z",
+  "usage": {
+    "inputTokens": 2295,
+    "cachedTokens": 0,
+    "outputTokens": 2535,
+    "reasoningTokens": 2100
+  },
+  "narrative": {
+    "coaching_note": "The one change to make next time is to clean your hands with soap and water for the full 40 seconds before touching resident A. At 22 seconds your gloved hand touched bed rail A, and at 26.3 seconds that contamination moved from your gloved hand to call button. You then touched resident A with your gloved hand at 55.2 seconds without the Moment 1 hand hygiene before resident contact. The alcohol rubs you used on bare hand at 0.2 seconds and 32.3 seconds and on gloved hand at 64.1 seconds do not kill C. difficile spores, so soap and water is needed. Next time clean hands with soap and water right after taking gloves off and right before putting gloves on, like around 32.3 seconds and 54.8 seconds.",
+    "audit_summary": "Source was bed rail A. Gloved hand contacted bed rail A at 22s, transferring contamination to gloved hand, then to call button at 26.3s. Moment 1 opportunity before gloved hand touched resident A at 55.2s was missed. Compliance 0/1 overall and 0/1 for Moment 1; no opportunities for Moments 2, 4, 5. Three alcohol rub events on bare hand at 0.2s (21.8s) and 32.3s (22.9s) and on gloved hand at 64.1s (24.2s) met duration but alcohol rub is not effective against C. difficile; soap and water is required. Glove issues included no hygiene after doff at 32.3s and no hygiene before don at 54.8s. Disinfect call button and bed rail A with an EPA List K sporicidal disinfectant (effective against C. difficile spores); standard disinfectants do not kill spores.",
+    "top_fix": "The highest-impact single change in this clip was soap-and-water hand hygiene for Moment 1 before touching resident A at 55.2 seconds."
+  }
+}

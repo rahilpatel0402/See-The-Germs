@@ -1,0 +1,17 @@
+{
+  "hash": "444045787b969ec7",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-10-27T15:47:48.697Z",
+  "usage": {
+    "inputTokens": 1757,
+    "cachedTokens": 0,
+    "outputTokens": 2211,
+    "reasoningTokens": 1810
+  },
+  "narrative": {
+    "coaching_note": "The one change to make is to clean your hands right after touching bed rail A before you touch anything outside the bed area. You touched bed rail A starting at 0.5 seconds, and then you touched phone at 6.6 seconds, which carried contamination from bed rail A to phone. Later you touched bed rail A again starting at 11.1 seconds and then touched call button at 16.4 seconds, which carried contamination to call button. Those were missed Moment 5 chances to clean your hands after touching the surroundings, at 4.7 seconds and at 18.7 seconds. Cleaning with alcohol rub or soap and water at those times stops the spread from your bare hand and gloved hand to other surfaces. At the end, your bare hand, gloved hand, call button, and phone were still contaminated along with bed rail A.",
+    "audit_summary": "The analysis shows source bed rail A with MRSA spread via bare hand. Transfers: bed rail A to bare hand at 0.5 seconds, bare hand to phone at 6.6 seconds, bed rail A to bare hand at 11.1 seconds, and bare hand to call button at 16.4 seconds. No hygiene events were recorded. A glove don on bare hand occurred at 10.9 seconds. Two Moment 5 opportunities were missed: bare hand at 4.7 seconds and gloved hand at 18.7 seconds. No resident exposures were listed. At end, bare hand, gloved hand, bed rail A, call button, and phone remained contaminated. Alcohol rub and soap and water are both effective against MRSA per the record. Heuristic exposure score was 10, with 2 contaminated surfaces and chain length 4.",
+    "top_fix": "The highest-impact single change in this clip was cleaning hands after touching bed rail A at 4.7 seconds."
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "clipId": "A",
+  "note": "Clip A3, labeled Nov 3 from 2 fps sheets before looking at the engine. Items pressed in place; the phone sits directly behind the call button along the table's depth.",
+  "contacts": [
+    { "hand": "bare", "entity": "rail_A", "startT": 2.0, "endT": 7.0 },
+    { "hand": "bare", "entity": "remote", "startT": 8.0, "endT": 11.0 },
+    { "hand": "bare", "entity": "phone", "startT": 12.5, "endT": 20.5 },
+    { "hand": "bare", "entity": "resident_A", "startT": 22.0, "endT": 30.0 }
+  ],
+  "gloveEvents": [],
+  "nonContacts": []
+}

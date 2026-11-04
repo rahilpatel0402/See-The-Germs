@@ -1,0 +1,14 @@
+{
+  "clipId": "B",
+  "note": "Clip B3, labeled Nov 3 from 2 fps sheets before looking at the engine. One squeeze at 10 s with the bottle standing beside the bear, rub turned away until 40 s.",
+  "contacts": [
+    { "hand": "bare", "entity": "rail_A", "startT": 0.5, "endT": 5.5 },
+    { "hand": "bare", "entity": "remote", "startT": 6.5, "endT": 10.0 },
+    { "hand": "bare", "entity": "sanitizer", "startT": 10.0, "endT": 15.5 },
+    { "hand": "bare", "entity": "resident_A", "startT": 40.5, "endT": 48.0 }
+  ],
+  "gloveEvents": [],
+  "nonContacts": [
+    { "hand": "bare", "entity": "resident_A", "startT": 10.0, "endT": 15.5, "note": "squeezing the bottle beside the bear, no contact" }
+  ]
+}

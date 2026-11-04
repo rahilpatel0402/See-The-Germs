@@ -1,0 +1,364 @@
+{
+  "clipId": "B",
+  "scenario": {
+    "sourceEntityId": "rail_A",
+    "pathogen": "mrsa"
+  },
+  "pathogen": {
+    "id": "mrsa",
+    "label": "MRSA",
+    "alcoholRubClearsHands": true,
+    "soapWaterClearsHands": true,
+    "surfacePersistenceS": 1000000000,
+    "uiNote": "Alcohol rub is effective.",
+    "disinfectantNote": "Use an EPA List H registered disinfectant (effective against MRSA).",
+    "citations": [
+      "https://www.cdc.gov/mrsa/hcp/infection-control/index.html",
+      "https://www.cdc.gov/clean-hands/hcp/clinical-safety/index.html",
+      "https://www.epa.gov/pesticide-registration/selected-epa-registered-disinfectants"
+    ]
+  },
+  "entities": [
+    {
+      "id": "bare_hand",
+      "label": "bare hand",
+      "class": "bare_hand",
+      "zone": "healthcare_area",
+      "samPhrase": "bare hand",
+      "person": "P1"
+    },
+    {
+      "id": "gloved_hand",
+      "label": "gloved hand",
+      "class": "gloved_hand",
+      "zone": "healthcare_area",
+      "samPhrase": "gloved hand",
+      "person": "P1"
+    },
+    {
+      "id": "rail_A",
+      "label": "bed rail A",
+      "class": "object",
+      "zone": "patient_zone_A",
+      "samPhrase": "white plastic bar"
+    },
+    {
+      "id": "remote",
+      "label": "call button",
+      "class": "object",
+      "zone": "patient_zone_A",
+      "samPhrase": "small black remote"
+    },
+    {
+      "id": "resident_A",
+      "label": "resident A",
+      "class": "resident_zone",
+      "zone": "patient_zone_A",
+      "samPhrase": "brown teddy bear"
+    },
+    {
+      "id": "sanitizer",
+      "label": "sanitizer bottle",
+      "class": "dispenser",
+      "zone": "hygiene_station",
+      "samPhrase": "clear bottle with pink liquid",
+      "agent": "alcohol_rub"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "bare_hand:rail_A:2",
+      "handId": "bare_hand",
+      "entityId": "rail_A",
+      "startT": 0.2,
+      "endT": 5.4,
+      "startFrame": 2,
+      "endFrame": 53,
+      "confidence": "confident",
+      "peakIntersectionPx": 1794,
+      "dwellFrames": 52
+    },
+    {
+      "id": "bare_hand:remote:61",
+      "handId": "bare_hand",
+      "entityId": "remote",
+      "startT": 6.1,
+      "endT": 10.1,
+      "startFrame": 61,
+      "endFrame": 100,
+      "confidence": "confident",
+      "peakIntersectionPx": 3141,
+      "dwellFrames": 40
+    },
+    {
+      "id": "bare_hand:resident_A:101",
+      "handId": "bare_hand",
+      "entityId": "resident_A",
+      "startT": 10.1,
+      "endT": 11,
+      "startFrame": 101,
+      "endFrame": 109,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 2467,
+      "dwellFrames": 9,
+      "residentContact": true
+    },
+    {
+      "id": "bare_hand:sanitizer:101",
+      "handId": "bare_hand",
+      "entityId": "sanitizer",
+      "startT": 10.1,
+      "endT": 15.4,
+      "startFrame": 101,
+      "endFrame": 153,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 3162,
+      "dwellFrames": 53,
+      "dispenserContact": true
+    },
+    {
+      "id": "bare_hand:resident_A:135",
+      "handId": "bare_hand",
+      "entityId": "resident_A",
+      "startT": 13.5,
+      "endT": 15.4,
+      "startFrame": 135,
+      "endFrame": 153,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 3164,
+      "dwellFrames": 19,
+      "residentContact": true
+    },
+    {
+      "id": "bare_hand:resident_A:400",
+      "handId": "bare_hand",
+      "entityId": "resident_A",
+      "startT": 40,
+      "endT": 48,
+      "startFrame": 400,
+      "endFrame": 479,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 6149,
+      "dwellFrames": 80,
+      "residentContact": true
+    }
+  ],
+  "adjudications": [
+    {
+      "candidateId": "bare_hand:resident_A:101",
+      "verdict": "touching",
+      "reasoning": "In the second frame a cyan-outlined fingertip overlaps the magenta-outlined teddy bear's foot with no visible gap, indicating direct contact."
+    },
+    {
+      "candidateId": "bare_hand:resident_A:135",
+      "verdict": "touching",
+      "reasoning": "In the second frame the extended fingertip meets the teddy bear's white foot with no visible gap."
+    },
+    {
+      "candidateId": "bare_hand:resident_A:400",
+      "verdict": "touching",
+      "reasoning": "In the first frame the hand hovers above the teddy bear with a gap, but in the second frame the hand is occluded by the bear with fingertips visible on the far side, showing direct contact."
+    },
+    {
+      "candidateId": "bare_hand:sanitizer:101",
+      "verdict": "touching",
+      "reasoning": "In the first frame the hand hovers with a gap above the bottle on the table, but in the second frame the fingers are wrapped around the bottle cap with the bottle lifted off the table, showing direct contact."
+    }
+  ],
+  "contacts": [
+    {
+      "handId": "bare_hand",
+      "entityId": "rail_A",
+      "startT": 0.2,
+      "endT": 5.4,
+      "adjudicated": false,
+      "candidateIds": [
+        "bare_hand:rail_A:2"
+      ]
+    },
+    {
+      "handId": "bare_hand",
+      "entityId": "remote",
+      "startT": 6.1,
+      "endT": 10.1,
+      "adjudicated": false,
+      "candidateIds": [
+        "bare_hand:remote:61"
+      ]
+    },
+    {
+      "handId": "bare_hand",
+      "entityId": "resident_A",
+      "startT": 10.1,
+      "endT": 11,
+      "adjudicated": true,
+      "candidateIds": [
+        "bare_hand:resident_A:101"
+      ]
+    },
+    {
+      "handId": "bare_hand",
+      "entityId": "sanitizer",
+      "startT": 10.1,
+      "endT": 15.4,
+      "adjudicated": true,
+      "candidateIds": [
+        "bare_hand:sanitizer:101"
+      ]
+    },
+    {
+      "handId": "bare_hand",
+      "entityId": "resident_A",
+      "startT": 13.5,
+      "endT": 15.4,
+      "adjudicated": true,
+      "candidateIds": [
+        "bare_hand:resident_A:135"
+      ]
+    },
+    {
+      "handId": "bare_hand",
+      "entityId": "resident_A",
+      "startT": 40,
+      "endT": 48,
+      "adjudicated": true,
+      "candidateIds": [
+        "bare_hand:resident_A:400"
+      ]
+    }
+  ],
+  "hygieneEvents": [
+    {
+      "handId": "bare_hand",
+      "t": 10.1,
+      "agent": "alcohol_rub",
+      "durationS": 29.9,
+      "adequate": true,
+      "effective": true
+    }
+  ],
+  "gloveBoxTouches": [],
+  "gloveEvents": [],
+  "gloveIssues": [],
+  "propagation": {
+    "contaminated": [
+      "rail_A",
+      "remote"
+    ],
+    "hands": {
+      "P1": {
+        "contaminated": false,
+        "gloved": false
+      }
+    },
+    "transfers": [
+      {
+        "fromId": "rail_A",
+        "toId": "bare_hand",
+        "t": 0.2
+      },
+      {
+        "fromId": "bare_hand",
+        "toId": "remote",
+        "t": 6.1
+      }
+    ],
+    "residentExposures": [],
+    "changes": [
+      {
+        "t": 0,
+        "entityId": "rail_A",
+        "contaminated": true,
+        "cause": "source"
+      },
+      {
+        "t": 0.2,
+        "entityId": "bare_hand",
+        "contaminated": true,
+        "cause": "transfer"
+      },
+      {
+        "t": 6.1,
+        "entityId": "remote",
+        "contaminated": true,
+        "cause": "transfer"
+      },
+      {
+        "t": 10.1,
+        "entityId": "bare_hand",
+        "contaminated": false,
+        "cause": "hygiene"
+      }
+    ],
+    "hops": {
+      "rail_A": 0,
+      "person:P1": 1,
+      "remote": 2
+    }
+  },
+  "opportunities": [],
+  "momentMisses": [],
+  "compliance": {
+    "overall": {
+      "opportunities": 0,
+      "met": 0,
+      "rate": null
+    },
+    "byMoment": {
+      "1": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      },
+      "2": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      },
+      "4": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      },
+      "5": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      }
+    },
+    "byPerson": {}
+  },
+  "cleaning": {
+    "items": [
+      {
+        "entityId": "rail_A",
+        "label": "bed rail A",
+        "zone": "patient_zone_A",
+        "isSource": true,
+        "firstContaminatedT": 0,
+        "contactCount": 1
+      },
+      {
+        "entityId": "remote",
+        "label": "call button",
+        "zone": "patient_zone_A",
+        "isSource": false,
+        "firstContaminatedT": 6.1,
+        "contactCount": 1
+      }
+    ],
+    "disinfectantNote": "Use an EPA List H registered disinfectant (effective against MRSA)."
+  },
+  "score": {
+    "contaminatedSurfaces": 1,
+    "chainLength": 2,
+    "residentExposures": {},
+    "momentsMissed": {
+      "1": 0,
+      "2": 0,
+      "4": 0,
+      "5": 0
+    },
+    "score": 3
+  }
+}

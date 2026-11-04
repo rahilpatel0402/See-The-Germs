@@ -1,0 +1,20 @@
+{
+  "clipId": "feasibility",
+  "note": "Hand-labeled Nov 3 from a two-frames-per-second sheet and full-resolution frames of the sampled clip, before looking at which candidates the engine had marked. Times to the nearest half second.",
+  "contacts": [
+    { "hand": "bare", "entity": "rail_A", "startT": 0.5, "endT": 2.0 },
+    { "hand": "bare", "entity": "remote", "startT": 3.5, "endT": 5.5 },
+    { "hand": "bare", "entity": "phone", "startT": 6.5, "endT": 9.5 },
+    { "hand": "gloved", "entity": "rail_A", "startT": 11.0, "endT": 14.0 },
+    { "hand": "gloved", "entity": "remote", "startT": 15.5, "endT": 18.5 },
+    { "hand": "gloved", "entity": "phone", "startT": 19.5, "endT": 22.0 }
+  ],
+  "gloveEvents": [
+    { "type": "don", "t": 11.0 },
+    { "type": "doff", "t": 23.0 }
+  ],
+  "nonContacts": [
+    { "hand": "bare", "entity": "rail_A", "startT": 4.0, "endT": 5.0, "note": "hand holds the remote below the rail, floor visible between them" },
+    { "hand": "gloved", "entity": "rail_A", "startT": 23.0, "endT": 24.7, "note": "open palm shown above the rail after the glove came off, finger shadows on the floor" }
+  ]
+}

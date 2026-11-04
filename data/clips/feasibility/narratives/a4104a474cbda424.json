@@ -1,0 +1,18 @@
+{
+  "hash": "a4104a474cbda424",
+  "language": "en",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-03T17:56:20.201Z",
+  "usage": {
+    "inputTokens": 2113,
+    "cachedTokens": 0,
+    "outputTokens": 2094,
+    "reasoningTokens": 1663
+  },
+  "narrative": {
+    "coaching_note": "The one change to make next time is to wash your hands with soap and water for the full 40 seconds after touching the patient surroundings. You touched bed rail A with your bare hand starting at 0.5 seconds, and that moved contamination to your hand. You then touched call button at 3.4 seconds and phone at 6.6 seconds, which carried it to both of those surfaces. That was a missed Moment 5 at 5.8 seconds. After you put on gloves at 10.9 seconds, you touched phone with your gloved hand at 19.3 seconds, which is outside the patient area. Next time, clean your hands before putting gloves on, and keep gloved hands off items like the phone. Because this was C. difficile, alcohol rub does not kill the spores, so use soap and water.",
+    "audit_summary": "Source was bed rail A with C. difficile. Transfers were bed rail A to bare hand at 0.5 seconds, bare hand to call button at 3.4 seconds and to phone at 6.6 seconds, and bed rail A to gloved hand at 11.1 seconds. Hand hygiene compliance was 0 of 2 opportunities, both Moment 5 missed at 5.8 seconds with bare hand and at 18.7 seconds with gloved hand. No hygiene events were performed; for C. difficile alcohol rub does not clear spores and soap and water is required. Glove use issues were donning at 10.9 seconds without prior hygiene and touching phone in the healthcare area at 19.3 seconds. Contaminated at end were bare hand, gloved hand, bed rail A, call button, and phone. Disinfect bed rail A, call button, and phone with Use an EPA List K sporicidal disinfectant (effective against C. difficile spores); standard disinfectants do not kill spores.",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene for Moment 5 at 5.8 seconds."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "hash": "c16ac0caf8daa6bd",
+  "language": "en",
+  "model": "meta-models/muse-spark-open-1026",
+  "backend": "baseten",
+  "createdAt": "2026-11-04T05:34:45.871Z",
+  "usage": {
+    "inputTokens": 2031,
+    "cachedTokens": 0,
+    "outputTokens": 7694,
+    "reasoningTokens": 7289
+  },
+  "narrative": {
+    "coaching_note": "The one change to make next time is to clean your hands at 11 seconds after you touched bed rail A and before you touched phone, using alcohol rub for 20 seconds or soap and water for 40 seconds. You picked up MRSA from bed rail A at 1.6 seconds, which created a Moment 5 opportunity you missed at 11 seconds. You then touched phone at 12.4 seconds and resident A at 21.4 seconds without any hand hygiene, which was also a Moment 1 opportunity before touching resident A at 21.4 seconds. That is how contamination reached resident A and why resident A was exposed at 21.4 seconds. Cleaning your hands at 11 seconds would have kept bare hand, gloved hand, phone, and resident A clean.",
+    "audit_summary": "Staged clip with MRSA source bed rail A. Bare hand contacted bed rail A at 1.6 seconds, acquiring contamination, then transferred to call button at 7.6 seconds, phone at 12.4 seconds, and resident A at 21.4 seconds (chain length 4). Resident A exposure occurred at 21.4 seconds via bare hand. Hand hygiene compliance: overall 0/2, Moment 1 0/1, Moment 5 0/1; no hygiene events performed, so no agent efficacy or duration to assess. Alcohol rub is effective against MRSA per record. No glove use issues were recorded. Missed Moment 5 at 11 seconds after patient zone contact and missed Moment 1 at 21.4 seconds before resident contact. Surfaces requiring disinfection: bed rail A (source), call button, phone, and resident A contact area; use an EPA List H registered disinfectant effective against MRSA.",
+    "top_fix": "The highest-impact single change in this clip was performing hand hygiene for Moment 5 at 11 seconds."
+  }
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "candidateId": "bare_hand:rail_A:230",
+    "verdict": "passing_in_front",
+    "reasoning": "In the second frame the open hand hovers over the rail with the rail visible between the fingers and distinct finger shadows on the floor below, showing a gap with no contact."
+  },
+  {
+    "candidateId": "bare_hand:rail_A:42",
+    "verdict": "passing_in_front",
+    "reasoning": "The cyan hand is holding a separate black object below the magenta rail with visible wooden floor between them and no skin contact on the rail surface."
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "id": "feasibility",
+  "createdAt": "2026-10-27T00:48:49.773Z",
+  "originalName": "source.mp4",
+  "sourceFile": "source.mp4",
+  "source": {
+    "width": 576,
+    "height": 1024,
+    "codec": "h264",
+    "fps": 30,
+    "frames": 740,
+    "durationS": 24.666667
+  },
+  "sampled": {
+    "width": 720,
+    "height": 1280,
+    "codec": "h264",
+    "fps": 10,
+    "frames": 247,
+    "durationS": 24.7
+  },
+  "fps": 10,
+  "title": "Feasibility: rail, remote, phone",
+  "story": "Bare hand then a clear glove touching a white rod, a wrapped remote, and a phone, with one deliberate pass over the rail. Shot overhead on Oct 26 to prove the pipeline.",
+  "cuts": []
+}

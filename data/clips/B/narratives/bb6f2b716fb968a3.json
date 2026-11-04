@@ -1,0 +1,18 @@
+{
+  "hash": "bb6f2b716fb968a3",
+  "language": "es",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-11-04T05:06:14.638Z",
+  "usage": {
+    "inputTokens": 2076,
+    "cachedTokens": 0,
+    "outputTokens": 2374,
+    "reasoningTokens": 1934
+  },
+  "narrative": {
+    "coaching_note": "El cambio más importante es lavarse las manos con agua y jabón durante 40 segundos completos en lugar de usar alcohol en gel cuando trabaja con C. difficile. Usted tocó bed rail A a los 0.2 segundos y la contaminación pasó a su bare hand. Después usted tocó call button a los 6.1 segundos y la contaminación pasó a ese objeto. Luego usted tocó a resident A a los 10.1 segundos y la contaminación llegó a esa persona. Usted usó sanitizer bottle a los 10.1 segundos con alcohol en gel por 29.9 segundos, pero el alcohol no mata las esporas de C. difficile, por eso sus manos siguieron contaminadas. Por eso los contactos posteriores con resident A a los 13.5 segundos y a los 40 segundos también llevaron contaminación. La próxima vez, después de tocar bed rail A, lávese con agua y jabón antes de tocar a la persona u otros objetos.",
+    "audit_summary": "Source was bed rail A with C. difficile spores. Bare hand contacted bed rail A at 0.2 seconds, with transfer bare hand to call button at 6.1 seconds and to resident A at 10.1 seconds. Resident A had exposures at 10.1, 13.5, and 40 seconds. One hygiene event at 10.1 seconds used alcohol rub for 29.9 seconds, which met WHO duration but is not effective against C. difficile; soap and water is required. No Moment 1, 2, 4, or 5 opportunities were recorded, so compliance was 0 met over 0 opportunities. No glove use issues were recorded. Contaminated at end: bare hand, gloved hand, bed rail A, call button, resident A. Disinfect resident A contacts, bed rail A, and call button with Use an EPA List K sporicidal disinfectant (effective against C. difficile spores); standard disinfectants do not kill spores.",
+    "top_fix": "The clip showed no missed moments."
+  }
+}

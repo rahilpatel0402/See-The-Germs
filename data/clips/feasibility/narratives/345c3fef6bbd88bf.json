@@ -1,0 +1,18 @@
+{
+  "hash": "345c3fef6bbd88bf",
+  "language": "en",
+  "model": "accounts/fireworks/models/muse-spark-open",
+  "backend": "fireworks",
+  "createdAt": "2026-10-28T01:19:42.448Z",
+  "usage": {
+    "inputTokens": 2207,
+    "cachedTokens": 0,
+    "outputTokens": 2643,
+    "reasoningTokens": 2227
+  },
+  "narrative": {
+    "coaching_note": "The one change to make next time is to clean your hands at Moment 5 when you leave the patient zone, at 5.8 seconds. Your bare hand touched bed rail A at 0.5 seconds and became contaminated, and then you carried that to the call button at 3.4 seconds and to the phone at 6.6 seconds. After you put gloves on at 10.9 seconds without cleaning your hands first, your gloved hand touched bed rail A again at 11.1 seconds and picked up contamination again. Next time, clean your hands before putting gloves on and keep gloved hands off the phone in the healthcare area. Practicing Moment 5 hand hygiene right after patient zone contact keeps contamination from moving to other surfaces.",
+    "audit_summary": "Staged clip with MRSA source bed rail A. Bare hand contacted bed rail A at 0.5 seconds with transfer to hand, then to call button at 3.4 seconds and phone at 6.6 seconds. Gloved hand contacted bed rail A at 11.1 seconds with transfer. Hand hygiene compliance 0/2 overall; Moment 5 0/2, Moments 1, 2, 4 0/0. No hygiene events recorded. Missed Moment 5 at 5.8 seconds (bare hand) and 18.7 seconds (gloved hand). Glove use issues: no hygiene before don at 10.9 seconds and gloved contact with healthcare-area phone at 19.3 seconds. Contaminated at end: bare hand, gloved hand, bed rail A, call button, phone. Surfaces to disinfect: bed rail A (source, 4 contaminated contacts), call button (2), phone (2) using EPA List H disinfectant effective against MRSA.",
+    "top_fix": "The highest-impact single change in this clip was performing hand hygiene at Moment 5 at 5.8 seconds."
+  }
+}

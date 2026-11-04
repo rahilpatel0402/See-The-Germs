@@ -1,0 +1,17 @@
+{
+  "hash": "c63ab1b8c17d3028",
+  "model": "muse-spark-1.3",
+  "backend": "meta-model-api",
+  "createdAt": "2026-10-27T15:46:25.466Z",
+  "usage": {
+    "inputTokens": 1734,
+    "cachedTokens": 0,
+    "outputTokens": 2753,
+    "reasoningTokens": 2322
+  },
+  "narrative": {
+    "coaching_note": "Clean your bare hand after you leave bed rail A and before you touch phone or other areas. You touched bed rail A starting at 0.5 seconds and the record shows contamination moved from bed rail A to bare hand at 0.5 seconds. You then touched phone at 6.6 seconds and the record shows contamination moved from bare hand to phone at 6.6 seconds. That followed a missed Moment 5 for bare hand at 4.7 seconds. Later you touched bed rail A at 11.1 seconds and call button at 16.4 seconds, with contamination moving to call button at 16.4 seconds and a missed Moment 5 for gloved hand at 18.7 seconds. Alcohol rub or soap and water both work against MRSA for your hand hygiene. The record lists no items in hygiene_here_would_have_kept_clean for those missed moments, so I cannot name something it would have kept clean.",
+    "audit_summary": "Source was bed rail A. Record shows transfers from bed rail A to bare hand at 0.5 seconds, from bare hand to phone at 6.6 seconds, from bed rail A to bare hand at 11.1 seconds, and from bare hand to call button at 16.4 seconds. Two Moment 5 misses were recorded: bare hand at 4.7 seconds and gloved hand at 18.7 seconds, with no Moment 1, 2, or 4 misses. A glove don for bare hand was recorded at 10.9 seconds; no hygiene events were recorded. Contaminated at end were bare hand, gloved hand, bed rail A, call button, and phone, with no resident exposures. For MRSA in this record, alcohol rub and soap and water are both effective for hand hygiene. Exposure score 10, with 2 contaminated surfaces and chain length 4.",
+    "top_fix": "The highest-impact single change in this clip was hand hygiene for bare hand at 4.7 seconds."
+  }
+}

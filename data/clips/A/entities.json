@@ -1,0 +1,50 @@
+[
+  {
+    "id": "bare_hand",
+    "label": "bare hand",
+    "class": "bare_hand",
+    "zone": "healthcare_area",
+    "samPhrase": "bare hand",
+    "person": "P1"
+  },
+  {
+    "id": "gloved_hand",
+    "label": "gloved hand",
+    "class": "gloved_hand",
+    "zone": "healthcare_area",
+    "samPhrase": "gloved hand",
+    "person": "P1",
+    "minConfidence": 0.75
+  },
+  {
+    "id": "rail_A",
+    "label": "bed rail A",
+    "class": "object",
+    "zone": "patient_zone_A",
+    "samPhrase": "white plastic bar",
+    "samObjectIds": [
+      "3"
+    ]
+  },
+  {
+    "id": "remote",
+    "label": "call button",
+    "class": "object",
+    "zone": "patient_zone_A",
+    "samPhrase": "small black remote"
+  },
+  {
+    "id": "phone",
+    "label": "phone",
+    "class": "object",
+    "zone": "healthcare_area",
+    "samPhrase": "black smartphone"
+  },
+  {
+    "id": "resident_A",
+    "label": "resident A",
+    "class": "resident_zone",
+    "zone": "patient_zone_A",
+    "samPhrase": "brown teddy bear"
+  }
+]

@@ -1,0 +1,329 @@
+{
+  "id": "C",
+  "generatedAt": "2026-11-04T05:54:43.124Z",
+  "reports": [
+    {
+      "backend": "meta-model-api",
+      "model": "muse-spark-1.3",
+      "narrative": {
+        "coaching_note": "Continue cleaning your bare hand with the sanitizer bottle before you touch resident A. You cleaned at 0.2 seconds for 21.8 seconds and again at 32.3 seconds and at 64.1 seconds, and that covered the Moment 1 opportunity before contact with resident A from 55.2 to 63.6 seconds. Your gloved hand touched bed rail A from 22 to 26.6 seconds and picked up contamination at 22 seconds, which then moved to call button at 26.3 seconds. Because your hand hygiene was done and your gloves were changed, resident A had no exposure in this clip. Keep using alcohol rub for the full 20 seconds each time and changing gloves between tasks to keep that protection. You used gloves for the bed rail A work and for the resident A contact with no extra risk from glove use.",
+        "audit_summary": "MRSA source was bed rail A. Transfer chain: bed rail A to gloved hand at 22 seconds, then gloved hand to call button at 26.3 seconds. Contaminated at end: bed rail A (source) and call button. No resident exposures for resident A. Hand hygiene compliance 1 met of 1 opportunity overall; Moment 1: 1 of 1. Three alcohol rub events on bare hand at 0.2 seconds (21.8 seconds), 32.3 seconds (22.9 seconds), and 64.1 seconds (24.2 seconds); all met WHO 20-second duration and alcohol rub is effective against MRSA per record. No glove use issues. Glove don at 22 and 54.8 seconds, doff at 32.3 and 63.6 seconds. Disinfect call button (2 contacts while contaminated) and bed rail A (source) with an EPA List H registered disinfectant effective against MRSA.",
+        "top_fix": "The clip showed no missed moments.",
+        "usage": {
+          "inputTokens": 2111,
+          "cachedTokens": 625,
+          "outputTokens": 2751,
+          "reasoningTokens": 2338
+        },
+        "elapsedMs": 83824
+      },
+      "adjudications": [
+        {
+          "candidateId": "bare_hand:resident_A:2",
+          "verdict": "passing_in_front",
+          "reasoning": "The cyan hands hover over a small bottle in the foreground while the magenta teddy bear lies untouched on the table behind with a clear gap between them.",
+          "usage": {
+            "inputTokens": 2689,
+            "cachedTokens": 0,
+            "outputTokens": 379,
+            "reasoningTokens": 327
+          },
+          "elapsedMs": 5566,
+          "cost": 0.004972
+        },
+        {
+          "candidateId": "gloved_hand:remote:263",
+          "verdict": "touching",
+          "reasoning": "In the first frame the hand is on the white bar away from the magenta remote, but in the second frame the hand has moved back and fully covers the remote with fingers pressed flat on it, leaving only a small magenta edge visible under the hand.",
+          "usage": {
+            "inputTokens": 2689,
+            "cachedTokens": 0,
+            "outputTokens": 920,
+            "reasoningTokens": 848
+          },
+          "elapsedMs": 11416,
+          "cost": 0.00727125
+        },
+        {
+          "candidateId": "bare_hand:resident_A:323",
+          "verdict": "passing_in_front",
+          "reasoning": "The cyan-outlined fingers are extended toward the bottle with a clear gap to the magenta-outlined teddy bear behind and no contact or deformation visible in either frame.",
+          "usage": {
+            "inputTokens": 2689,
+            "cachedTokens": 0,
+            "outputTokens": 465,
+            "reasoningTokens": 409
+          },
+          "elapsedMs": 5708,
+          "cost": 0.0053375
+        },
+        {
+          "candidateId": "gloved_hand:resident_A:552",
+          "verdict": "touching",
+          "reasoning": "In the second frame the blue-gloved fingers rest directly on the teddy bear's back with no visible gap, while the first frame shows the hand hovering just above it.",
+          "usage": {
+            "inputTokens": 2689,
+            "cachedTokens": 0,
+            "outputTokens": 490,
+            "reasoningTokens": 434
+          },
+          "elapsedMs": 6971,
+          "cost": 0.005443750000000001
+        },
+        {
+          "candidateId": "bare_hand:resident_A:641",
+          "verdict": "passing_in_front",
+          "reasoning": "The cyan hand reaches for the small bottle in the foreground in front of the magenta teddy bear, with overlap from perspective but no skin-to-fur contact and a visible gap in the first frame.",
+          "usage": {
+            "inputTokens": 2689,
+            "cachedTokens": 0,
+            "outputTokens": 912,
+            "reasoningTokens": 850
+          },
+          "elapsedMs": 11517,
+          "cost": 0.007237250000000001
+        },
+        {
+          "candidateId": "gloved_hand:resident_A:641",
+          "verdict": "passing_in_front",
+          "reasoning": "The cyan hand moves near the magenta teddy bear but remains separated by a visible gap with no contact, pressing, or movement of the bear.",
+          "usage": {
+            "inputTokens": 2689,
+            "cachedTokens": 241,
+            "outputTokens": 654,
+            "reasoningTokens": 603
+          },
+          "elapsedMs": 9056,
+          "cost": 0.00587565
+        },
+        {
+          "candidateId": "bare_hand:sanitizer:2",
+          "verdict": "touching",
+          "reasoning": "The fingers are wrapped around the bottle cap with skin in direct contact and no visible gap in both frames.",
+          "usage": {
+            "inputTokens": 2690,
+            "cachedTokens": 0,
+            "outputTokens": 327,
+            "reasoningTokens": 285
+          },
+          "elapsedMs": 4288,
+          "cost": 0.00475225
+        },
+        {
+          "candidateId": "gloved_hand:sanitizer:278",
+          "verdict": "passing_in_front",
+          "reasoning": "The yellow-gloved hand is extended toward the remote in the foreground while the sanitizer bottle remains distant on the table with a clear gap and no contact.",
+          "usage": {
+            "inputTokens": 2690,
+            "cachedTokens": 241,
+            "outputTokens": 344,
+            "reasoningTokens": 290
+          },
+          "elapsedMs": 9283,
+          "cost": 0.0045594
+        },
+        {
+          "candidateId": "bare_hand:sanitizer:323",
+          "verdict": "touching",
+          "reasoning": "In the second frame the fingers are wrapped directly around the sides of the bottle with no visible gap, and the first frame shows the fingertip on the cap.",
+          "usage": {
+            "inputTokens": 2690,
+            "cachedTokens": 241,
+            "outputTokens": 306,
+            "reasoningTokens": 252
+          },
+          "elapsedMs": 5466,
+          "cost": 0.0043979
+        },
+        {
+          "candidateId": "bare_hand:sanitizer:641",
+          "verdict": "touching",
+          "reasoning": "In the second frame the outlined fingers wrap around the bottle cap with no visible gap and occlude its sides, showing direct contact.",
+          "usage": {
+            "inputTokens": 2690,
+            "cachedTokens": 241,
+            "outputTokens": 597,
+            "reasoningTokens": 550
+          },
+          "elapsedMs": 8048,
+          "cost": 0.00563465
+        },
+        {
+          "candidateId": "gloved_hand:sanitizer:641",
+          "verdict": "touching",
+          "reasoning": "In the second frame the fingers are wrapped around the sides of the bottle with no visible gap, showing direct contact.",
+          "usage": {
+            "inputTokens": 2690,
+            "cachedTokens": 241,
+            "outputTokens": 474,
+            "reasoningTokens": 432
+          },
+          "elapsedMs": 6481,
+          "cost": 0.0051119
+        }
+      ]
+    },
+    {
+      "backend": "baseten",
+      "model": "meta-models/muse-spark-open-1026",
+      "narrative": {
+        "coaching_note": "Keep cleaning your hands with alcohol rub before you touch resident A, like you did at 32.3 seconds before the contact at 55.2 seconds. You touched bed rail A with your gloved hand at 22 seconds and the contamination moved to your gloved hand, then to call button at 26.3 seconds. You used the sanitizer bottle at 0.2 seconds for 21.8 seconds and again at 32.3 seconds for 22.9 seconds and at 64.1 seconds for 24.2 seconds, all long enough to work against MRSA. You also put gloves on at 22 seconds and at 54.8 seconds and took them off at 32.3 seconds and 63.6 seconds. Keeping that timing keeps resident A from being exposed. That is why resident A had no exposure in this clip.",
+        "audit_summary": "Staged clip with MRSA source bed rail A. Transfer chain: bed rail A → gloved hand at 22 seconds → call button at 26.3 seconds. Hand hygiene compliance 1/1 overall; Moment 1 1/1 met. Three alcohol rubs at 0.2 seconds (21.8s), 32.3 seconds (22.9s), and 64.1 seconds (24.2s) all met WHO duration (≥20s) and were effective against MRSA. Glove don at 22 seconds and 54.8 seconds, doff at 32.3 seconds and 63.6 seconds; no glove use issues identified. No resident exposures; resident A contact at 55.2, 63.6 seconds occurred after hygiene and with appropriate glove use. Contaminated at end: bed rail A (source) and call button (2 contaminated contacts). Disinfect call button and bed rail A with an EPA List H registered disinfectant effective against MRSA.",
+        "top_fix": "The clip showed no missed moments.",
+        "usage": {
+          "inputTokens": 2180,
+          "cachedTokens": 896,
+          "outputTokens": 6177,
+          "reasoningTokens": 5744
+        },
+        "elapsedMs": 233991
+      },
+      "adjudications": [
+        {
+          "candidateId": "bare_hand:resident_A:2",
+          "verdict": "passing_in_front",
+          "reasoning": "The cyan-outlined hands are positioned over the small bottle at the table's edge, while the magenta-outlined teddy bear lies at the far back of the table with a clear visible gap and no contact or occlusion in either frame.",
+          "usage": {
+            "inputTokens": 2758,
+            "cachedTokens": 256,
+            "outputTokens": 541,
+            "reasoningTokens": 472
+          },
+          "elapsedMs": 15943,
+          "cost": null
+        },
+        {
+          "candidateId": "gloved_hand:remote:263",
+          "verdict": "touching",
+          "reasoning": "In the first frame the hand is on a separate white bar away from the magenta-outlined remote, but in the second frame the hand has moved to cover the remote with fingers pressed flat over it and only a small edge of the magenta outline visible at the fingertip with no gap, indicating direct contact.",
+          "usage": {
+            "inputTokens": 2758,
+            "cachedTokens": 256,
+            "outputTokens": 1067,
+            "reasoningTokens": 985
+          },
+          "elapsedMs": 10960,
+          "cost": null
+        },
+        {
+          "candidateId": "bare_hand:resident_A:323",
+          "verdict": "passing_in_front",
+          "reasoning": "The cyan-outlined hands are positioned over the small bottle on the table with a clear visible gap between the fingertips and the magenta-outlined teddy bear lying behind, showing no physical contact in either frame.",
+          "usage": {
+            "inputTokens": 2758,
+            "cachedTokens": 0,
+            "outputTokens": 643,
+            "reasoningTokens": 580
+          },
+          "elapsedMs": 8664,
+          "cost": null
+        },
+        {
+          "candidateId": "gloved_hand:resident_A:552",
+          "verdict": "touching",
+          "reasoning": "In the second frame the cyan-outlined gloved hand is in direct contact with the magenta-outlined teddy bear's foot with fingers pressing into it and no visible gap, confirming physical contact after the approach seen in the first frame.",
+          "usage": {
+            "inputTokens": 2758,
+            "cachedTokens": 0,
+            "outputTokens": 477,
+            "reasoningTokens": 409
+          },
+          "elapsedMs": 22608,
+          "cost": null
+        },
+        {
+          "candidateId": "bare_hand:resident_A:641",
+          "verdict": "touching",
+          "reasoning": "In frame 1 a clear gap separates the cyan hand from the magenta teddy, but in frame 2 the fingers overlap the teddy's white foot with no visible gap and conform to its surface, indicating physical contact.",
+          "usage": {
+            "inputTokens": 2758,
+            "cachedTokens": 0,
+            "outputTokens": 1517,
+            "reasoningTokens": 1451
+          },
+          "elapsedMs": 13024,
+          "cost": null
+        },
+        {
+          "candidateId": "gloved_hand:resident_A:641",
+          "verdict": "touching",
+          "reasoning": "In the second frame the cyan-outlined fingertips overlap the magenta-outlined teddy bear's foot with no visible gap and appear to press against it, indicating physical contact.",
+          "usage": {
+            "inputTokens": 2758,
+            "cachedTokens": 0,
+            "outputTokens": 1391,
+            "reasoningTokens": 1336
+          },
+          "elapsedMs": 11003,
+          "cost": null
+        },
+        {
+          "candidateId": "bare_hand:sanitizer:2",
+          "verdict": "touching",
+          "reasoning": "The cyan-outlined fingers are wrapped around the magenta-outlined sanitizer bottle with direct skin-to-surface contact and no visible gap in both frames.",
+          "usage": {
+            "inputTokens": 2759,
+            "cachedTokens": 0,
+            "outputTokens": 428,
+            "reasoningTokens": 378
+          },
+          "elapsedMs": 9418,
+          "cost": null
+        },
+        {
+          "candidateId": "gloved_hand:sanitizer:278",
+          "verdict": "passing_in_front",
+          "reasoning": "The cyan-outlined gloved hand is extended toward the remote control in the foreground while the magenta-outlined sanitizer bottle remains upright and untouched several inches away on the table with a clear visible gap and no contact in either frame.",
+          "usage": {
+            "inputTokens": 2759,
+            "cachedTokens": 0,
+            "outputTokens": 306,
+            "reasoningTokens": 238
+          },
+          "elapsedMs": 24885,
+          "cost": null
+        },
+        {
+          "candidateId": "bare_hand:sanitizer:323",
+          "verdict": "touching",
+          "reasoning": "In the second frame the cyan-outlined fingers are wrapped around the magenta-outlined sanitizer bottle with no visible gap between skin and bottle surface, indicating direct contact while grasping.",
+          "usage": {
+            "inputTokens": 2759,
+            "cachedTokens": 0,
+            "outputTokens": 876,
+            "reasoningTokens": 819
+          },
+          "elapsedMs": 42693,
+          "cost": null
+        },
+        {
+          "candidateId": "bare_hand:sanitizer:641",
+          "verdict": "touching",
+          "reasoning": "In the first frame the cyan hand hovers above the magenta sanitizer bottle with a visible gap, but in the second frame the fingers close around and make contact with the bottle surface with no gap, showing a grasp.",
+          "usage": {
+            "inputTokens": 2759,
+            "cachedTokens": 0,
+            "outputTokens": 515,
+            "reasoningTokens": 450
+          },
+          "elapsedMs": 11058,
+          "cost": null
+        },
+        {
+          "candidateId": "gloved_hand:sanitizer:641",
+          "verdict": "touching",
+          "reasoning": "Frame 1 shows a clear gap between fingertips and the sanitizer bottle, but frame 2 shows the cyan-outlined fingers wrapped around and in direct contact with the magenta-outlined bottle surface with no gap.",
+          "usage": {
+            "inputTokens": 2759,
+            "cachedTokens": 256,
+            "outputTokens": 839,
+            "reasoningTokens": 776
+          },
+          "elapsedMs": 47001,
+          "cost": null
+        }
+      ]
+    }
+  ],
+  "adjudicationAgreement": "9 of 11"
+}

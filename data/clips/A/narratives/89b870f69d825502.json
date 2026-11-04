@@ -1,0 +1,18 @@
+{
+  "hash": "89b870f69d825502",
+  "language": "en",
+  "model": "accounts/fireworks/models/muse-spark-open",
+  "backend": "fireworks",
+  "createdAt": "2026-11-04T05:04:15.521Z",
+  "usage": {
+    "inputTokens": 2080,
+    "cachedTokens": 0,
+    "outputTokens": 2249,
+    "reasoningTokens": 1847
+  },
+  "narrative": {
+    "coaching_note": "Clean your hands after you touch the bed rail A and before you touch your phone or the resident. At 1.6 seconds your bare hand picked up contamination from bed rail A, and at 8.1 seconds that same hand carried it to the phone, which is Moment 5 after contact with the patient zone. Then at 21.4 seconds you touched resident A without cleaning your hands first, which is Moment 1 before resident contact, so the contamination moved to resident A. Cleaning your hands at 8.1 seconds would have kept your hands, your phone, and resident A clean, and cleaning again at 21.4 seconds would have also protected resident A. If you had cleaned at 8.1 seconds, your bare hand, gloved hand, phone, and resident A would have stayed clean.",
+    "audit_summary": "Staged clip with MRSA source bed rail A. Bare hand contacted bed rail A at 1.6 seconds, acquiring contamination, then transferred to call button at 7.6 seconds and phone at 8.1 seconds, with a second phone contact 12.4-20.7 seconds, and to resident A at 21.4 seconds, resulting in one resident exposure. Hand hygiene compliance 0/2 overall; Moment 1 0/1 and Moment 5 0/1 missed, with no hygiene events recorded. No glove use issues were identified. Contamination at end included bare hand, gloved hand, bed rail A, call button, phone, and resident A. Surfaces to disinfect: phone (2 contaminated contacts), bed rail A (source, 1), call button (1), resident A (1). Use an EPA List H registered disinfectant effective against MRSA.",
+    "top_fix": "The highest-impact single change in this clip was performing hand hygiene for Moment 5 at 8.1 seconds."
+  }
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "candidateId": "bare_hand:resident_A:101",
+    "verdict": "touching",
+    "reasoning": "In the second frame a cyan-outlined fingertip overlaps the magenta-outlined teddy bear's foot with no visible gap, indicating direct contact."
+  },
+  {
+    "candidateId": "bare_hand:resident_A:135",
+    "verdict": "touching",
+    "reasoning": "In the second frame the extended fingertip meets the teddy bear's white foot with no visible gap."
+  },
+  {
+    "candidateId": "bare_hand:resident_A:400",
+    "verdict": "touching",
+    "reasoning": "In the first frame the hand hovers above the teddy bear with a gap, but in the second frame the hand is occluded by the bear with fingertips visible on the far side, showing direct contact."
+  },
+  {
+    "candidateId": "bare_hand:sanitizer:101",
+    "verdict": "touching",
+    "reasoning": "In the first frame the hand hovers with a gap above the bottle on the table, but in the second frame the fingers are wrapped around the bottle cap with the bottle lifted off the table, showing direct contact."
+  }
+]

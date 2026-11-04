@@ -1,0 +1,554 @@
+{
+  "clipId": "C",
+  "scenario": {
+    "sourceEntityId": "rail_A",
+    "pathogen": "mrsa"
+  },
+  "pathogen": {
+    "id": "mrsa",
+    "label": "MRSA",
+    "alcoholRubClearsHands": true,
+    "soapWaterClearsHands": true,
+    "surfacePersistenceS": 1000000000,
+    "uiNote": "Alcohol rub is effective.",
+    "disinfectantNote": "Use an EPA List H registered disinfectant (effective against MRSA).",
+    "citations": [
+      "https://www.cdc.gov/mrsa/hcp/infection-control/index.html",
+      "https://www.cdc.gov/clean-hands/hcp/clinical-safety/index.html",
+      "https://www.epa.gov/pesticide-registration/selected-epa-registered-disinfectants"
+    ]
+  },
+  "entities": [
+    {
+      "id": "bare_hand",
+      "label": "bare hand",
+      "class": "bare_hand",
+      "zone": "healthcare_area",
+      "samPhrase": "bare hand",
+      "person": "P1"
+    },
+    {
+      "id": "gloved_hand",
+      "label": "gloved hand",
+      "class": "gloved_hand",
+      "zone": "healthcare_area",
+      "samPhrase": "gloved hand",
+      "person": "P1"
+    },
+    {
+      "id": "rail_A",
+      "label": "bed rail A",
+      "class": "object",
+      "zone": "patient_zone_A",
+      "samPhrase": "white plastic bar"
+    },
+    {
+      "id": "remote",
+      "label": "call button",
+      "class": "object",
+      "zone": "patient_zone_A",
+      "samPhrase": "small black remote"
+    },
+    {
+      "id": "resident_A",
+      "label": "resident A",
+      "class": "resident_zone",
+      "zone": "patient_zone_A",
+      "samPhrase": "brown teddy bear"
+    },
+    {
+      "id": "sanitizer",
+      "label": "sanitizer bottle",
+      "class": "dispenser",
+      "zone": "hygiene_station",
+      "samPhrase": "clear bottle with pink liquid",
+      "agent": "alcohol_rub"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "bare_hand:resident_A:2",
+      "handId": "bare_hand",
+      "entityId": "resident_A",
+      "startT": 0.2,
+      "endT": 1.6,
+      "startFrame": 2,
+      "endFrame": 15,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 2894,
+      "dwellFrames": 14,
+      "residentContact": true
+    },
+    {
+      "id": "bare_hand:sanitizer:2",
+      "handId": "bare_hand",
+      "entityId": "sanitizer",
+      "startT": 0.2,
+      "endT": 1.6,
+      "startFrame": 2,
+      "endFrame": 15,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 2588,
+      "dwellFrames": 14,
+      "dispenserContact": true
+    },
+    {
+      "id": "gloved_hand:rail_A:220",
+      "handId": "gloved_hand",
+      "entityId": "rail_A",
+      "startT": 22,
+      "endT": 26.6,
+      "startFrame": 220,
+      "endFrame": 265,
+      "confidence": "confident",
+      "peakIntersectionPx": 4118,
+      "dwellFrames": 46
+    },
+    {
+      "id": "gloved_hand:remote:263",
+      "handId": "gloved_hand",
+      "entityId": "remote",
+      "startT": 26.3,
+      "endT": 26.8,
+      "startFrame": 263,
+      "endFrame": 267,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 1788,
+      "dwellFrames": 5
+    },
+    {
+      "id": "gloved_hand:remote:276",
+      "handId": "gloved_hand",
+      "entityId": "remote",
+      "startT": 27.6,
+      "endT": 31.9,
+      "startFrame": 276,
+      "endFrame": 318,
+      "confidence": "confident",
+      "peakIntersectionPx": 3057,
+      "dwellFrames": 43
+    },
+    {
+      "id": "gloved_hand:sanitizer:278",
+      "handId": "gloved_hand",
+      "entityId": "sanitizer",
+      "startT": 27.8,
+      "endT": 32.1,
+      "startFrame": 278,
+      "endFrame": 320,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 1589,
+      "dwellFrames": 43,
+      "dispenserContact": true
+    },
+    {
+      "id": "bare_hand:resident_A:323",
+      "handId": "bare_hand",
+      "entityId": "resident_A",
+      "startT": 32.3,
+      "endT": 33.9,
+      "startFrame": 323,
+      "endFrame": 338,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 2677,
+      "dwellFrames": 16,
+      "residentContact": true
+    },
+    {
+      "id": "bare_hand:sanitizer:323",
+      "handId": "bare_hand",
+      "entityId": "sanitizer",
+      "startT": 32.3,
+      "endT": 33.9,
+      "startFrame": 323,
+      "endFrame": 338,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 2637,
+      "dwellFrames": 16,
+      "dispenserContact": true
+    },
+    {
+      "id": "gloved_hand:resident_A:552",
+      "handId": "gloved_hand",
+      "entityId": "resident_A",
+      "startT": 55.2,
+      "endT": 63.6,
+      "startFrame": 552,
+      "endFrame": 635,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 6823,
+      "dwellFrames": 84,
+      "residentContact": true
+    },
+    {
+      "id": "bare_hand:resident_A:641",
+      "handId": "bare_hand",
+      "entityId": "resident_A",
+      "startT": 64.1,
+      "endT": 66.1,
+      "startFrame": 641,
+      "endFrame": 660,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 2824,
+      "dwellFrames": 20,
+      "residentContact": true
+    },
+    {
+      "id": "bare_hand:sanitizer:641",
+      "handId": "bare_hand",
+      "entityId": "sanitizer",
+      "startT": 64.1,
+      "endT": 66.1,
+      "startFrame": 641,
+      "endFrame": 660,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 2689,
+      "dwellFrames": 20,
+      "dispenserContact": true
+    },
+    {
+      "id": "gloved_hand:resident_A:641",
+      "handId": "gloved_hand",
+      "entityId": "resident_A",
+      "startT": 64.1,
+      "endT": 66.1,
+      "startFrame": 641,
+      "endFrame": 660,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 2823,
+      "dwellFrames": 20,
+      "residentContact": true
+    },
+    {
+      "id": "gloved_hand:sanitizer:641",
+      "handId": "gloved_hand",
+      "entityId": "sanitizer",
+      "startT": 64.1,
+      "endT": 66.1,
+      "startFrame": 641,
+      "endFrame": 660,
+      "confidence": "ambiguous",
+      "peakIntersectionPx": 2688,
+      "dwellFrames": 20,
+      "dispenserContact": true
+    }
+  ],
+  "adjudications": [
+    {
+      "candidateId": "bare_hand:resident_A:2",
+      "verdict": "passing_in_front",
+      "reasoning": "The cyan hand is held in the foreground with a clear visible gap to the magenta teddy bear lying on the table behind it, showing no skin-to-surface contact."
+    },
+    {
+      "candidateId": "gloved_hand:remote:263",
+      "verdict": "touching",
+      "reasoning": "In the second frame the yellow-gloved fingers cover the magenta-outlined remote with no visible gap and appear pressed down onto it."
+    },
+    {
+      "candidateId": "bare_hand:resident_A:323",
+      "verdict": "passing_in_front",
+      "reasoning": "The cyan-outlined hands hover over the small bottle in the foreground while the magenta-outlined teddy bear lies behind them with a visible gap and no skin-to-fur contact."
+    },
+    {
+      "candidateId": "gloved_hand:resident_A:552",
+      "verdict": "touching",
+      "reasoning": "The gloved hand hovers above the teddy bear in the first frame then rests directly on its fur with no visible gap in the second frame."
+    },
+    {
+      "candidateId": "bare_hand:resident_A:641",
+      "verdict": "passing_in_front",
+      "reasoning": "In both frames the cyan hand stays to the right and in front of the magenta teddy with a visible gap, grasping at the bottle in front rather than contacting the fur with no press or occlusion by the teddy."
+    },
+    {
+      "candidateId": "gloved_hand:resident_A:641",
+      "verdict": "passing_in_front",
+      "reasoning": "The cyan hand reaches toward the bottle in front of the magenta teddy with a visible gap and the teddy shows no contact, press, or movement between frames."
+    },
+    {
+      "candidateId": "bare_hand:sanitizer:2",
+      "verdict": "touching",
+      "reasoning": "The cyan-outlined fingers are wrapped around the magenta bottle with direct contact on the cap and sides and no visible gap in both frames."
+    },
+    {
+      "candidateId": "gloved_hand:sanitizer:278",
+      "verdict": "passing_in_front",
+      "reasoning": "The yellow-gloved hand is extended toward the remote in the foreground while the sanitizer bottle sits undisturbed in the background with a clear gap and no contact."
+    },
+    {
+      "candidateId": "bare_hand:sanitizer:323",
+      "verdict": "touching",
+      "reasoning": "In the middle frame the fingers are wrapped around the sides of the bottle with no visible gap, showing direct contact."
+    },
+    {
+      "candidateId": "bare_hand:sanitizer:641",
+      "verdict": "touching",
+      "reasoning": "In the second frame the fingers wrap around and occlude the sides of the bottle cap with no visible gap, showing direct contact."
+    },
+    {
+      "candidateId": "gloved_hand:sanitizer:641",
+      "verdict": "touching",
+      "reasoning": "In the second frame the fingers close around the bottle with no visible gap and occlude its sides, showing direct contact."
+    }
+  ],
+  "contacts": [
+    {
+      "handId": "bare_hand",
+      "entityId": "sanitizer",
+      "startT": 0.2,
+      "endT": 1.6,
+      "adjudicated": true,
+      "candidateIds": [
+        "bare_hand:sanitizer:2"
+      ]
+    },
+    {
+      "handId": "gloved_hand",
+      "entityId": "rail_A",
+      "startT": 22,
+      "endT": 26.6,
+      "adjudicated": false,
+      "candidateIds": [
+        "gloved_hand:rail_A:220"
+      ]
+    },
+    {
+      "handId": "gloved_hand",
+      "entityId": "remote",
+      "startT": 26.3,
+      "endT": 26.8,
+      "adjudicated": true,
+      "candidateIds": [
+        "gloved_hand:remote:263"
+      ]
+    },
+    {
+      "handId": "gloved_hand",
+      "entityId": "remote",
+      "startT": 27.6,
+      "endT": 31.9,
+      "adjudicated": false,
+      "candidateIds": [
+        "gloved_hand:remote:276"
+      ]
+    },
+    {
+      "handId": "bare_hand",
+      "entityId": "sanitizer",
+      "startT": 32.3,
+      "endT": 33.9,
+      "adjudicated": true,
+      "candidateIds": [
+        "bare_hand:sanitizer:323"
+      ]
+    },
+    {
+      "handId": "gloved_hand",
+      "entityId": "resident_A",
+      "startT": 55.2,
+      "endT": 63.6,
+      "adjudicated": true,
+      "candidateIds": [
+        "gloved_hand:resident_A:552"
+      ]
+    },
+    {
+      "handId": "bare_hand",
+      "entityId": "sanitizer",
+      "startT": 64.1,
+      "endT": 66.1,
+      "adjudicated": true,
+      "candidateIds": [
+        "bare_hand:sanitizer:641",
+        "gloved_hand:sanitizer:641"
+      ]
+    }
+  ],
+  "hygieneEvents": [
+    {
+      "handId": "bare_hand",
+      "t": 0.2,
+      "agent": "alcohol_rub",
+      "durationS": 21.8,
+      "adequate": true,
+      "effective": true
+    },
+    {
+      "handId": "bare_hand",
+      "t": 32.3,
+      "agent": "alcohol_rub",
+      "durationS": 22.9,
+      "adequate": true,
+      "effective": true
+    },
+    {
+      "handId": "bare_hand",
+      "t": 64.1,
+      "agent": "alcohol_rub",
+      "durationS": 24.2,
+      "adequate": true,
+      "effective": true
+    }
+  ],
+  "gloveBoxTouches": [],
+  "gloveEvents": [
+    {
+      "handId": "bare_hand",
+      "t": 22,
+      "type": "don",
+      "source": "detected"
+    },
+    {
+      "handId": "bare_hand",
+      "t": 32.3,
+      "type": "doff",
+      "source": "detected"
+    },
+    {
+      "handId": "bare_hand",
+      "t": 54.8,
+      "type": "don",
+      "source": "detected"
+    },
+    {
+      "handId": "bare_hand",
+      "t": 63.6,
+      "type": "doff",
+      "source": "detected"
+    }
+  ],
+  "gloveIssues": [],
+  "propagation": {
+    "contaminated": [
+      "rail_A",
+      "remote"
+    ],
+    "hands": {
+      "P1": {
+        "contaminated": false,
+        "gloved": false
+      }
+    },
+    "transfers": [
+      {
+        "fromId": "rail_A",
+        "toId": "gloved_hand",
+        "t": 22
+      },
+      {
+        "fromId": "gloved_hand",
+        "toId": "remote",
+        "t": 26.3
+      }
+    ],
+    "residentExposures": [],
+    "changes": [
+      {
+        "t": 0,
+        "entityId": "rail_A",
+        "contaminated": true,
+        "cause": "source"
+      },
+      {
+        "t": 22,
+        "entityId": "gloved_hand",
+        "contaminated": true,
+        "cause": "transfer"
+      },
+      {
+        "t": 26.3,
+        "entityId": "remote",
+        "contaminated": true,
+        "cause": "transfer"
+      },
+      {
+        "t": 32.3,
+        "entityId": "bare_hand",
+        "contaminated": false,
+        "cause": "hygiene"
+      }
+    ],
+    "hops": {
+      "rail_A": 0,
+      "person:P1": 1,
+      "remote": 2
+    }
+  },
+  "opportunities": [
+    {
+      "moment": 1,
+      "handId": "gloved_hand",
+      "t": 55.2,
+      "met": true
+    }
+  ],
+  "momentMisses": [],
+  "compliance": {
+    "overall": {
+      "opportunities": 1,
+      "met": 1,
+      "rate": 1
+    },
+    "byMoment": {
+      "1": {
+        "opportunities": 1,
+        "met": 1,
+        "rate": 1
+      },
+      "2": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      },
+      "4": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      },
+      "5": {
+        "opportunities": 0,
+        "met": 0,
+        "rate": null
+      }
+    },
+    "byPerson": {
+      "P1": {
+        "opportunities": 1,
+        "met": 1,
+        "rate": 1
+      }
+    }
+  },
+  "cleaning": {
+    "items": [
+      {
+        "entityId": "remote",
+        "label": "call button",
+        "zone": "patient_zone_A",
+        "isSource": false,
+        "firstContaminatedT": 26.3,
+        "contactCount": 2
+      },
+      {
+        "entityId": "rail_A",
+        "label": "bed rail A",
+        "zone": "patient_zone_A",
+        "isSource": true,
+        "firstContaminatedT": 0,
+        "contactCount": 1
+      }
+    ],
+    "disinfectantNote": "Use an EPA List H registered disinfectant (effective against MRSA)."
+  },
+  "score": {
+    "contaminatedSurfaces": 1,
+    "chainLength": 2,
+    "residentExposures": {},
+    "momentsMissed": {
+      "1": 0,
+      "2": 0,
+      "4": 0,
+      "5": 0
+    },
+    "score": 3
+  }
+}
