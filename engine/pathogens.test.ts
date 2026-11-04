@@ -26,3 +26,15 @@ test("isPathogenId guards unknown ids", () => {
   assert.equal(isPathogenId("mrsa"), true);
   assert.equal(isPathogenId("ebola"), false);
 });
+
+test("every pathogen rule carries at least one CDC, WHO, or EPA citation over https", () => {
+  for (const p of Object.values(PATHOGENS)) {
+    assert.ok(p.citations.length >= 1, `${p.id} has no citation`);
+    for (const url of p.citations) {
+      assert.match(url, /^https:\/\/(www\.)?(cdc\.gov|who\.int|epa\.gov)\//, `${p.id}: ${url} is not a CDC, WHO, or EPA page`);
+    }
+  }
+  // The rules that alcohol does not clear C. difficile spores or norovirus cite a CDC page about that pathogen.
+  assert.ok(PATHOGENS.c_difficile.citations.some((u) => u.includes("c-diff")));
+  assert.ok(PATHOGENS.norovirus.citations.some((u) => u.includes("norovirus")));
+});
