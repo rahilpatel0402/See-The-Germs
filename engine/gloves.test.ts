@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { GLOVE_CONFIG } from "./config.ts";
-import { detectGloveEvents, objectBirths } from "./gloves.ts";
+import { detectGloveEvents, objectBirths, relabelContactsByGloveState } from "./gloves.ts";
 import { bbox, fromPattern } from "./masks.ts";
-import type { Entity, FrameMask, Tracks } from "./types.ts";
+import type { ContactEvent, Entity, FrameMask, GloveEvent, Tracks } from "./types.ts";
 
 // 20x10 frames at 10 fps. Handover distance limit is 15% of width = 3 px.
 const SIZE = { w: 20, h: 10 };
@@ -231,4 +231,16 @@ test("a glove object that returns after a gap never dons: it is a removed glove'
     f === 10 ? new Map([[gloved.id, [b(near)]]]) : f === 30 ? new Map([[bare.id, [b(near, true)]]]) : f === 40 ? new Map([[gloved.id, [b(near, true)]]]) : f === 60 ? new Map([[gloved.id, [b(near)]]]) : new Map();
   const t: Tracks = { ...tracks(frames), objectBirthsAt: births };
   assert.deepEqual(detectGloveEvents(t, GLOVE_CONFIG).map((e) => [e.type, e.t]), [["don", 1.0], ["doff", 3.0], ["don", 6.0]]);
+});
+
+test("contacts are relabelled to the hand class the glove state says was on", () => {
+  const contact = (handId: string, startT: number): ContactEvent => ({ handId, entityId: "rail", startT, endT: startT + 1, adjudicated: false });
+  const events: GloveEvent[] = [
+    { handId: "bare_hand", t: 10, type: "don", source: "detected" },
+    { handId: "bare_hand", t: 20, type: "doff", source: "detected" },
+  ];
+  const out = relabelContactsByGloveState([contact("gloved_hand", 5), contact("bare_hand", 15), contact("gloved_hand", 25), contact("bare_hand", 30)], events, [bare, gloved]);
+  assert.deepEqual(out.map((c) => [c.startT, c.handId]), [[5, "bare_hand"], [15, "gloved_hand"], [25, "bare_hand"], [30, "bare_hand"]]);
+  // No glove events: every hand contact is bare.
+  assert.deepEqual(relabelContactsByGloveState([contact("gloved_hand", 5)], [], [bare, gloved]).map((c) => c.handId), ["bare_hand"]);
 });

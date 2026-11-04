@@ -6,7 +6,7 @@
 
 import type { GloveConfig } from "./config.ts";
 import { bbox } from "./masks.ts";
-import type { Entity, GloveEvent, MaskBounds, MaskRecord, ObjectBirth, Tracks } from "./types.ts";
+import type { ContactEvent, Entity, GloveEvent, MaskBounds, MaskRecord, ObjectBirth, Tracks } from "./types.ts";
 
 interface Point {
   readonly x: number;
@@ -50,6 +50,45 @@ export function objectBirths(records: readonly MaskRecord[], gapFrames: number):
     lastSeen.set(r.objectId, r.frameIndex);
   }
   return out;
+}
+
+// Contacts carry the SAM class that saw the hand, and SAM keeps following a glove's id after it
+// comes off (and a bare hand's id after a glove goes on). The glove state machine knows better:
+// a contact is relabelled to the person's bare-hand entity when no glove was on at its start,
+// and to the gloved-hand entity when one was. Hand state in propagation is per person anyway,
+// so this changes only what the timeline, the drawer, the glove rules, and the accuracy
+// script see as the hand. Pure.
+export function relabelContactsByGloveState(contacts: readonly ContactEvent[], gloveEvents: readonly GloveEvent[], entities: readonly Entity[]): ContactEvent[] {
+  const byId = new Map(entities.map((e) => [e.id, e]));
+  const handsOf = new Map<string, { bare?: Entity; gloved?: Entity }>();
+  for (const e of entities) {
+    if (!isHand(e)) continue;
+    const slot = handsOf.get(personOf(e)) ?? {};
+    if (e.class === "bare_hand") slot.bare = e;
+    else slot.gloved = e;
+    handsOf.set(personOf(e), slot);
+  }
+  const eventsByPerson = new Map<string, GloveEvent[]>();
+  for (const g of [...gloveEvents].sort((a, b) => a.t - b.t)) {
+    const hand = byId.get(g.handId);
+    if (!hand) continue;
+    const p = personOf(hand);
+    const list = eventsByPerson.get(p);
+    if (list) list.push(g);
+    else eventsByPerson.set(p, [g]);
+  }
+  return contacts.map((c) => {
+    const hand = byId.get(c.handId);
+    if (!hand || !isHand(hand)) return c;
+    const p = personOf(hand);
+    let gloveOn = false;
+    for (const g of eventsByPerson.get(p) ?? []) {
+      if (g.t > c.startT) break;
+      gloveOn = g.type === "don";
+    }
+    const want = gloveOn ? handsOf.get(p)?.gloved : handsOf.get(p)?.bare;
+    return want === undefined || want.id === c.handId ? c : { ...c, handId: want.id };
+  });
 }
 
 export function detectGloveEvents(tracks: Tracks, config: GloveConfig): GloveEvent[] {

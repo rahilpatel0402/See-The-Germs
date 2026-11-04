@@ -7,7 +7,7 @@ import { cleaningList } from "../engine/cleaning.ts";
 import { complianceFrom, personMapper } from "../engine/compliance.ts";
 import { CONTACT_CONFIG, GLOVE_CONFIG, HYGIENE_CONFIG, SCORE_WEIGHTS } from "../engine/config.ts";
 import { detectContacts, mergeHandClassContacts } from "../engine/contacts.ts";
-import { detectGloveEvents } from "../engine/gloves.ts";
+import { detectGloveEvents, relabelContactsByGloveState } from "../engine/gloves.ts";
 import { detectGloveIssues } from "../engine/gloverules.ts";
 import { splitHygiene } from "../engine/hygiene.ts";
 import { detectMoments } from "../engine/moments.ts";
@@ -120,7 +120,10 @@ export async function buildPipeline(clipId: string, override: ScenarioOverride =
 
   const adjudications = await readAdjudications(clipId);
   // One touch seen by both hand classes of one person is one contact.
-  const contacts = mergeHandClassContacts(contactsFromCandidates(perception.candidates, adjudications), perception.entities);
+  const contacts = mergeHandClassContacts(
+    relabelContactsByGloveState(contactsFromCandidates(perception.candidates, adjudications), perception.gloveEvents, perception.entities),
+    perception.entities,
+  );
   const split = splitHygiene(contacts, perception.entities, profile, HYGIENE_CONFIG, perception.clipDurationS);
   const propInput: PropagationInput = {
     contacts: split.contacts,
