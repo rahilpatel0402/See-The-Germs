@@ -30,6 +30,6 @@ It is a staff training and infection-prevention audit aid on staged, synthetic f
 - Limitations are stated in the README: 2D contact heuristic mitigated by staging, dwell, and adjudication; glove detection measured on staged footage only; Moment 3 out of scope; heuristic score weights.
 
 ## Demo
-- Hosted at [URL]. Three staged demo clips run offline from cache. "Upload your own" runs the live path with a visible progress state and a 45 second cap. The live path was tested end to end on a fourth clip the pipeline had never seen.
+- Hosted at [URL]. Four staged demo clips (the chain, the rub, gloves done right, and the Oct 26 feasibility clip) run offline from cache, and the caches ship in the repository, so a clone runs the whole demo without a key. "Upload your own" runs the live path with a visible progress state and a 45 second cap. The live path was tested end to end on nine public training clips the pipeline had never seen.
 - Repo: https://github.com/rahilpatel0402/See-The-Germs. Everything written between Oct 26 and Nov 4, 2026, first commit timestamped.
 - Video: [link], three minutes, opens on the glow flip.
