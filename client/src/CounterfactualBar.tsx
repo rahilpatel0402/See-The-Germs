@@ -149,6 +149,8 @@ export function CounterfactualBar({ clipId, analysis, duration, override, onResu
               </span>
             ) : result.keptClean.length > 0 ? (
               <span>Kept clean: {result.keptClean.map(name).join(", ")}.</span>
+            ) : result.after.score < result.before.score ? (
+              <span>No surface ends the clip cleaner, but a missed moment is met and the hands are clean until the next contaminated touch.</span>
             ) : (
               <span className="muted">Nothing changes at this point in the clip.</span>
             )}
