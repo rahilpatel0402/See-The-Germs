@@ -216,6 +216,16 @@ export function detectContacts(tracks: Tracks, config: ContactConfig): ContactCa
     }
   }
 
-  out.sort((a, b) => a.startFrame - b.startFrame || a.handId.localeCompare(b.handId) || a.entityId.localeCompare(b.entityId));
-  return out;
+  // Stacked props: a confident candidate whose peak is a small fraction of a concurrent
+  // candidate's peak on the same hand is sent to review. Dispensers and residents are already
+  // reviewed; the thicker one stays as it is.
+  const stacked = out.map((c) => {
+    if (c.confidence !== "confident") return c;
+    const thicker = out.some(
+      (o) => o !== c && o.handId === c.handId && o.entityId !== c.entityId && o.startFrame <= c.endFrame && c.startFrame <= o.endFrame && c.peakIntersectionPx < config.stackedPeakFraction * o.peakIntersectionPx,
+    );
+    return thicker ? { ...c, confidence: "ambiguous" as const, stackedContact: true } : c;
+  });
+  stacked.sort((a, b) => a.startFrame - b.startFrame || a.handId.localeCompare(b.handId) || a.entityId.localeCompare(b.entityId));
+  return stacked;
 }

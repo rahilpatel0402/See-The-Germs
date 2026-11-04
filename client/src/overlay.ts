@@ -70,6 +70,9 @@ export interface DrawOptions {
   readonly heat: ReadonlyMap<string, number>;
   readonly highlight: string | null;
   readonly entities: ReadonlyMap<string, Entity>;
+  // The scenario's source entity, labelled on the picture: it is contaminated from the start
+  // by choice, not by a touch.
+  readonly sourceId?: string | null;
 }
 
 // The rub countdown drawn near the hand during a hygiene event: seconds rubbed over the WHO
@@ -147,5 +150,24 @@ export function drawFrame(ctx: CanvasRenderingContext2D, shapes: readonly Shape[
       ctx.stroke(shape.path);
     }
     ctx.restore();
+  }
+  if (options.sourceId && options.mode !== "off") {
+    const shape = shapes.find((s) => s.entityId === options.sourceId);
+    if (shape) {
+      const label = "source";
+      ctx.save();
+      ctx.font = `600 ${Math.round(ctx.canvas.width / 52)}px system-ui, sans-serif`;
+      const padX = Math.round(ctx.canvas.width / 160);
+      const w = ctx.measureText(label).width + padX * 2;
+      const h = Math.round(ctx.canvas.width / 36);
+      const x = Math.max(4, Math.min(ctx.canvas.width - w - 4, shape.left));
+      const y = Math.max(4, shape.top - h - 4);
+      ctx.fillStyle = "rgba(255, 120, 10, 0.92)";
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = "#1a1a1a";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, x + padX, y + h / 2);
+      ctx.restore();
+    }
   }
 }

@@ -40,6 +40,11 @@ export interface ContactConfig {
   // event clears contamination, so a false one (a gloved hand pressing a call button beside the
   // bottle, clip C) does more damage than a missed surface. Reviewed outside the cap.
   readonly reviewDispenserContacts: boolean;
+  // Heuristic: when one hand overlaps two things at once and one overlap peaks at less than
+  // this fraction of the other, the thin one is a prop stacked behind the real touch in the
+  // picture (clip A, Nov 4: the phone a hand's width behind the call button). It goes to vision
+  // review instead of counting.
+  readonly stackedPeakFraction: number;
 }
 
 export const CONTACT_CONFIG: ContactConfig = {
@@ -53,6 +58,7 @@ export const CONTACT_CONFIG: ContactConfig = {
   reviewLongerThanMinFrames: 50,
   reviewResidentContacts: true,
   reviewDispenserContacts: true,
+  stackedPeakFraction: 0.34,
 };
 
 // The frame size the pixel constants above were chosen at.

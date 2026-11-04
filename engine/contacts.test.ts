@@ -284,3 +284,23 @@ test("a touch of a dispenser is always sent to vision review, and is marked so",
   assert.equal(out[0]!.confidence, "ambiguous");
   assert.equal(out[0]!.dispenserContact, true);
 });
+
+test("a thin overlap concurrent with a much thicker one on the same hand is a stacked prop and goes to review", () => {
+  // Two targets: the rail (thick grip) and a second object one row away whose mask the dilated
+  // hand just reaches (thin overlap), at the same time.
+  const behind: Entity = { id: "behind", label: "phone", class: "object", zone: "healthcare_area", samPhrase: "phone" };
+  const behindMask = fromPattern([
+    "..........", "..........", "..........", "..........", "..........", "..........",
+    "..........", "..........", "....##....", "..........",
+  ]);
+  const hits = Array.from({ length: 20 }, (_, f) => f >= 3 && f < 13);
+  const perFrame = hits.map((hit) => ({ rail: railMask, behind: behindMask, h1: hit ? handGrip : handAway }));
+  const out = detectContacts(tracks([hand, rail, behind], perFrame), CONTACT_CONFIG);
+  const byId = Object.fromEntries(out.map((c) => [c.entityId, c]));
+  assert.equal(byId["rail"]!.confidence, "confident");
+  assert.equal(byId["behind"]!.confidence, "ambiguous");
+  assert.equal(byId["behind"]!.stackedContact, true);
+  // Alone, the same thin overlap on the second object is judged on its own merits.
+  const alone = detectContacts(tracks([hand, behind], hits.map((hit) => ({ behind: behindMask, h1: hit ? handGrip : handAway }))), CONTACT_CONFIG);
+  assert.equal(alone[0]!.stackedContact, undefined);
+});

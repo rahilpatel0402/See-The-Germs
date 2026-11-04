@@ -82,7 +82,7 @@ Contacts in each demo clip are hand-labeled with a stopwatch into `labels.json`.
 | Clip | Labels | Detected | Precision | Recall | Named failures |
 | --- | --- | --- | --- | --- | --- |
 | feasibility (Oct 26, 24 s, bare and clear-gloved hand, rail, remote, phone) | 6 | 7 | 0.86 | 1.00 | 1 false alarm: an open palm shown above the rail after the glove came off, 1.8 s, thick overlap, which 2D cannot separate from a touch |
-| A, the chain (Nov 3, 33 s, bare hands, rail, call button, phone, resident) | 4 | 5 | 0.80 | 1.00 | the phone sits directly behind the call button along the table's depth, so it registers 4 s early |
+| A, the chain (Nov 3, 33 s, bare hands, rail, call button, phone, resident) | 4 | 4 | 1.00 | 1.00 | none; the phone stacked behind the call button went to vision review and was judged passing in front |
 | B, the rub (Nov 3, 49 s, one 30 s alcohol rub) | 4 | 6 | 0.67 | 1.00 | two squeeze moments beside the resident judged as touches by vision review |
 | C, gloves done right (Nov 3, 88 s, three rubs, two glove changes) | 6 | 7 | 0.86 | 1.00 | the call button registers 1.7 s before the label; glove on and off detected 4 of 4 within 1.3 s |
 

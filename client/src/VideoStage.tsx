@@ -60,7 +60,7 @@ export function VideoStage({ videoRef, src, analysis, propagation, index, mode, 
       const t = video.currentTime;
       const frameIndex = Math.min(index.frames - 1, Math.max(0, Math.floor(t * index.fps + 1e-6)));
       const d = dragRef.current;
-      const key = `${frameIndex}|${mode}|${highlight ?? ""}|${Math.floor(t * 10)}|${d ? `${d.x0},${d.y0},${d.x1},${d.y1}` : ""}`;
+      const key = `${frameIndex}|${mode}|${highlight ?? ""}|${analysis?.scenario.sourceEntityId ?? ""}|${Math.floor(t * 10)}|${d ? `${d.x0},${d.y0},${d.x1},${d.y1}` : ""}`;
       if (key !== lastKey) {
         lastKey = key;
         const shapes = index.shapesAt(frameIndex);
@@ -76,6 +76,7 @@ export function VideoStage({ videoRef, src, analysis, propagation, index, mode, 
           heat,
           highlight,
           entities,
+          sourceId: analysis?.scenario.sourceEntityId ?? null,
         });
         // Rub countdown during a hygiene event, for the whole required duration or until the
         // rub ended early (next touch), shown in red for a moment after an early end.

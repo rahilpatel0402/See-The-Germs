@@ -38,7 +38,7 @@ export function planAdjudication(
   // Long contacts are always reviewed, outside the cap: a prop in front of the hands or a real
   // hold that long changes the whole analysis, and there are never more than a few. The cap
   // then buys the thinnest of the rest, the ones most worth a second look.
-  const alwaysReviewed = (c: ContactCandidate): boolean => c.longContact === true || c.residentContact === true || c.dispenserContact === true;
+  const alwaysReviewed = (c: ContactCandidate): boolean => c.longContact === true || c.residentContact === true || c.dispenserContact === true || c.stackedContact === true;
   const long = eligible.filter(alwaysReviewed);
   const byOverlap = eligible
     .filter((c) => !alwaysReviewed(c))

@@ -132,6 +132,9 @@ export interface ContactCandidate {
   readonly residentContact?: boolean;
   // True when the target is a dispenser and the config sends every such touch to vision review.
   readonly dispenserContact?: boolean;
+  // True when the overlap was thin next to a concurrent, much thicker overlap of the same hand
+  // on another object: a prop stacked behind the real touch in the picture.
+  readonly stackedContact?: boolean;
 }
 
 export type Verdict = "touching" | "passing_in_front" | "unclear";
