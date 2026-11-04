@@ -11,11 +11,23 @@ npm-debug.log*
 .env.*
 !.env.example
 
-# clip data, frames, mask tracks, cached model calls (never committed)
+# clip data, frames, mask tracks, cached model calls. Uploads are never committed. The four
+# staged demo clips are, so a fresh clone and the hosted site run offline from cache with no
+# model call: resampled video, mask tracks, verdicts, review frames, analysis, narratives,
+# labels. Their original phone files, frame extracts, and scene-loop scratch stay out.
 data/*
 !data/clips/
 data/clips/*
 !data/clips/.gitkeep
+!data/clips/feasibility/
+!data/clips/A/
+!data/clips/B/
+!data/clips/C/
+data/clips/*/source.*
+data/clips/*/frames/
+data/clips/*/phrases/
+data/clips/*/scene/
+data/clips/*/accuracy.json
 
 # private planning docs (clinical rules and counterfactual stay out of the public repo until submission)
 PLAN.md

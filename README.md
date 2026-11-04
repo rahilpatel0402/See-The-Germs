@@ -113,11 +113,12 @@ Requirements: Node 22.9 or newer, ffmpeg and ffprobe on the PATH (or `FFMPEG_DIR
 
 ```
 npm install
-cp .env.example .env        # fill in MODEL_API_KEY
+cp .env.example .env        # fill in MODEL_API_KEY (only needed for uploads and new narratives)
 npm test                    # engine suite, node:test
-npm run dev:server          # http://localhost:8787
-npm run dev:client          # http://localhost:5173, proxies /api to the server
+npm run build && npm start  # http://localhost:8787, the four demo clips from cache, no model call
 ```
+
+For development with hot reload run `npm run dev:server` and `npm run dev:client` (http://localhost:5173, proxies /api to the server). The demo clips `feasibility`, `A`, `B`, `C` ship in the repo with their resampled video, mask tracks, verdicts, review frames, analysis, narratives in both languages, and hand labels, so everything in the demo works without a key; `npm run accuracy -- A B C` reproduces the table above.
 
 Analyze a clip from the command line:
 

@@ -30,7 +30,9 @@ const MAX_UPLOAD_SECONDS = 45;
 const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
 const MAX_UPLOADS_PER_DAY = Number(optionalEnv("MAX_UPLOADS_PER_DAY", "20"));
 // Comma-separated clip ids that are precomputed and served offline from cache.
-const DEMO_CLIPS = optionalEnv("DEMO_CLIPS", "").split(",").map((s) => s.trim()).filter(Boolean);
+// The staged demo clips ship in the repo and are read only: served from cache, never sent to a
+// model. Override with DEMO_CLIPS to serve a different set or none.
+const DEMO_CLIPS = optionalEnv("DEMO_CLIPS", "feasibility,A,B,C").split(",").map((s) => s.trim()).filter(Boolean);
 const CLIENT_DIST = path.join(process.cwd(), "client", "dist");
 
 await mkdir(TMP_DIR, { recursive: true });
