@@ -1,0 +1,2 @@
+# Prompt text is part of the narrative cache key, so it must check out identically everywhere.
+server/prompts/*.md text eol=lf

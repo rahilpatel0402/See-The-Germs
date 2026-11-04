@@ -144,7 +144,9 @@ export function hashInput(input: object): string {
 // The cache key covers the prompt too, so editing the prompt invalidates old narratives.
 let promptCache: string | null = null;
 async function promptText(): Promise<string> {
-  if (promptCache === null) promptCache = await readFile(path.join(process.cwd(), "server", "prompts", "narrate.md"), "utf8");
+  // Line endings are normalized: a checkout with CRLF must compute the same cache key as the
+  // LF checkout that wrote the committed demo narratives.
+  if (promptCache === null) promptCache = (await readFile(path.join(process.cwd(), "server", "prompts", "narrate.md"), "utf8")).replace(/\r\n/g, "\n");
   return promptCache;
 }
 

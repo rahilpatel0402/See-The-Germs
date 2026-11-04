@@ -44,7 +44,7 @@ export interface AdjudicationRun {
 }
 
 async function loadPrompt(): Promise<string> {
-  return readFile(path.join(process.cwd(), "server", "prompts", "adjudicate.md"), "utf8");
+  return (await readFile(path.join(process.cwd(), "server", "prompts", "adjudicate.md"), "utf8")).replace(/\r\n/g, "\n");
 }
 
 function parseVerdict(json: unknown): Omit<Adjudication, "candidateId"> | null {

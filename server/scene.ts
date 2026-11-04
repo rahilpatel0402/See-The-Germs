@@ -111,7 +111,7 @@ function good(t: PhraseTrial): boolean {
 }
 
 async function loadPrompt(): Promise<string> {
-  return readFile(path.join(process.cwd(), "server", "prompts", "scene.md"), "utf8");
+  return (await readFile(path.join(process.cwd(), "server", "prompts", "scene.md"), "utf8")).replace(/\r\n/g, "\n");
 }
 
 function shortHash(parts: unknown): string {
